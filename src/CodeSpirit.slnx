@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="CodeSpirit.Core/CodeSpirit.Core.csproj" />
+  <Project Path="CodeSpirit.Host/CodeSpirit.Host.csproj" />
+  <Project Path="CodeSpirit.Infrastructure/CodeSpirit.Infrastructure.csproj" />
+  <Project Path="CodeSpirit.Modules/CodeSpirit.Modules.csproj" />
+  <Project Path="CodeSpirit.SourceGenerator/CodeSpirit.SourceGenerator.csproj" />
+  <Project Path="CodeSpirit.Tests/CodeSpirit.Tests.csproj" />
+</Solution>

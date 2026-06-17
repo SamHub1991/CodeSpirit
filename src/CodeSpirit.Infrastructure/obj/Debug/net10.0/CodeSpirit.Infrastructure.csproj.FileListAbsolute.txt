@@ -1,0 +1,15 @@
+/workspace/src/CodeSpirit.Infrastructure/bin/Debug/net10.0/CodeSpirit.Infrastructure.deps.json
+/workspace/src/CodeSpirit.Infrastructure/bin/Debug/net10.0/CodeSpirit.Infrastructure.dll
+/workspace/src/CodeSpirit.Infrastructure/bin/Debug/net10.0/CodeSpirit.Infrastructure.pdb
+/workspace/src/CodeSpirit.Infrastructure/bin/Debug/net10.0/CodeSpirit.Core.dll
+/workspace/src/CodeSpirit.Infrastructure/bin/Debug/net10.0/CodeSpirit.Core.pdb
+/workspace/src/CodeSpirit.Infrastructure/obj/Debug/net10.0/CodeSpirit.Infrastructure.csproj.AssemblyReference.cache
+/workspace/src/CodeSpirit.Infrastructure/obj/Debug/net10.0/CodeSpirit.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+/workspace/src/CodeSpirit.Infrastructure/obj/Debug/net10.0/CodeSpirit.Infrastructure.AssemblyInfoInputs.cache
+/workspace/src/CodeSpirit.Infrastructure/obj/Debug/net10.0/CodeSpirit.Infrastructure.AssemblyInfo.cs
+/workspace/src/CodeSpirit.Infrastructure/obj/Debug/net10.0/CodeSpirit.Infrastructure.csproj.CoreCompileInputs.cache
+/workspace/src/CodeSpirit.Infrastructure/obj/Debug/net10.0/CodeSpir.EA5E4F1D.Up2Date
+/workspace/src/CodeSpirit.Infrastructure/obj/Debug/net10.0/CodeSpirit.Infrastructure.dll
+/workspace/src/CodeSpirit.Infrastructure/obj/Debug/net10.0/refint/CodeSpirit.Infrastructure.dll
+/workspace/src/CodeSpirit.Infrastructure/obj/Debug/net10.0/CodeSpirit.Infrastructure.pdb
+/workspace/src/CodeSpirit.Infrastructure/obj/Debug/net10.0/ref/CodeSpirit.Infrastructure.dll

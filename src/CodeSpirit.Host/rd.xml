@@ -1,0 +1,20 @@
+<Directives>
+  <Application>
+    <Assembly Name="CodeSpirit.Host" Dynamic="Required All" />
+    <Assembly Name="CodeSpirit.Core" Dynamic="Required All" />
+    <Assembly Name="CodeSpirit.Infrastructure" Dynamic="Required All" />
+    <Assembly Name="CodeSpirit.Modules" Dynamic="Required All" />
+
+    <Assembly Name="Microsoft.AspNetCore.Mvc.Core" Dynamic="Required All" />
+    <Assembly Name="System.Text.Json" Dynamic="Required All" />
+    <Assembly Name="System.Linq.Expressions" Dynamic="Required All" />
+
+    <Type Name="CodeSpirit.Infrastructure.AutoConfiguration.CodeSpiritOptions" Dynamic="Required All" />
+
+    <Type Name="Microsoft.AspNetCore.Http.IFormFile" Dynamic="Required All" />
+    <Type Name="Microsoft.AspNetCore.Http.IFormCollection" Dynamic="Required All" />
+
+    <Type Name="System.Collections.Generic.Dictionary{System.String,System.Object}" Dynamic="Required All" />
+    <Type Name="System.Collections.Generic.Dictionary{System.String,System.String}" Dynamic="Required All" />
+  </Application>
+</Directives>

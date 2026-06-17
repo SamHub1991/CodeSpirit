@@ -1,0 +1,17 @@
+/tmp/codespirit-publish/CodeSpirit.Host
+/tmp/codespirit-publish/appsettings.Development.json
+/tmp/codespirit-publish/appsettings.json
+/tmp/codespirit-publish/CodeSpirit.Host.dll
+/tmp/codespirit-publish/CodeSpirit.Host.deps.json
+/tmp/codespirit-publish/CodeSpirit.Host.runtimeconfig.json
+/tmp/codespirit-publish/CodeSpirit.Host.pdb
+/tmp/codespirit-publish/Castle.Core.dll
+/tmp/codespirit-publish/Microsoft.EntityFrameworkCore.dll
+/tmp/codespirit-publish/Microsoft.EntityFrameworkCore.Abstractions.dll
+/tmp/codespirit-publish/Microsoft.EntityFrameworkCore.InMemory.dll
+/tmp/codespirit-publish/CodeSpirit.Core.dll
+/tmp/codespirit-publish/CodeSpirit.Infrastructure.dll
+/tmp/codespirit-publish/CodeSpirit.Modules.dll
+/tmp/codespirit-publish/CodeSpirit.Core.pdb
+/tmp/codespirit-publish/CodeSpirit.Infrastructure.pdb
+/tmp/codespirit-publish/CodeSpirit.Modules.pdb
