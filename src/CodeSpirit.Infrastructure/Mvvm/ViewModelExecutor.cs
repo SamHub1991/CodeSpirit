@@ -65,7 +65,11 @@ public class ViewModelExecutor
 
             var name = attr.Name ?? prop.Name;
             if (query.TryGetValue(name, out var value) && value.Count > 0)
-                prop.SetValue(vm, ConvertValue(value[0], prop.PropertyType));
+            {
+                var strValue = value[0];
+                if (strValue is not null)
+                    prop.SetValue(vm, ConvertValue(strValue, prop.PropertyType));
+            }
         }
     }
 
@@ -78,11 +82,15 @@ public class ViewModelExecutor
 
             var name = attr.Name ?? prop.Name;
             if (route.TryGetValue(name, out var value) && value is not null)
-                prop.SetValue(vm, ConvertValue(value.ToString(), prop.PropertyType));
+            {
+                var strValue = value.ToString();
+                if (strValue is not null)
+                    prop.SetValue(vm, ConvertValue(strValue, prop.PropertyType));
+            }
         }
     }
 
-    private static object? ConvertValue(string value, Type target)
+    private static object? ConvertValue(string? value, Type target)
     {
         var underlying = Nullable.GetUnderlyingType(target) ?? target;
         return underlying switch

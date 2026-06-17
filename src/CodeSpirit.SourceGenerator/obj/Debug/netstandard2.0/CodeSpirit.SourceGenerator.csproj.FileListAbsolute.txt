@@ -8,3 +8,4 @@
 /workspace/src/CodeSpirit.SourceGenerator/bin/Debug/netstandard2.0/CodeSpirit.SourceGenerator.pdb
 /workspace/src/CodeSpirit.SourceGenerator/obj/Debug/netstandard2.0/CodeSpirit.SourceGenerator.dll
 /workspace/src/CodeSpirit.SourceGenerator/obj/Debug/netstandard2.0/CodeSpirit.SourceGenerator.pdb
+/workspace/src/CodeSpirit.SourceGenerator/obj/Debug/netstandard2.0/CodeSpirit.SourceGenerator.sourcelink.json

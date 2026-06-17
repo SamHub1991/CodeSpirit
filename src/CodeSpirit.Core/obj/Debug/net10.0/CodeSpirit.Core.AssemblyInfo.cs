@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CodeSpirit.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8fff68892a13b027cb780eea62587d425ef4fc87")]
 [assembly: System.Reflection.AssemblyProductAttribute("CodeSpirit.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CodeSpirit.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
