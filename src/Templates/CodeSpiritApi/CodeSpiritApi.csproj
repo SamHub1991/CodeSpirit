@@ -1,13 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
-    <ProjectReference Include="..\CodeSpirit.Core\CodeSpirit.Core.csproj" />
-    <ProjectReference Include="..\CodeSpirit.Infrastructure\CodeSpirit.Infrastructure.csproj" />
-    <ProjectReference Include="..\CodeSpirit.Modules\CodeSpirit.Modules.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\CodeSpirit.SourceGenerator\CodeSpirit.SourceGenerator.csproj"
+    <PackageReference Include="CodeSpirit.Core" Version="0.1.0" />
+    <PackageReference Include="CodeSpirit.Infrastructure" Version="0.1.0" />
+    <PackageReference Include="CodeSpirit.Modules" Version="0.1.0" />
+    <PackageReference Include="CodeSpirit.SourceGenerator" Version="0.1.0"
       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

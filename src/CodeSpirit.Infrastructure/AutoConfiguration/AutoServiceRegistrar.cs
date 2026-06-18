@@ -11,10 +11,15 @@ public class AutoServiceRegistrar : IAutoServiceRegistrar
 {
     public void RegisterServices(IServiceCollection services, Assembly assembly)
     {
-        var types = assembly.GetTypes()
-            .Where(t => t.IsClass && !t.IsAbstract);
+        Type[] types;
+        try { types = assembly.GetTypes(); }
+        catch (ReflectionTypeLoadException ex)
+        {
+            types = ex.Types.Where(t => t is not null).ToArray()!;
+        }
+        catch { return; }
 
-        foreach (var type in types)
+        foreach (var type in types.Where(t => t.IsClass && !t.IsAbstract))
         {
             if (!ShouldRegister(type)) continue;
 

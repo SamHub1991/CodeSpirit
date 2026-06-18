@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Description>CodeSpirit Core - attributes, abstractions, and MVVM base classes. Convention over configuration for .NET.</Description>
   </PropertyGroup>
 
   <ItemGroup>

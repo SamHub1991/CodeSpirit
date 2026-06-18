@@ -20,7 +20,13 @@ public static class Assemblies
     /// Only CodeSpirit assemblies (names starting with "CodeSpirit").
     /// </summary>
     public static Assembly[] CodeSpirit => All
-        .Where(a => a.GetName().Name?.StartsWith("CodeSpirit", StringComparison.OrdinalIgnoreCase) == true)
+        .Where(a =>
+        {
+            var name = a.GetName().Name;
+            return name is not null
+                && name.StartsWith("CodeSpirit", StringComparison.OrdinalIgnoreCase)
+                && !name.StartsWith("CodeSpirit.SourceGenerator", StringComparison.OrdinalIgnoreCase);
+        })
         .ToArray();
 
     /// <summary>
@@ -31,7 +37,11 @@ public static class Assemblies
     {
         var scan = (assemblies is null || assemblies.Length == 0) ? CodeSpirit : assemblies;
         return scan
-            .SelectMany(a => a.GetTypes())
+            .SelectMany(a =>
+            {
+                try { return a.GetTypes(); }
+                catch { return []; }
+            })
             .Where(t => t.IsClass && !t.IsAbstract && typeof(T).IsAssignableFrom(t))
             .ToArray();
     }
@@ -46,7 +56,12 @@ public static class Assemblies
             {
                 foreach (var dll in Directory.EnumerateFiles(entryDir, "*.dll"))
                 {
-                    try { Assembly.Load(Path.GetFileNameWithoutExtension(dll)); }
+                    try
+                    {
+                        var name = Path.GetFileNameWithoutExtension(dll);
+                        if (!name.StartsWith("CodeSpirit.SourceGenerator", StringComparison.OrdinalIgnoreCase))
+                            Assembly.Load(name);
+                    }
                     catch { /* Skip problematic assemblies */ }
                 }
             }

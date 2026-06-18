@@ -12,6 +12,10 @@ obj/
 
 # NuGet
 *.nupkg
+packages/
+
+# MonkeyCode temp
+.monkeycode-tmp-files/
 
 # Build results
 [Dd]ebug/
