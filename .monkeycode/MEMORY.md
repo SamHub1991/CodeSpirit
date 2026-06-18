@@ -36,7 +36,7 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
 - Context: Agent 在打磨 MVVM runtime 与 jQuery 行为层稳定 API 时发现
 - Category: 测试方法
 - Instructions:
-  - 使用 `node src/Templates/CodeSpirit.Web/scripts/validate-js-boundary.js` 验证 MVVM runtime 与 jQuery 行为层协作场景。
+  - 使用 `node src/CodeSpirit.Web/scripts/validate-js-boundary.js` 验证 MVVM runtime 与 jQuery 行为层协作场景。
   - 该脚本覆盖原生输入、`CodeSpirit.input(...)`、命令提交、datepicker 通知、动态 DOM 初始化和重复初始化防护。
 
 [根目录脚本放置约定]
@@ -44,3 +44,9 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
 - Context: 用户要求整理目录文件夹时提出
 - Instructions:
   - 根目录不放 `scripts` 目录，项目脚本应放入对应项目或模板子目录。
+
+[仓库推送规则]
+- Date: 2026-06-18
+- Context: 用户要求调整提交协作方式时提出
+- Instructions:
+  - 只有用户明确说“推送到仓库”时，才执行 `git push`。
