@@ -112,12 +112,22 @@
 }
 
 .admin-card input,
+.admin-card textarea,
 .search-card input {
   width: 100%;
   border: 1px solid var(--cs-border);
   border-radius: 12px;
   font: inherit;
   padding: 0.7rem 0.85rem;
+}
+
+.admin-card textarea {
+  min-height: 12rem;
+  resize: vertical;
+}
+
+.import-export-card {
+  grid-column: span 2;
 }
 
 .button-row {
@@ -242,9 +252,14 @@ th {
   .admin-hero,
   .admin-grid,
   .admin-grid-wide,
+  .import-export-card,
   .search-card,
   .split-tables {
     grid-template-columns: 1fr;
+  }
+
+  .import-export-card {
+    grid-column: auto;
   }
 
   .admin-hero {

@@ -1,4 +1,6 @@
 using CodeSpirit.LibraryManagement.Features.Library.Models;
+using System.Globalization;
+using System.Text;
 using ServiceAttribute = CodeSpirit.Core.Attributes.ServiceAttribute;
 using CodeSpiritServiceLifetime = CodeSpirit.Core.Attributes.ServiceLifetime;
 
@@ -50,6 +52,8 @@ public class LibraryService
     private int _nextLoanId = 1;
     private int _nextReservationId = 1;
     private int _nextInventoryEventId = 1;
+
+    private sealed record BookImport(string Isbn, string Title, string Author, string Category, string Location, int PublishedYear, int CopyCount, decimal Rating);
 
     public LibraryService()
     {
@@ -480,6 +484,104 @@ public class LibraryService
         }
     }
 
+    public string ExportBooksCsv(string query = "", string status = AllFilter, string category = AllFilter)
+    {
+        lock (_sync)
+        {
+            RecalculateBooks();
+
+            var builder = new StringBuilder();
+            builder.AppendLine("ISBN,Title,Author,Category,Location,PublishedYear,CopyCount,Rating");
+            foreach (var book in FilterBooks(query, status, category))
+            {
+                builder.AppendLine(string.Join(',',
+                    EscapeCsv(book.Isbn),
+                    EscapeCsv(book.Title),
+                    EscapeCsv(book.Author),
+                    EscapeCsv(book.Category),
+                    EscapeCsv(book.Location),
+                    book.PublishedYear.ToString(CultureInfo.InvariantCulture),
+                    book.CopyCount.ToString(CultureInfo.InvariantCulture),
+                    book.Rating.ToString(CultureInfo.InvariantCulture)));
+            }
+
+            return builder.ToString();
+        }
+    }
+
+    public AdminNotice ImportBooksCsv(string csv)
+    {
+        if (string.IsNullOrWhiteSpace(csv))
+            return new("Paste CSV content before importing.", "red");
+
+        lock (_sync)
+        {
+            var rows = ParseCsv(csv).ToList();
+            if (rows.Count == 0)
+                return new("CSV content is empty.", "red");
+
+            var startIndex = LooksLikeHeader(rows[0]) ? 1 : 0;
+            var added = 0;
+            var updated = 0;
+            var skipped = 0;
+
+            for (var index = startIndex; index < rows.Count; index++)
+            {
+                var row = rows[index];
+                if (row.Count == 0 || row.All(string.IsNullOrWhiteSpace))
+                    continue;
+
+                var imported = ToBookImport(row);
+                if (string.IsNullOrWhiteSpace(imported.Title) || string.IsNullOrWhiteSpace(imported.Author))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var book = string.IsNullOrWhiteSpace(imported.Isbn)
+                    ? null
+                    : _books.FirstOrDefault(item => item.Isbn.Equals(imported.Isbn, StringComparison.OrdinalIgnoreCase));
+
+                if (book is null)
+                {
+                    _books.Add(new BookItem
+                    {
+                        Id = _nextBookId++,
+                        Isbn = string.IsNullOrWhiteSpace(imported.Isbn) ? $"ISBN-{DateTime.Now:yyyyMMddHHmmss}-{index}" : imported.Isbn,
+                        Title = imported.Title,
+                        Author = imported.Author,
+                        Category = string.IsNullOrWhiteSpace(imported.Category) ? "General" : imported.Category,
+                        Location = string.IsNullOrWhiteSpace(imported.Location) ? "Import Shelf" : imported.Location,
+                        PublishedYear = imported.PublishedYear <= 0 ? DateTime.Today.Year : imported.PublishedYear,
+                        CopyCount = Math.Max(1, imported.CopyCount),
+                        AvailableCopies = Math.Max(1, imported.CopyCount),
+                        Rating = imported.Rating <= 0 ? 4.0m : imported.Rating,
+                        LastActionAt = DateTime.Now
+                    });
+                    added++;
+                    continue;
+                }
+
+                var activeLoans = ActiveLoansFor(book.Id).Count();
+                book.Title = imported.Title;
+                book.Author = imported.Author;
+                book.Category = string.IsNullOrWhiteSpace(imported.Category) ? book.Category : imported.Category;
+                book.Location = string.IsNullOrWhiteSpace(imported.Location) ? book.Location : imported.Location;
+                book.PublishedYear = imported.PublishedYear <= 0 ? book.PublishedYear : imported.PublishedYear;
+                book.CopyCount = Math.Max(activeLoans, Math.Max(1, imported.CopyCount));
+                book.Rating = imported.Rating <= 0 ? book.Rating : imported.Rating;
+                book.LastActionAt = DateTime.Now;
+                SyncLoanBookTitles(book);
+                SyncReservationBookTitles(book);
+                updated++;
+            }
+
+            RecalculateBooks();
+            AddActivity($"CSV import completed: {added} added, {updated} updated, {skipped} skipped", skipped > 0 ? "amber" : "green");
+            return new($"CSV import completed: {added} added, {updated} updated, {skipped} skipped.", skipped > 0 ? "amber" : "green");
+        }
+    }
+
     private IEnumerable<BookItem> FilterBooks(string query, string status, string category)
     {
         var books = _books.AsEnumerable();
@@ -681,6 +783,88 @@ public class LibraryService
             CreatedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
         });
     }
+
+    private static string EscapeCsv(string value)
+    {
+        if (!value.Contains(',') && !value.Contains('"') && !value.Contains('\n') && !value.Contains('\r'))
+            return value;
+
+        return $"\"{value.Replace("\"", "\"\"")}\"";
+    }
+
+    private static IEnumerable<List<string>> ParseCsv(string csv)
+    {
+        var row = new List<string>();
+        var field = new StringBuilder();
+        var inQuotes = false;
+
+        for (var index = 0; index < csv.Length; index++)
+        {
+            var current = csv[index];
+            if (current == '"')
+            {
+                if (inQuotes && index + 1 < csv.Length && csv[index + 1] == '"')
+                {
+                    field.Append('"');
+                    index++;
+                }
+                else
+                {
+                    inQuotes = !inQuotes;
+                }
+                continue;
+            }
+
+            if (current == ',' && !inQuotes)
+            {
+                row.Add(field.ToString().Trim());
+                field.Clear();
+                continue;
+            }
+
+            if ((current == '\n' || current == '\r') && !inQuotes)
+            {
+                if (current == '\r' && index + 1 < csv.Length && csv[index + 1] == '\n')
+                    index++;
+
+                row.Add(field.ToString().Trim());
+                field.Clear();
+                yield return row;
+                row = [];
+                continue;
+            }
+
+            field.Append(current);
+        }
+
+        row.Add(field.ToString().Trim());
+        if (row.Count > 1 || !string.IsNullOrWhiteSpace(row[0]))
+            yield return row;
+    }
+
+    private static bool LooksLikeHeader(IReadOnlyList<string> row)
+    {
+        return row.Count > 0 && row[0].Equals("ISBN", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static BookImport ToBookImport(IReadOnlyList<string> row)
+    {
+        return new BookImport(
+            Get(row, 0),
+            Get(row, 1),
+            Get(row, 2),
+            Get(row, 3),
+            Get(row, 4),
+            ParseInt(Get(row, 5)),
+            ParseInt(Get(row, 6), 1),
+            ParseDecimal(Get(row, 7), 4.0m));
+    }
+
+    private static string Get(IReadOnlyList<string> row, int index) => index < row.Count ? row[index].Trim() : string.Empty;
+
+    private static int ParseInt(string value, int fallback = 0) => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result) ? result : fallback;
+
+    private static decimal ParseDecimal(string value, decimal fallback) => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var result) ? result : fallback;
 
     private static BookItem Clone(BookItem book) => new()
     {

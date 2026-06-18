@@ -1,4 +1,4 @@
-<%@ Page ViewModel="$safeprojectname$.Features.Admin.AdminViewModel" Title="Library Admin" %>
+<%@ Page ViewModel="CodeSpirit.LibraryManagement.Features.Admin.AdminViewModel" Title="Library Admin" %>
 
 <cs:Content PlaceHolder="Head">
   <link rel="stylesheet" href="/css/pages/admin.css" />
@@ -123,6 +123,17 @@
           <button type="submit" data-cs-command="ReceiveCopies">Receive</button>
           <button type="submit" data-cs-command="WriteOffCopies">Write Off</button>
           <button type="submit" data-cs-command="RelocateBook">Relocate</button>
+        </div>
+      </form>
+
+      <form class="admin-card import-export-card" method="post" data-cs-vm>
+        <h2>CSV Import and Export</h2>
+        <p>Export the current catalog filter, edit the CSV, and import it back. Existing ISBN values are updated, new ISBN values are added.</p>
+        <label>CSV Workspace<textarea name="ImportExportCsv" data-cs-bind="ImportExportCsv" rows="9" placeholder="ISBN,Title,Author,Category,Location,PublishedYear,CopyCount,Rating">{Binding ImportExportCsv}</textarea></label>
+        <div class="button-row wrap">
+          <button type="submit" data-cs-command="ExportBooks">Export Filtered Books</button>
+          <button type="submit" data-cs-command="ImportBooks">Import CSV</button>
+          <button type="submit" data-cs-command="ClearImportExport">Clear</button>
         </div>
       </form>
     </section>

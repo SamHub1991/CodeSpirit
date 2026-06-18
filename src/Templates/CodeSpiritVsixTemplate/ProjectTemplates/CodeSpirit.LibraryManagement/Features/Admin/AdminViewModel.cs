@@ -53,6 +53,8 @@ public class AdminViewModel : ViewModel
     [Bind(BindDirection.TwoWay)] public string InventoryLocation { get; set; } = string.Empty;
     [Bind(BindDirection.TwoWay)] public string InventoryReason { get; set; } = string.Empty;
 
+    [Bind(BindDirection.TwoWay)] public string ImportExportCsv { get; set; } = string.Empty;
+
     public override Task LoadAsync()
     {
         Refresh();
@@ -186,6 +188,29 @@ public class AdminViewModel : ViewModel
     {
         Notices = [Service.RelocateBook(InventoryBookId, InventoryLocation, InventoryReason)];
         ClearInventoryForm();
+        Refresh();
+    }
+
+    [Command]
+    public void ExportBooks()
+    {
+        ImportExportCsv = Service.ExportBooksCsv(Query, FilterStatus, FilterCategory);
+        Notices = [new AdminNotice("Exported current catalog filter to CSV.", "green")];
+        Refresh();
+    }
+
+    [Command]
+    public void ImportBooks()
+    {
+        Notices = [Service.ImportBooksCsv(ImportExportCsv)];
+        Refresh();
+    }
+
+    [Command]
+    public void ClearImportExport()
+    {
+        ImportExportCsv = string.Empty;
+        Notices = [new AdminNotice("Cleared CSV import/export workspace.", "blue")];
         Refresh();
     }
 
