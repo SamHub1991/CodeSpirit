@@ -251,7 +251,7 @@ dotnet run --project src/CodeSpirit.Host
 ## Requirements
 
 - .NET 10 SDK
-- Visual Studio 2022 17.10+ (for VSIX template, build the VSIX project)
+- Visual Studio 2022 17.10+ or VS2026 (for VSIX template, build the VSIX project)
 
 ## License
 
