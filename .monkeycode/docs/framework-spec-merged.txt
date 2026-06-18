@@ -1,0 +1,503 @@
+基于Spring Boot设计哲学构建.NET 10高级框架：CodeSpirit（码灵）
+根据您的要求，我结合Spring Boot的约定优于配置、开箱即用、自动配置、生产就绪等核心设计哲学，以及搜索结果中多个.NET 10现代项目的架构实践，设计一款名为 CodeSpirit（码灵） 的高级.NET 10框架。
+
+一、框架设计哲学
+CodeSpirit 遵循与Spring Boot高度一致的设计思想：
+Spring Boot 设计哲学CodeSpirit 对应实现约定优于配置基于Attribute驱动、自动扫描注册，无需手动注册服务开箱即用通过NuGet Starter包一键引入完整功能栈自动配置基于源生成器（Source Generator）+ DI容器自动装配生产就绪内置健康检查、OpenTelemetry遥测、Actuator端点模块化模块化架构，按需加载，拓扑依赖解析
+
+二、框架架构概览
+CodeSpirit 采用垂直切片架构（Vertical Slice Architecture），取代传统的分层架构。每个业务功能（Feature）形成一个独立的垂直切片，包含完整的请求处理链路：
+src/
+├── CodeSpirit.Core/              # 核心抽象层
+│   ├── Attributes/               # 自定义注解（Attribute）
+│   ├── Interfaces/               # 核心接口
+│   └── Abstractions/             # 抽象基类
+├── CodeSpirit.Infrastructure/    # 基础设施层
+│   ├── AutoConfiguration/        # 自动配置模块
+│   ├── Persistence/              # 数据持久化
+│   ├── Security/                 # 安全认证
+│   ├── Caching/                  # 缓存机制
+│   └── Monitoring/               # 监控与遥测
+├── CodeSpirit.Modules/           # 业务模块
+│   ├── UserManagement/           # 用户管理模块（Feature）
+│   ├── OrderManagement/          # 订单管理模块
+│   └── ProductCatalog/           # 产品目录模块
+├── CodeSpirit.Host/              # 宿主项目（启动入口）
+│   ├── Program.cs
+│   └── appsettings.json
+└── CodeSpirit.Tests/             # 测试项目
+
+三、核心实现：自动配置与注解驱动
+1. 自定义注解（Attribute）系统
+借鉴Spring Boot的@Service、@Repository、@Autowired等注解机制，CodeSpirit定义了一系列C# Attribute：
+// 服务注解——类似Spring的@Service
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public class ServiceAttribute : Attribute
+{
+    public ServiceLifetime Lifetime { get; set; } = ServiceLifetime.Scoped;
+    public Type? ServiceType { get; set; }
+}
+
+// 仓储注解——类似Spring的@Repository
+[AttributeUsage(AttributeTargets.Class)]
+public class RepositoryAttribute : Attribute { }
+
+// 自动注入注解——类似Spring的@Autowired
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+public class AutowiredAttribute : Attribute { }
+
+// 配置值注入——类似Spring的@Value
+[AttributeUsage(AttributeTargets.Property)]
+public class ValueAttribute : Attribute
+{
+    public string Key { get; }
+    public ValueAttribute(string key) => Key = key;
+}
+2. 自动扫描与注册机制
+利用.NET 10的源生成器（Source Generator），在编译时自动扫描带有特定Attribute的程序集并生成注册代码：
+// AutoServiceRegistrar.cs —— 自动扫描注册器
+public static class AutoServiceRegistrar
+{
+    public static IServiceCollection AddCodeSpiritAutoServices(this IServiceCollection services, Assembly assembly)
+    {
+        // 扫描所有带有[Service]注解的类
+        var serviceTypes = assembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract && t.GetCustomAttribute<ServiceAttribute>() != null);
+
+        foreach (var type in serviceTypes)
+        {
+            var attr = type.GetCustomAttribute<ServiceAttribute>()!;
+            var serviceType = attr.ServiceType ?? type.GetInterfaces().FirstOrDefault() ?? type;
+            
+            services.Add(new ServiceDescriptor(serviceType, type, attr.Lifetime));
+        }
+
+        return services;
+    }
+}
+3. 自动配置模块
+借鉴Spring Boot的@EnableAutoConfiguration机制，CodeSpirit通过条件化配置实现自动装配：
+// AutoConfigurationAttribute.cs —— 自动配置注解
+[AttributeUsage(AttributeTargets.Class)]
+public class AutoConfigurationAttribute : Attribute
+{
+    public Type? ConditionalOnBean { get; set; }
+    public string? ConditionalOnClass { get; set; }
+}
+
+// CodeSpiritAutoConfiguration.cs —— 框架入口
+public static class CodeSpiritAutoConfiguration
+{
+    public static WebApplicationBuilder AddCodeSpirit(this WebApplicationBuilder builder)
+    {
+        var assembly = Assembly.GetCallingAssembly();
+        
+        // 1. 自动注册服务
+        builder.Services.AddCodeSpiritAutoServices(assembly);
+        
+        // 2. 自动配置模块
+        var configModules = assembly.GetTypes()
+            .Where(t => t.GetCustomAttribute<AutoConfigurationAttribute>() != null);
+        
+        foreach (var module in configModules)
+        {
+            var instance = Activator.CreateInstance(module) as ICodeSpiritModule;
+            instance?.Configure(builder.Services, builder.Configuration);
+        }
+        
+        // 3. 自动配置中间件
+        builder.Services.AddCodeSpiritMiddleware();
+        
+        return builder;
+    }
+}
+
+四、模块化设计：借鉴Granit框架的模块化思想
+参考搜索结果中Granit框架的模块化设计，CodeSpirit采用声明式模块依赖机制：
+// 模块定义 —— 类似Spring Boot的@Enable模块
+[DependsOn(typeof(PersistenceModule))]
+[DependsOn(typeof(SecurityModule))]
+[DependsOn(typeof(CachingModule))]
+public class AppModule : CodeSpiritModule
+{
+    public override void ConfigureServices(ServiceConfigurationContext context)
+    {
+        // 自动配置数据库
+        context.Services.AddDbContext<AppDbContext>(options =>
+            options.UseNpgsql(context.Configuration.GetConnectionString("Default")));
+        
+        // 自动配置认证
+        context.Services.AddCodeSpiritAuthentication()
+            .AddJwtBearer(context.Configuration);
+    }
+}
+模块发现机制：通过源生成器在编译时扫描所有继承CodeSpiritModule的类，自动解析模块依赖拓扑，按正确顺序初始化模块。
+
+五、AOP切面编程：注解式拦截
+借鉴Spring AOP的@Transactional、@Cacheable等注解，CodeSpirit通过Castle.DynamicProxy实现声明式切面编程：
+// 事务注解 —— 类似Spring的@Transactional
+[AttributeUsage(AttributeTargets.Method)]
+public class TransactionalAttribute : Attribute { }
+
+// 缓存注解 —— 类似Spring的@Cacheable
+[AttributeUsage(AttributeTargets.Method)]
+public class CacheableAttribute : Attribute
+{
+    public string CacheKey { get; set; } = "";
+    public int ExpirationSeconds { get; set; } = 300;
+}
+
+// AOP拦截器实现
+public class TransactionInterceptor : IInterceptor
+{
+    private readonly AppDbContext _dbContext;
+    
+    public void Intercept(IInvocation invocation)
+    {
+        if (invocation.Method.GetCustomAttribute<TransactionalAttribute>() != null)
+        {
+            using var transaction = _dbContext.Database.BeginTransaction();
+            try
+            {
+                invocation.Proceed();
+                transaction.Commit();
+            }
+            catch
+            {
+                transaction.Rollback();
+                throw;
+            }
+        }
+        else
+        {
+            invocation.Proceed();
+        }
+    }
+}
+
+六、生产就绪特性：内置Actuator与可观测性
+借鉴Spring Boot Actuator的设计，CodeSpirit内置完整的生产监控体系：
+// 健康检查端点
+public class HealthEndpoint : IActuatorEndpoint
+{
+    [Endpoint("/actuator/health")]
+    public async Task<IResult> GetHealth()
+    {
+        var health = new
+        {
+            status = "UP",
+            components = new
+            {
+                database = await CheckDatabaseHealth(),
+                redis = await CheckRedisHealth(),
+                memory = CheckMemoryHealth()
+            }
+        };
+        return Results.Ok(health);
+    }
+}
+
+// 自动配置Actuator
+builder.Services.AddCodeSpiritActuator(options =>
+{
+    options.EnableHealthEndpoint = true;
+    options.EnableMetricsEndpoint = true;
+    options.EnableInfoEndpoint = true;
+});
+
+七、快速启动示例
+借鉴Spring Boot的@SpringBootApplication体验，CodeSpirit的启动代码同样极简：
+[CodeSpiritApplication] // 类似@SpringBootApplication
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+        
+        // 一行代码启动CodeSpirit框架
+        builder.AddCodeSpirit();
+        
+        var app = builder.Build();
+        app.UseCodeSpirit();
+        app.Run();
+    }
+}
+
+// 使用注解定义服务 —— 无需手动注册
+[Service(Lifetime = ServiceLifetime.Scoped)]
+public class UserService : IUserService
+{
+    [Autowired] // 自动注入依赖
+    private IUserRepository _userRepository;
+    
+    [Transactional] // 声明式事务
+    public async Task<User> CreateUserAsync(CreateUserRequest request)
+    {
+        // 业务逻辑
+    }
+}
+
+八、框架优势总结
+特性CodeSpiritSpring Boot启动复杂度1行代码启动1行代码启动服务注册Attribute自动扫描注解自动扫描依赖注入构造函数+属性注入构造函数+字段注入AOP切面Attribute + 动态代理注解 + AOP自动配置条件化自动装配条件化自动装配模块化声明式模块依赖Starter + AutoConfiguration生产监控内置ActuatorSpring Boot Actuator架构模式垂直切片架构 (VSA)分层架构
+
+九、延伸建议
+在实际开发中，CodeSpirit框架还可以进一步集成以下能力：
+
+AI辅助开发：借鉴搜索结果中提到的AI Code Review和智能提示功能，框架可内置AI驱动的代码生成建议
+多租户支持：通过过滤器自动注入租户上下文，实现数据隔离
+事件驱动架构：基于Wolverine消息总线实现领域事件和CQRS模式
+云原生适配：集成.NET Aspire，实现服务发现、分布式追踪和容器编排
+
+一句话总结：CodeSpirit将Spring Boot的约定优于配置、自动装配、注解驱动等核心设计哲学完美移植到.NET 10平台，同时结合垂直切片架构、模块化设计、AOP切面编程等现代化架构理念，为.NET生态开发者带来类Spring Boot的高级开发体验。
+
+: Vertical Slice Architecture在.NET 10上的实现
+: Granit框架的模块化设计思想
+: Spring Boot约定优于配置设计哲学
+: Spring Boot自动装配机制解析
+: Spring Boot核心特性：自动配置、起步依赖、Actuator、嵌入式容器CodeSpirit .NET 10 框架工具链
+📌 项目概述
+CodeSpirit 是一套基于 .NET 10 构建的高级企业级开发框架工具链，融合了 Spring Boot 的约定优于配置、自动装配、注解驱动等核心设计哲学，同时结合 .NET 生态的最佳实践与现代架构理念，为 .NET 开发者提供“开箱即用”的云端原生应用开发体验。
+本项目从 Ark.Tools、XiHan.Framework 等现代化 .NET 框架中汲取灵感，采用模块化、可插拔的设计理念，将常用组件封装为统一的工具链，帮助团队快速构建高质量、可维护的企业级应用。
+
+✨ 核心特性
+特性描述约定优于配置基于 Attribute 驱动、自动扫描注册，无需手动注册服务开箱即用通过 NuGet 包一键引入完整功能栈自动装配基于源生成器 + DI 容器自动装配，类似 Spring Boot 的 @EnableAutoConfiguration模块化架构按需加载，模块间拓扑依赖自动解析生产就绪内置健康检查、OpenTelemetry 遥测、Actuator 端点AOP 切面编程声明式事务、缓存、日志等注解式拦截性能优先.NET 10 原生性能优化：JIT 编译速度提升 37.5%，GC 暂停时间减少 52%AI 原生支持集成 Microsoft.Extensions.AI，支持大模型调用与智能体编排
+
+🏗️ 项目结构
+CodeSpirit/
+├── src/
+│   ├── CodeSpirit.Core/                    # 核心抽象层
+│   │   ├── Attributes/                     # 自定义注解（Attribute）
+│   │   ├── Interfaces/                     # 核心接口定义
+│   │   └── Abstractions/                   # 抽象基类
+│   ├── CodeSpirit.Infrastructure/          # 基础设施层
+│   │   ├── AutoConfiguration/              # 自动配置模块
+│   │   │   ├── AutoServiceRegistrar.cs     # 服务自动扫描注册器
+│   │   │   └── ConditionalAttribute.cs     # 条件化装配注解
+│   │   ├── Data/                           # 数据访问
+│   │   │   ├── EntityFramework/            # EF Core 封装
+│   │   │   ├── Dapper/                     # Dapper 集成[13](@ref)
+│   │   │   └── Repository/                # 仓储模式实现
+│   │   ├── Security/                       # 安全认证
+│   │   │   ├── Authentication/             # JWT / OAuth2 认证
+│   │   │   ├── Authorization/              # 基于策略的授权
+│   │   │   └── Identity/                   # ASP.NET Core Identity 集成
+│   │   ├── Caching/                        # 缓存机制
+│   │   │   ├── InMemoryCache/              # 内存缓存
+│   │   │   └── RedisCache/                 # 分布式 Redis 缓存
+│   │   ├── Messaging/                      # 消息队列
+│   │   │   ├── RabbitMQ/                   # RabbitMQ 集成
+│   │   │   └── Kafka/                      # Kafka 集成
+│   │   ├── Monitoring/                     # 监控与遥测
+│   │   │   ├── Actuator/                   # 健康检查、指标端点
+│   │   │   └── OpenTelemetry/              # 分布式追踪
+│   │   ├── Scheduling/                     # 任务调度
+│   │   │   └── Quartz/                     # Quartz.NET 集成[13](@ref)
+│   │   ├── Logging/                        # 日志
+│   │   │   └── StructuredLogging/          # NLog / Serilog 结构化日志[13](@ref)
+│   │   └── AI/                             # AI 集成
+│   │       └── Microsoft.Extensions.AI/    # 大模型调用与智能体
+│   ├── CodeSpirit.Modules/                # 业务模块
+│   │   ├── UserManagement/                # 用户管理模块
+│   │   ├── OrderManagement/               # 订单管理模块
+│   │   └── ProductCatalog/                # 产品目录模块
+│   ├── CodeSpirit.Host/                   # 宿主项目（启动入口）
+│   │   ├── Program.cs
+│   │   └── appsettings.json
+│   └── CodeSpirit.Tests/                  # 测试项目
+├── samples/                                # 示例应用
+│   └── ReferenceProject/                   # 完整参考项目[13](@ref)
+├── docs/                                   # 文档
+│   ├── migration-guides/                   # 迁移指南[13](@ref)
+│   └── architecture.md                     # 架构设计文档
+├── assets/                                 # 资源文件
+└── README.md                               # 本文件
+
+🚀 快速开始
+环境要求
+
+.NET 10 SDK（预览版或正式版）
+Visual Studio 2026 或 JetBrains Rider
+Docker（可选，用于本地开发数据库、消息队列等）
+
+一分钟启动
+# 1. 安装模板
+dotnet new install CodeSpirit.Templates
+
+# 2. 创建新项目
+dotnet new codespirit-api -n MyFirstApp
+
+# 3. 进入项目目录并运行
+cd MyFirstApp
+dotnet run
+使用 NuGet 包集成
+<PackageReference Include="CodeSpirit.Core" Version="10.0.0" />
+<PackageReference Include="CodeSpirit.Infrastructure.EntityFramework" Version="10.0.0" />
+<PackageReference Include="CodeSpirit.Infrastructure.Security" Version="10.0.0" />
+
+📦 组件清单
+核心层（CodeSpirit.Core）
+组件说明CodeSpirit.Core框架核心抽象，包含基础注解、接口、抽象类
+基础设施层（CodeSpirit.Infrastructure）
+组件类别说明AutoConfiguration核心条件化自动装配、服务扫描注册EntityFramework数据EF Core 封装，支持多数据库、读写分离Dapper数据Dapper 集成，提供轻量级 ORM 支持RedisCache缓存分布式缓存实现InMemoryCache缓存内存缓存实现Authentication安全JWT、OAuth2 认证Authorization安全基于策略的 RBAC 授权RabbitMQ消息RabbitMQ 消息队列集成Kafka消息Kafka 高吞吐消息集成Actuator监控健康检查、指标端点、环境信息OpenTelemetry监控分布式追踪与指标收集Quartz调度分布式定时任务调度StructuredLogging日志NLog/Serilog 结构化日志AI智能Microsoft.Extensions.AI 集成
+
+🔧 核心用法示例
+1. 注解驱动开发
+// 服务注解 —— 类似 Spring Boot 的 @Service
+[Service(Lifetime = ServiceLifetime.Scoped)]
+public class UserService : IUserService
+{
+    [Autowired] // 自动注入依赖
+    private IUserRepository _userRepository;
+
+    [Transactional] // 声明式事务
+    public async Task<User> CreateUserAsync(CreateUserRequest request)
+    {
+        // 业务逻辑
+        return await _userRepository.AddAsync(user);
+    }
+}
+2. 自动配置
+[CodeSpiritApplication] // 类似 @SpringBootApplication
+public class Program
+{
+    public static void Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
+        builder.AddCodeSpirit(); // 一行代码启动框架
+        var app = builder.Build();
+        app.UseCodeSpirit();
+        app.Run();
+    }
+}
+3. 模块化依赖
+[DependsOn(typeof(PersistenceModule))]
+[DependsOn(typeof(SecurityModule))]
+public class AppModule : CodeSpiritModule
+{
+    public override void ConfigureServices(ServiceConfigurationContext context)
+    {
+        context.Services.AddDbContext<AppDbContext>(options =>
+            options.UseNpgsql(context.Configuration.GetConnectionString("Default")));
+    }
+}
+4. AOP 切面编程
+[Cacheable(CacheKey = "users:{0}", ExpirationSeconds = 300)]
+public async Task<User> GetUserByIdAsync(long id)
+{
+    // 自动缓存结果
+    return await _userRepository.FindAsync(id);
+}
+
+🧪 测试与构建
+# 启动测试依赖（SQL Server + Redis）
+cd samples/ReferenceProject
+docker-compose up -d
+cd ../..
+
+# 还原包
+dotnet restore
+
+# 构建解决方案
+dotnet build --configuration Debug
+
+# 运行测试
+dotnet test --configuration Debug
+参考 Ark.Tools 的测试实践，本项目采用 Reqnroll 进行 BDD 测试，确保框架的稳定性和可靠性。
+
+📖 文档与资源
+
+架构设计：参见 docs/architecture.md
+迁移指南：docs/migration-guides/ 目录包含版本升级指南
+示例应用：samples/ReferenceProject 提供一个完整的 ASP.NET Core API 示例，展示 RESTful API 实现、认证授权、数据库集成、结构化日志等
+
+🤝 贡献指南
+欢迎提交 PR 或 Issue！请遵循以下原则：
+
+避免引入不必要的外部依赖
+文档改进始终受欢迎
+遵循现有代码风格和模式
+保持模块化、可插拔的设计
+
+📄 许可证
+本项目基于 MIT 许可证开源，详情参见 LICENSE 文件。
+
+CodeSpirit — 让 .NET 10 开发如 Spring Boot 般优雅，兼具 .NET 生态的高性能与强类型优势。🚀融合DotVVM、CoreWebForms与CodeBehind的现代化ASP.NET框架设计方案
+基于搜索结果，我为您设计一个融合三者优势的现代化框架方案。这个方案的核心目标是：保留.aspx文件的简洁性与熟悉感，同时引入MVVM模式、模块化热插拔和现代化开发体验。
+一、方案概述
+现代Web开发面临的核心矛盾是：传统Web Forms的易用性与现代化架构（MVVM、模块化、热更新）之间的矛盾。您提出的方案正是解决这一矛盾的创新尝试。
+二、核心架构设计
+1. 三层次架构
+借鉴DotVVM的MVVM模式、CodeBehind的模块化热插拔机制和传统Web Forms的.aspx文件格式，设计如下架构：
+表示层（.aspx文件） → ViewModel层（C#类） → 业务逻辑层（服务/控制器）
+2. 文件结构设计
+/Pages/
+  Customer.aspx              # 视图文件（保留.aspx后缀）
+  CustomerViewModel.cs       # ViewModel类（继承DotVVM的DotvvmViewModelBase）
+  CustomerController.cs      # 控制器（可选，处理请求前后逻辑，借鉴CodeBehind）
+3. 页面指令简化
+借鉴CodeBehind的极简指令风格：
+<%@ Page Controller="CustomerController" ViewModel="CustomerViewModel" %>
+结合Web.config全局配置后，可进一步简化为：
+<%@ Page ViewModel="CustomerViewModel" %>
+三、关键技术特性
+1. MVVM数据绑定（借鉴DotVVM）
+DotVVM的核心优势是MVVM模式和数据绑定，无需编写REST API。ViewModel示例：
+public class CustomerViewModel : DotvvmViewModelBase
+{
+    public string CustomerName { get; set; }
+    
+    [FromQuery("productId")]
+    public int ProductId { get; set; }
+    
+    public void Save()
+    {
+        // 业务逻辑
+    }
+}
+2. 模块化热插拔（借鉴CodeBehind与PluginCore）
+根据搜索结果，PluginCore框架实现了真正的“即插即用”插件系统，支持：
+
+插件隔离与共享：插件之间相互独立，通过接口约定共享能力
+动态WebAPI：每个插件可独立添加Controller
+热插拔能力：上传、安装、启停、卸载均无需重启站点
+
+CodeBehind框架同样支持模块化部署：复制一个.aspx文件和对应的DLL即可添加模块。
+3. 渐进式迁移能力
+DotVVM支持与现有Web Forms应用共存运行，逐步将页面从Web Forms迁移到新框架：
+
+“您可以安装DotVVM NuGet包到Web Forms应用中，它将与项目中的ASPX页面共存运行。从部署角度看，没有变化——仍然是同一个ASP.NET应用部署到服务器。”
+
+四、技术实现要点
+1. 自定义页面解析器
+需要开发自定义的PageParser来处理简化后的指令语法，识别Controller和ViewModel属性。
+2. 依赖注入集成
+借鉴ASP.NET Core的依赖注入机制，支持在ViewModel和Controller中注入服务。
+3. 路由管理
+支持基于约定的路由自动推断（如/Customer自动映射到CustomerController）。
+4. 生命周期管理
+结合DotVVM的页面生命周期（Init → Load → PreRender）和CodeBehind的请求拦截机制（BeforeLoad/AfterLoad）。
+五、开发体验优化
+1. 默认命名空间配置
+在Web.config中统一配置：
+<system.web>
+  <pages>
+    <namespaces>
+      <add namespace="MyApp.ViewModels" />
+      <add namespace="MyApp.Controllers" />
+    </namespaces>
+  </pages>
+</system.web>
+2. 默认ViewModel推断
+遵循“约定优于配置”原则：如果Controller名称与ViewModel名称存在约定关系（如CustomerController对应CustomerViewModel），可以自动推断。
+3. Visual Studio扩展支持
+参考DotVVM的VS扩展，提供语法高亮、IntelliSense和错误检查。
+六、方案优势总结
+特性来源实现方式简洁的页面指令CodeBehind<%@ Page Controller="..." ViewModel="..." %>MVVM数据绑定DotVVM客户端表达式直接翻译为JavaScript无ViewStateDotVVM状态存储在ViewModel JSON中模块化热插拔CodeBehind/PluginCore复制DLL即可添加模块请求拦截CodeBehindBeforeLoad/AfterLoad机制渐进式迁移DotVVM与Web Forms共存，逐步替换
+七、推荐实施路线
+
+第一阶段（1-2周）：搭建原型，实现基本的.aspx页面解析和MVVM绑定
+第二阶段（2-4周）：实现模块化热插拔机制，支持动态加载Controller和ViewModel
+第三阶段（2-4周）：完善开发工具链，包括VS扩展和代码片段
+第四阶段（持续）：社区建设、文档完善和性能优化
+
+这个方案既保留了传统Web Forms的易用性和.aspx文件的熟悉感，又引入了MVVM模式、模块化热插拔和现代化开发体验，是一个值得投入的创新方向。
