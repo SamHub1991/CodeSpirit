@@ -370,6 +370,37 @@ dotnet test src/CodeSpirit.Tests
 dotnet run --project src/CodeSpirit.LibraryManagement
 ```
 
+## Developer Tooling
+
+### Code Snippets
+
+The VSIX template installs the following code snippets, available in any C# or HTML file. Type the shortcut and press Tab to expand:
+
+| Shortcut | Language | Expands To |
+|----------|----------|------------|
+| `csvm` | C# | Complete ViewModel with PageDirective, Bind, Command, LoadAsync |
+| `cssvc` | C# | Service class with [Service] and [Autowired] logger |
+| `csapp` | C# | Program.cs CodeSpirit application entry point |
+| `csmod` | C# | CodeSpiritModule auto-configuration class |
+| `csbind` | C# | [Bind] property declaration |
+| `csform` | ASPX | `<cs:Form>` with Field and Button |
+| `cstable` | ASPX | `<cs:Table>` with Column definitions |
+| `csregion` | ASPX | `<cs:Region>` partial update area |
+
+### Compile-Time Diagnostics
+
+The source generator reports the following rules in the Visual Studio Error List:
+
+| ID | Severity | Description |
+|----|----------|-------------|
+| CSP001 | Warning | Abstract class with `[Service]` is ignored |
+| CSP002 | Warning | `[Service]` class has no public constructor |
+| CSP003 | Error | `[Command]` method must not declare parameters |
+
+### EditorConfig
+
+The repo includes `.editorconfig` with file-scoped namespace enforcement, consistent indentation (4-space C#, 2-space web), UTF-8/LF, and style preferences for `var` usage, pattern matching, and expression-bodied members.
+
 ## Requirements
 
 - .NET 10 SDK

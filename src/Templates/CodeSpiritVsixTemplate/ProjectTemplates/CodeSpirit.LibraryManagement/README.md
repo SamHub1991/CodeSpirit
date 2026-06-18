@@ -60,6 +60,31 @@ ISBN,Title,Author,Category,Location,PublishedYear,CopyCount,Rating
 - `cs:Table` also supports nested `cs:Column` blocks for custom cell templates.
 - `cs:Region` renders a named `data-cs-region` element for command response HTML patches.
 
+## Developer Hints
+
+### Code Snippets
+
+After installing this VSIX, the following shortcuts are available in any C# or ASPX file:
+
+| Shortcut | Output |
+|----------|--------|
+| `csvm` | ViewModel with PageDirective, Bind, Command, LoadAsync |
+| `cssvc` | Service class with [Service] and [Autowired] |
+| `csapp` | Program.cs entry point |
+| `csmod` | CodeSpiritModule template |
+| `csbind` | [Bind] property |
+| `csform` | `<cs:Form>` with Field and Button |
+| `cstable` | `<cs:Table>` with Columns |
+| `csregion` | `<cs:Region>` partial update block |
+
+### Compile-Time Diagnostics
+
+The source generator reports these in the Error List:
+
+- **CSP001** (warning): Abstract `[Service]` class is not registered.
+- **CSP002** (warning): `[Service]` class has no public constructor.
+- **CSP003** (error): `[Command]` method declares parameters.
+
 ## Validation
 
 ```bash

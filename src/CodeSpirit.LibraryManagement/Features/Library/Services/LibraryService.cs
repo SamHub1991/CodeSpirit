@@ -10,6 +10,7 @@ namespace CodeSpirit.LibraryManagement.Features.Library.Services;
 public class LibraryService
 {
     private const string AllFilter = "All";
+    private static readonly TimeProvider Clock = TimeProvider.System;
 
     private static class BookStatus
     {
@@ -85,10 +86,10 @@ public class LibraryService
                 loans,
                 reservations,
                 [
-                    new("Books", _books.Count.ToString(), $"{totalCopies} total copies", "blue"),
-                    new("Available", availableCopies.ToString(), "Copies ready to borrow", "green"),
-                    new("Active Loans", activeLoans.ToString(), $"{overdueLoans} overdue", overdueLoans > 0 ? "red" : "amber"),
-                    new("Reservations", waitingReservations.ToString(), $"Fines ${fines:0.00}", "purple")
+                    new("Books", _books.Count.ToString(), $"{totalCopies} total copies", ToneConstants.Blue),
+                    new("Available", availableCopies.ToString(), "Copies ready to borrow", ToneConstants.Green),
+                    new("Active Loans", activeLoans.ToString(), $"{overdueLoans} overdue", overdueLoans > 0 ? ToneConstants.Red : ToneConstants.Amber),
+                    new("Reservations", waitingReservations.ToString(), $"Fines ${fines:0.00}", ToneConstants.Purple)
                 ],
                 _books.GroupBy(book => book.Category)
                     .Select(group => new CategoryStat(group.Key, group.Count(), group.Count(book => book.Status == BookStatus.Borrowed), group.Sum(book => book.AvailableCopies)))
@@ -103,7 +104,7 @@ public class LibraryService
     public AdminNotice AddBook(string isbn, string title, string author, string category, string location, int publishedYear, int copyCount)
     {
         if (string.IsNullOrWhiteSpace(title) || string.IsNullOrWhiteSpace(author))
-            return new("Title and author are required.", "red");
+            return new("Title and author are required.", ToneConstants.Red);
 
         lock (_sync)
         {
@@ -111,7 +112,7 @@ public class LibraryService
             var book = new BookItem
             {
                 Id = _nextBookId++,
-                Isbn = string.IsNullOrWhiteSpace(isbn) ? $"ISBN-{DateTime.Now:yyyyMMddHHmmss}" : isbn.Trim(),
+                Isbn = string.IsNullOrWhiteSpace(isbn) ? $"ISBN-{Clock.GetLocalNow().LocalDateTime:yyyyMMddHHmmss}" : isbn.Trim(),
                 Title = title.Trim(),
                 Author = author.Trim(),
                 Category = string.IsNullOrWhiteSpace(category) ? "General" : category.Trim(),
@@ -121,12 +122,12 @@ public class LibraryService
                 PublishedYear = publishedYear <= 0 ? DateTime.Today.Year : publishedYear,
                 MonthlyBorrows = 0,
                 Rating = 4.0m,
-                LastActionAt = DateTime.Now
+                LastActionAt = Clock.GetLocalNow().LocalDateTime
             };
             _books.Add(book);
             RecalculateBooks();
-            AddActivity($"New book added: {book.Title}", "green");
-            return new($"Added {book.Title} with {copies} copies.", "green");
+            AddActivity($"New book added: {book.Title}", ToneConstants.Green);
+            return new($"Added {book.Title} with {copies} copies.", ToneConstants.Green);
         }
     }
 
@@ -136,7 +137,7 @@ public class LibraryService
         {
             var book = FindBook(bookId);
             if (book is null)
-                return new("Book was not found.", "red");
+                return new("Book was not found.", ToneConstants.Red);
 
             var activeLoans = ActiveLoansFor(bookId).Count();
             book.Isbn = string.IsNullOrWhiteSpace(isbn) ? book.Isbn : isbn.Trim();
@@ -146,12 +147,12 @@ public class LibraryService
             book.Location = string.IsNullOrWhiteSpace(location) ? book.Location : location.Trim();
             book.PublishedYear = publishedYear <= 0 ? book.PublishedYear : publishedYear;
             book.CopyCount = Math.Max(activeLoans, copyCount <= 0 ? book.CopyCount : copyCount);
-            book.LastActionAt = DateTime.Now;
+            book.LastActionAt = Clock.GetLocalNow().LocalDateTime;
             RecalculateBooks();
             SyncLoanBookTitles(book);
             SyncReservationBookTitles(book);
-            AddActivity($"Book updated: {book.Title}", "blue");
-            return new($"Updated {book.Title}.", "blue");
+            AddActivity($"Book updated: {book.Title}", ToneConstants.Blue);
+            return new($"Updated {book.Title}.", ToneConstants.Blue);
         }
     }
 
@@ -161,17 +162,17 @@ public class LibraryService
         {
             var book = FindBook(bookId);
             if (book is null)
-                return new("Book was not found.", "red");
+                return new("Book was not found.", ToneConstants.Red);
 
             if (ActiveLoansFor(bookId).Any())
-                return new("Return all active loans before archiving this book.", "amber");
+                return new("Return all active loans before archiving this book.", ToneConstants.Amber);
 
             book.Status = BookStatus.Archived;
             book.AvailableCopies = 0;
-            book.LastActionAt = DateTime.Now;
+            book.LastActionAt = Clock.GetLocalNow().LocalDateTime;
             CancelReservationsForBook(bookId);
-            AddActivity($"Book archived: {book.Title}", "purple");
-            return new($"Archived {book.Title}.", "purple");
+            AddActivity($"Book archived: {book.Title}", ToneConstants.Purple);
+            return new($"Archived {book.Title}.", ToneConstants.Purple);
         }
     }
 
@@ -181,20 +182,20 @@ public class LibraryService
         {
             var book = FindBook(bookId);
             if (book is null)
-                return new("Book was not found.", "red");
+                return new("Book was not found.", ToneConstants.Red);
 
             book.Status = BookStatus.Available;
-            book.LastActionAt = DateTime.Now;
+            book.LastActionAt = Clock.GetLocalNow().LocalDateTime;
             RecalculateBooks();
-            AddActivity($"Book restored: {book.Title}", "green");
-            return new($"Restored {book.Title}.", "green");
+            AddActivity($"Book restored: {book.Title}", ToneConstants.Green);
+            return new($"Restored {book.Title}.", ToneConstants.Green);
         }
     }
 
     public AdminNotice RegisterReader(string name, string email, string phone, string level)
     {
         if (string.IsNullOrWhiteSpace(name))
-            return new("Reader name is required.", "red");
+            return new("Reader name is required.", ToneConstants.Red);
 
         lock (_sync)
         {
@@ -208,8 +209,8 @@ public class LibraryService
                 Status = ReaderStatus.Active
             };
             _readers.Add(reader);
-            AddActivity($"Reader registered: {reader.Name}", "green");
-            return new($"Registered reader {reader.Name}.", "green");
+            AddActivity($"Reader registered: {reader.Name}", ToneConstants.Green);
+            return new($"Registered reader {reader.Name}.", ToneConstants.Green);
         }
     }
 
@@ -219,7 +220,7 @@ public class LibraryService
         {
             var reader = FindReader(readerId);
             if (reader is null)
-                return new("Reader was not found.", "red");
+                return new("Reader was not found.", ToneConstants.Red);
 
             reader.Name = string.IsNullOrWhiteSpace(name) ? reader.Name : name.Trim();
             reader.Email = string.IsNullOrWhiteSpace(email) ? reader.Email : email.Trim();
@@ -227,8 +228,8 @@ public class LibraryService
             reader.Level = string.IsNullOrWhiteSpace(level) ? reader.Level : level.Trim();
             SyncLoanReaderNames(reader);
             SyncReservationReaderNames(reader);
-            AddActivity($"Reader updated: {reader.Name}", "blue");
-            return new($"Updated reader {reader.Name}.", "blue");
+            AddActivity($"Reader updated: {reader.Name}", ToneConstants.Blue);
+            return new($"Updated reader {reader.Name}.", ToneConstants.Blue);
         }
     }
 
@@ -238,15 +239,15 @@ public class LibraryService
         {
             var reader = FindReader(readerId);
             if (reader is null)
-                return new("Reader was not found.", "red");
+                return new("Reader was not found.", ToneConstants.Red);
 
             if (_loans.Any(loan => loan.ReaderId == readerId && IsOpenLoan(loan)))
-                return new("Return active loans before suspending this reader.", "amber");
+                return new("Return active loans before suspending this reader.", ToneConstants.Amber);
 
             reader.Status = ReaderStatus.Suspended;
             CancelReservationsForReader(readerId);
-            AddActivity($"Reader suspended: {reader.Name}", "purple");
-            return new($"Suspended reader {reader.Name}.", "purple");
+            AddActivity($"Reader suspended: {reader.Name}", ToneConstants.Purple);
+            return new($"Suspended reader {reader.Name}.", ToneConstants.Purple);
         }
     }
 
@@ -256,11 +257,11 @@ public class LibraryService
         {
             var reader = FindReader(readerId);
             if (reader is null)
-                return new("Reader was not found.", "red");
+                return new("Reader was not found.", ToneConstants.Red);
 
             reader.Status = ReaderStatus.Active;
-            AddActivity($"Reader activated: {reader.Name}", "green");
-            return new($"Activated reader {reader.Name}.", "green");
+            AddActivity($"Reader activated: {reader.Name}", ToneConstants.Green);
+            return new($"Activated reader {reader.Name}.", ToneConstants.Green);
         }
     }
 
@@ -271,17 +272,17 @@ public class LibraryService
             var book = FindBook(bookId);
             var reader = FindReader(readerId);
             if (book is null)
-                return new("Book was not found.", "red");
+                return new("Book was not found.", ToneConstants.Red);
             if (reader is null)
-                return new("Reader was not found.", "red");
+                return new("Reader was not found.", ToneConstants.Red);
             if (reader.Status != ReaderStatus.Active)
-                return new("Reader must be active before borrowing.", "amber");
+                return new("Reader must be active before borrowing.", ToneConstants.Amber);
             if (book.Status == BookStatus.Archived)
-                return new("Archived books cannot be borrowed.", "amber");
+                return new("Archived books cannot be borrowed.", ToneConstants.Amber);
             if (book.AvailableCopies <= 0)
-                return new("No available copies. Create a reservation instead.", "amber");
+                return new("No available copies. Create a reservation instead.", ToneConstants.Amber);
             if (_loans.Any(loan => loan.BookId == bookId && loan.ReaderId == readerId && IsOpenLoan(loan)))
-                return new("Reader already has an active loan for this book.", "amber");
+                return new("Reader already has an active loan for this book.", ToneConstants.Amber);
 
             var dueAt = DateTime.Today.AddDays(GetLoanDays(reader.Level));
             var loan = new LoanRecord
@@ -297,12 +298,12 @@ public class LibraryService
             };
             _loans.Add(loan);
             book.MonthlyBorrows++;
-            book.LastActionAt = DateTime.Now;
+            book.LastActionAt = Clock.GetLocalNow().LocalDateTime;
             CompleteReservation(bookId, readerId);
             RecalculateBooks();
             RecalculateReaders();
-            AddActivity($"{reader.Name} borrowed {book.Title}", "blue");
-            return new($"Borrowed {book.Title} to {reader.Name}, due {loan.DueAt}.", "blue");
+            AddActivity($"{reader.Name} borrowed {book.Title}", ToneConstants.Blue);
+            return new($"Borrowed {book.Title} to {reader.Name}, due {loan.DueAt}.", ToneConstants.Blue);
         }
     }
 
@@ -312,7 +313,7 @@ public class LibraryService
         {
             var loan = FindOpenLoan(loanId);
             if (loan is null)
-                return new("Active loan was not found.", "red");
+                return new("Active loan was not found.", ToneConstants.Red);
 
             var fine = CalculateFine(loan);
             loan.Status = LoanStatus.Returned;
@@ -324,12 +325,12 @@ public class LibraryService
 
             var book = FindBook(loan.BookId);
             if (book is not null)
-                book.LastActionAt = DateTime.Now;
+                book.LastActionAt = Clock.GetLocalNow().LocalDateTime;
 
             RecalculateBooks();
             RecalculateReaders();
-            AddActivity($"{loan.BookTitle} returned by {loan.ReaderName}", fine > 0 ? "amber" : "green");
-            return new(fine > 0 ? $"Returned with ${fine:0.00} fine." : $"Returned {loan.BookTitle}.", fine > 0 ? "amber" : "green");
+            AddActivity($"{loan.BookTitle} returned by {loan.ReaderName}", fine > 0 ? ToneConstants.Amber : ToneConstants.Green);
+            return new(fine > 0 ? $"Returned with ${fine:0.00} fine." : $"Returned {loan.BookTitle}.", fine > 0 ? ToneConstants.Amber : ToneConstants.Green);
         }
     }
 
@@ -339,18 +340,18 @@ public class LibraryService
         {
             var loan = FindOpenLoan(loanId);
             if (loan is null)
-                return new("Active loan was not found.", "red");
+                return new("Active loan was not found.", ToneConstants.Red);
             if (loan.RenewCount >= 2)
-                return new("This loan has reached the renewal limit.", "amber");
+                return new("This loan has reached the renewal limit.", ToneConstants.Amber);
             if (_reservations.Any(item => item.BookId == loan.BookId && item.Status == ReservationStatus.Waiting && item.ReaderId != loan.ReaderId))
-                return new("This book has waiting reservations and cannot be renewed.", "amber");
+                return new("This book has waiting reservations and cannot be renewed.", ToneConstants.Amber);
 
             var due = DateTime.Parse(loan.DueAt).AddDays(14);
             loan.DueAt = due.ToString("yyyy-MM-dd");
             loan.RenewCount++;
             loan.Status = due < DateTime.Today ? LoanStatus.Overdue : LoanStatus.Active;
-            AddActivity($"Loan renewed: {loan.BookTitle} for {loan.ReaderName}", "green");
-            return new($"Renewed until {loan.DueAt}.", "green");
+            AddActivity($"Loan renewed: {loan.BookTitle} for {loan.ReaderName}", ToneConstants.Green);
+            return new($"Renewed until {loan.DueAt}.", ToneConstants.Green);
         }
     }
 
@@ -361,13 +362,13 @@ public class LibraryService
             var book = FindBook(bookId);
             var reader = FindReader(readerId);
             if (book is null)
-                return new("Book was not found.", "red");
+                return new("Book was not found.", ToneConstants.Red);
             if (reader is null)
-                return new("Reader was not found.", "red");
+                return new("Reader was not found.", ToneConstants.Red);
             if (book.Status == BookStatus.Archived || reader.Status != ReaderStatus.Active)
-                return new("Only active readers can reserve active books.", "amber");
+                return new("Only active readers can reserve active books.", ToneConstants.Amber);
             if (_reservations.Any(item => item.BookId == bookId && item.ReaderId == readerId && item.Status == ReservationStatus.Waiting))
-                return new("Reader already has a waiting reservation for this book.", "amber");
+                return new("Reader already has a waiting reservation for this book.", ToneConstants.Amber);
 
             var reservation = new ReservationItem
             {
@@ -382,8 +383,8 @@ public class LibraryService
             _reservations.Add(reservation);
             RecalculateBooks();
             RecalculateReaders();
-            AddActivity($"{reader.Name} reserved {book.Title}", "amber");
-            return new($"Reserved {book.Title} for {reader.Name}.", "amber");
+            AddActivity($"{reader.Name} reserved {book.Title}", ToneConstants.Amber);
+            return new($"Reserved {book.Title} for {reader.Name}.", ToneConstants.Amber);
         }
     }
 
@@ -393,13 +394,13 @@ public class LibraryService
         {
             var reservation = _reservations.FirstOrDefault(item => item.Id == reservationId && item.Status == ReservationStatus.Waiting);
             if (reservation is null)
-                return new("Waiting reservation was not found.", "red");
+                return new("Waiting reservation was not found.", ToneConstants.Red);
 
             reservation.Status = ReservationStatus.Cancelled;
             RecalculateBooks();
             RecalculateReaders();
-            AddActivity($"Reservation cancelled: {reservation.BookTitle} for {reservation.ReaderName}", "purple");
-            return new("Reservation cancelled.", "purple");
+            AddActivity($"Reservation cancelled: {reservation.BookTitle} for {reservation.ReaderName}", ToneConstants.Purple);
+            return new("Reservation cancelled.", ToneConstants.Purple);
         }
     }
 
@@ -409,78 +410,78 @@ public class LibraryService
         {
             var reader = FindReader(readerId);
             if (reader is null)
-                return new("Reader was not found.", "red");
+                return new("Reader was not found.", ToneConstants.Red);
 
             var paid = amount <= 0 ? reader.FineBalance : Math.Min(reader.FineBalance, amount);
             reader.FineBalance -= paid;
-            AddActivity($"Fine collected from {reader.Name}: ${paid:0.00}", "green");
-            return new($"Collected ${paid:0.00} from {reader.Name}.", "green");
+            AddActivity($"Fine collected from {reader.Name}: ${paid:0.00}", ToneConstants.Green);
+            return new($"Collected ${paid:0.00} from {reader.Name}.", ToneConstants.Green);
         }
     }
 
     public AdminNotice ReceiveCopies(int bookId, int quantity, string reason)
     {
         if (quantity <= 0)
-            return new("Quantity must be greater than zero.", "red");
+            return new("Quantity must be greater than zero.", ToneConstants.Red);
 
         lock (_sync)
         {
             var book = FindBook(bookId);
             if (book is null)
-                return new("Book was not found.", "red");
+                return new("Book was not found.", ToneConstants.Red);
             if (book.Status == BookStatus.Archived)
-                return new("Restore the book before receiving new copies.", "amber");
+                return new("Restore the book before receiving new copies.", ToneConstants.Amber);
 
             book.CopyCount += quantity;
-            book.LastActionAt = DateTime.Now;
+            book.LastActionAt = Clock.GetLocalNow().LocalDateTime;
             AddInventoryEvent(book, "Inbound", quantity, reason);
             RecalculateBooks();
-            AddActivity($"Received {quantity} copies of {book.Title}", "green");
-            return new($"Received {quantity} copies of {book.Title}.", "green");
+            AddActivity($"Received {quantity} copies of {book.Title}", ToneConstants.Green);
+            return new($"Received {quantity} copies of {book.Title}.", ToneConstants.Green);
         }
     }
 
     public AdminNotice WriteOffCopies(int bookId, int quantity, string reason)
     {
         if (quantity <= 0)
-            return new("Quantity must be greater than zero.", "red");
+            return new("Quantity must be greater than zero.", ToneConstants.Red);
 
         lock (_sync)
         {
             var book = FindBook(bookId);
             if (book is null)
-                return new("Book was not found.", "red");
+                return new("Book was not found.", ToneConstants.Red);
 
             var activeLoans = ActiveLoansFor(bookId).Count();
             var removableCopies = book.CopyCount - activeLoans;
             if (quantity > removableCopies)
-                return new($"Only {removableCopies} copies can be written off because {activeLoans} are on loan.", "amber");
+                return new($"Only {removableCopies} copies can be written off because {activeLoans} are on loan.", ToneConstants.Amber);
 
             book.CopyCount -= quantity;
-            book.LastActionAt = DateTime.Now;
+            book.LastActionAt = Clock.GetLocalNow().LocalDateTime;
             AddInventoryEvent(book, "WriteOff", -quantity, reason);
             RecalculateBooks();
-            AddActivity($"Wrote off {quantity} copies of {book.Title}", "purple");
-            return new($"Wrote off {quantity} copies of {book.Title}.", "purple");
+            AddActivity($"Wrote off {quantity} copies of {book.Title}", ToneConstants.Purple);
+            return new($"Wrote off {quantity} copies of {book.Title}.", ToneConstants.Purple);
         }
     }
 
     public AdminNotice RelocateBook(int bookId, string location, string reason)
     {
         if (string.IsNullOrWhiteSpace(location))
-            return new("Location is required.", "red");
+            return new("Location is required.", ToneConstants.Red);
 
         lock (_sync)
         {
             var book = FindBook(bookId);
             if (book is null)
-                return new("Book was not found.", "red");
+                return new("Book was not found.", ToneConstants.Red);
 
             book.Location = location.Trim();
-            book.LastActionAt = DateTime.Now;
+            book.LastActionAt = Clock.GetLocalNow().LocalDateTime;
             AddInventoryEvent(book, "Relocation", 0, reason);
-            AddActivity($"Relocated {book.Title} to {book.Location}", "blue");
-            return new($"Relocated {book.Title} to {book.Location}.", "blue");
+            AddActivity($"Relocated {book.Title} to {book.Location}", ToneConstants.Blue);
+            return new($"Relocated {book.Title} to {book.Location}.", ToneConstants.Blue);
         }
     }
 
@@ -512,13 +513,13 @@ public class LibraryService
     public AdminNotice ImportBooksCsv(string csv)
     {
         if (string.IsNullOrWhiteSpace(csv))
-            return new("Paste CSV content before importing.", "red");
+            return new("Paste CSV content before importing.", ToneConstants.Red);
 
         lock (_sync)
         {
             var rows = ParseCsv(csv).ToList();
             if (rows.Count == 0)
-                return new("CSV content is empty.", "red");
+                return new("CSV content is empty.", ToneConstants.Red);
 
             var startIndex = LooksLikeHeader(rows[0]) ? 1 : 0;
             var added = 0;
@@ -527,59 +528,67 @@ public class LibraryService
 
             for (var index = startIndex; index < rows.Count; index++)
             {
-                var row = rows[index];
-                if (row.Count == 0 || row.All(string.IsNullOrWhiteSpace))
-                    continue;
-
-                var imported = ToBookImport(row);
-                if (string.IsNullOrWhiteSpace(imported.Title) || string.IsNullOrWhiteSpace(imported.Author))
+                var (result, bookAdded, bookUpdated) = ApplyImportedRow(rows[index], index);
+                switch (result)
                 {
-                    skipped++;
-                    continue;
+                    case ImportResult.Added: added += bookAdded; break;
+                    case ImportResult.Updated: updated += bookUpdated; break;
+                    case ImportResult.Skipped: skipped++; break;
                 }
-
-                var book = string.IsNullOrWhiteSpace(imported.Isbn)
-                    ? null
-                    : _books.FirstOrDefault(item => item.Isbn.Equals(imported.Isbn, StringComparison.OrdinalIgnoreCase));
-
-                if (book is null)
-                {
-                    _books.Add(new BookItem
-                    {
-                        Id = _nextBookId++,
-                        Isbn = string.IsNullOrWhiteSpace(imported.Isbn) ? $"ISBN-{DateTime.Now:yyyyMMddHHmmss}-{index}" : imported.Isbn,
-                        Title = imported.Title,
-                        Author = imported.Author,
-                        Category = string.IsNullOrWhiteSpace(imported.Category) ? "General" : imported.Category,
-                        Location = string.IsNullOrWhiteSpace(imported.Location) ? "Import Shelf" : imported.Location,
-                        PublishedYear = imported.PublishedYear <= 0 ? DateTime.Today.Year : imported.PublishedYear,
-                        CopyCount = Math.Max(1, imported.CopyCount),
-                        AvailableCopies = Math.Max(1, imported.CopyCount),
-                        Rating = imported.Rating <= 0 ? 4.0m : imported.Rating,
-                        LastActionAt = DateTime.Now
-                    });
-                    added++;
-                    continue;
-                }
-
-                var activeLoans = ActiveLoansFor(book.Id).Count();
-                book.Title = imported.Title;
-                book.Author = imported.Author;
-                book.Category = string.IsNullOrWhiteSpace(imported.Category) ? book.Category : imported.Category;
-                book.Location = string.IsNullOrWhiteSpace(imported.Location) ? book.Location : imported.Location;
-                book.PublishedYear = imported.PublishedYear <= 0 ? book.PublishedYear : imported.PublishedYear;
-                book.CopyCount = Math.Max(activeLoans, Math.Max(1, imported.CopyCount));
-                book.Rating = imported.Rating <= 0 ? book.Rating : imported.Rating;
-                book.LastActionAt = DateTime.Now;
-                SyncLoanBookTitles(book);
-                SyncReservationBookTitles(book);
-                updated++;
             }
 
             RecalculateBooks();
-            AddActivity($"CSV import completed: {added} added, {updated} updated, {skipped} skipped", skipped > 0 ? "amber" : "green");
-            return new($"CSV import completed: {added} added, {updated} updated, {skipped} skipped.", skipped > 0 ? "amber" : "green");
+            AddActivity($"CSV import completed: {added} added, {updated} updated, {skipped} skipped", skipped > 0 ? ToneConstants.Amber : ToneConstants.Green);
+            return new($"CSV import completed: {added} added, {updated} updated, {skipped} skipped.", skipped > 0 ? ToneConstants.Amber : ToneConstants.Green);
         }
+    }
+
+    private enum ImportResult { Added, Updated, Skipped }
+
+    private (ImportResult Result, int Added, int Updated) ApplyImportedRow(IReadOnlyList<string> row, int index)
+    {
+        if (row.Count == 0 || row.All(string.IsNullOrWhiteSpace))
+            return (ImportResult.Skipped, 0, 0);
+
+        var imported = ToBookImport(row);
+        if (string.IsNullOrWhiteSpace(imported.Title) || string.IsNullOrWhiteSpace(imported.Author))
+            return (ImportResult.Skipped, 0, 0);
+
+        var book = string.IsNullOrWhiteSpace(imported.Isbn)
+            ? null
+            : _books.FirstOrDefault(item => item.Isbn.Equals(imported.Isbn, StringComparison.OrdinalIgnoreCase));
+
+        if (book is null)
+        {
+            _books.Add(new BookItem
+            {
+                Id = _nextBookId++,
+                Isbn = string.IsNullOrWhiteSpace(imported.Isbn) ? $"ISBN-{Clock.GetLocalNow().LocalDateTime:yyyyMMddHHmmss}-{index}" : imported.Isbn,
+                Title = imported.Title,
+                Author = imported.Author,
+                Category = string.IsNullOrWhiteSpace(imported.Category) ? "General" : imported.Category,
+                Location = string.IsNullOrWhiteSpace(imported.Location) ? "Import Shelf" : imported.Location,
+                PublishedYear = imported.PublishedYear <= 0 ? DateTime.Today.Year : imported.PublishedYear,
+                CopyCount = Math.Max(1, imported.CopyCount),
+                AvailableCopies = Math.Max(1, imported.CopyCount),
+                Rating = imported.Rating <= 0 ? 4.0m : imported.Rating,
+                LastActionAt = Clock.GetLocalNow().LocalDateTime
+            });
+            return (ImportResult.Added, 1, 0);
+        }
+
+        var activeLoans = ActiveLoansFor(book.Id).Count();
+        book.Title = imported.Title;
+        book.Author = imported.Author;
+        book.Category = string.IsNullOrWhiteSpace(imported.Category) ? book.Category : imported.Category;
+        book.Location = string.IsNullOrWhiteSpace(imported.Location) ? book.Location : imported.Location;
+        book.PublishedYear = imported.PublishedYear <= 0 ? book.PublishedYear : imported.PublishedYear;
+        book.CopyCount = Math.Max(activeLoans, Math.Max(1, imported.CopyCount));
+        book.Rating = imported.Rating <= 0 ? book.Rating : imported.Rating;
+        book.LastActionAt = Clock.GetLocalNow().LocalDateTime;
+        SyncLoanBookTitles(book);
+        SyncReservationBookTitles(book);
+        return (ImportResult.Updated, 0, 1);
     }
 
     private IEnumerable<BookItem> FilterBooks(string query, string status, string category)
@@ -624,10 +633,10 @@ public class LibraryService
         ReserveBook(3, 1);
         _activities.Clear();
         _activities.AddRange([
-            new("09:30", "Alice borrowed Clean Architecture", "blue"),
-            new("10:20", "Designing Data-Intensive Applications returned to A-02", "green"),
-            new("11:05", "Alice reserved The Pragmatic Programmer", "amber"),
-            new("13:40", "Deep Work moved to featured shelf", "purple")
+            new("09:30", "Alice borrowed Clean Architecture", ToneConstants.Blue),
+            new("10:20", "Designing Data-Intensive Applications returned to A-02", ToneConstants.Green),
+            new("11:05", "Alice reserved The Pragmatic Programmer", ToneConstants.Amber),
+            new("13:40", "Deep Work moved to featured shelf", ToneConstants.Purple)
         ]);
         RecalculateBooks();
         RecalculateReaders();
@@ -665,7 +674,7 @@ public class LibraryService
             if (book.Status == BookStatus.Archived)
             {
                 book.AvailableCopies = 0;
-                book.StatusTone = "purple";
+                book.StatusTone = ToneConstants.Purple;
                 continue;
             }
 
@@ -679,11 +688,11 @@ public class LibraryService
             book.Status = currentLoan?.Status == LoanStatus.Overdue ? BookStatus.Overdue : book.AvailableCopies > 0 ? BookStatus.Available : hasWaiting ? BookStatus.Reserved : BookStatus.Borrowed;
             book.StatusTone = book.Status switch
             {
-                BookStatus.Available => "green",
-                BookStatus.Borrowed => "amber",
-                BookStatus.Reserved => "blue",
-                BookStatus.Overdue => "red",
-                _ => "purple"
+                BookStatus.Available => ToneConstants.Green,
+                BookStatus.Borrowed => ToneConstants.Amber,
+                BookStatus.Reserved => ToneConstants.Blue,
+                BookStatus.Overdue => ToneConstants.Red,
+                _ => ToneConstants.Purple
             };
         }
     }
@@ -767,7 +776,7 @@ public class LibraryService
 
     private void AddActivity(string text, string tone)
     {
-        _activities.Insert(0, new LibraryActivity(DateTime.Now.ToString("HH:mm"), text, tone));
+        _activities.Insert(0, new LibraryActivity(Clock.GetLocalNow().LocalDateTime.ToString("HH:mm"), text, tone));
     }
 
     private void AddInventoryEvent(BookItem book, string type, int quantity, string reason)
@@ -780,7 +789,7 @@ public class LibraryService
             Type = type,
             Quantity = quantity,
             Reason = string.IsNullOrWhiteSpace(reason) ? "Manual operation" : reason.Trim(),
-            CreatedAt = DateTime.Now.ToString("yyyy-MM-dd HH:mm")
+            CreatedAt = Clock.GetLocalNow().LocalDateTime.ToString("yyyy-MM-dd HH:mm")
         });
     }
 

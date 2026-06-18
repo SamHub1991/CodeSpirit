@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>CodeSpirit Module</Title>
+      <Shortcut>csmod</Shortcut>
+      <Description>CodeSpirit auto-configuration module</Description>
+      <Author>CodeSpirit</Author>
+      <SnippetTypes>
+        <SnippetType>Expansion</SnippetType>
+      </SnippetTypes>
+    </Header>
+    <Snippet>
+      <Declarations>
+        <Literal>
+          <ID>ModuleName</ID>
+          <ToolTip>Module class name</ToolTip>
+          <Default>MyModule</Default>
+        </Literal>
+      </Declarations>
+      <Code Language="csharp"><![CDATA[[AutoConfiguration]
+public class $ModuleName$ : CodeSpiritModule
+{
+    public override void ConfigureServices(ServiceConfigurationContext context)
+    {
+        $end$
+    }
+
+    public override void Configure(ServiceConfigurationContext context)
+    {
+
+    }
+}]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

@@ -57,4 +57,21 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
 - Date: 2026-06-18
 - Context: 用户要求调整提交协作方式时提出
 - Instructions:
-  - 只有用户明确说“推送到仓库”时，才执行 `git push`。
+  - 只有用户明确说"推送到仓库"时，才执行 `git push`。
+
+[SourceGenerator 诊断规则注册]
+- Date: 2026-06-18
+- Context: Agent 在增强编译时诊断功能时发现
+- Category: 排错调试
+- Instructions:
+  - 新增 Roslyn 诊断需在 `CodeSpiritServiceGenerator.cs` 中声明 `DiagnosticDescriptor`，并在 `CodeSpirit.SourceGenerator.csproj` 的 `AdditionalFiles` 中维护 `AnalyzerReleases.Unshipped.md`。
+  - 现有诊断码：CSP001（抽象 [Service] 类）、CSP002（[Service] 无公开构造）、CSP003（[Command] 带参数）。
+
+[VSIX Snippet 注册]
+- Date: 2026-06-18
+- Context: Agent 在添加代码片段到 VSIX 时发现
+- Category: 工作流协作
+- Instructions:
+  - 新增 snippet 放入 `src/Templates/CodeSpiritVsixTemplate/Snippets/` 目录，文件名 `codespirit-*.snippet`。
+  - pkgdef 通过 `$PackageFolder$\Snippets` 路径注册；snippet 文件在 csproj 中以 `<Content Include>` + `<VSIXSubPath>Snippets</VSIXSubPath>` 包含。
+  - 新增 snippet 后需同步更新根 README 和模板 README 的快捷方式表。

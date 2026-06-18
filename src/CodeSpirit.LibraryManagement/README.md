@@ -62,6 +62,35 @@ ISBN,Title,Author,Category,Location,PublishedYear,CopyCount,Rating
 - `cs:Table` also supports nested `cs:Column` blocks for custom cell templates.
 - `cs:Region` renders a named `data-cs-region` element for command response HTML patches.
 
+## Developer Hints
+
+### Code Snippets (VS 2022+)
+
+After installing the CodeSpirit VSIX, the following snippet shortcuts work in any C# or ASPX file:
+
+| Shortcut | Output |
+|----------|--------|
+| `csvm` | ViewModel class with PageDirective, Bind, Command |
+| `cssvc` | Service class with [Service] and [Autowired] |
+| `csapp` | Program.cs CodeSpirit entry point |
+| `csmod` | CodeSpiritModule template |
+| `csbind` | [Bind] property |
+| `csform` | `<cs:Form>` with Field and Button |
+| `cstable` | `<cs:Table>` with Columns |
+| `csregion` | `<cs:Region>` partial update block |
+
+### Compile-Time Warnings
+
+The source generator detects and reports:
+
+- **CSP001** (warning): Abstract class with `[Service]` -- will not be registered.
+- **CSP002** (warning): `[Service]` class missing public constructor.
+- **CSP003** (error): `[Command]` method has parameters -- must be parameterless.
+
+### Code Style
+
+The project `.editorconfig` enforces file-scoped namespaces, 4-space C# indent, and consistent `var` usage.
+
 ## Validation
 
 ```bash
