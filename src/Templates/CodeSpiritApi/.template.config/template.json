@@ -13,6 +13,11 @@
   },
   "sourceName": "CodeSpiritApi",
   "preferNameDirectory": true,
+  "primaryOutputs": [
+    {
+      "path": "CodeSpiritApi.csproj"
+    }
+  ],
   "symbols": {
     "Framework": {
       "type": "parameter",
