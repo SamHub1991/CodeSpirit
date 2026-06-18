@@ -109,6 +109,34 @@ public class PageDirectiveAttribute_Tests
     }
 }
 
+public class BindAttribute_Tests
+{
+    [Fact]
+    public void BindAttribute_DefaultsToOneWay()
+    {
+        var attr = new BindAttribute();
+        Assert.Equal(BindDirection.OneWay, attr.Direction);
+    }
+
+    [Fact]
+    public void BindAttribute_CanConfigureNameAndDirection()
+    {
+        var attr = new BindAttribute { Name = "city", Direction = BindDirection.TwoWay };
+        Assert.Equal("city", attr.Name);
+        Assert.Equal(BindDirection.TwoWay, attr.Direction);
+    }
+}
+
+public class CommandAttribute_Tests
+{
+    [Fact]
+    public void CommandAttribute_StoresName()
+    {
+        var attr = new CommandAttribute("Save");
+        Assert.Equal("Save", attr.Name);
+    }
+}
+
 public class DependsOnAttribute_Tests
 {
     [Fact]
@@ -181,12 +209,30 @@ public class ViewModelTests
         var state = vm.ToState();
         Assert.Equal("hello", state["Greeting"]);
     }
+
+    [Fact]
+    public void ViewModel_ToResponse_ReturnsBindingsAndCommands()
+    {
+        var vm = new TestViewModel { Greeting = "hello" };
+
+        var response = vm.ToResponse();
+
+        Assert.Equal("hello", response.State["Greeting"]);
+        Assert.Equal("TwoWay", response.Bindings["Greeting"].Direction);
+        Assert.Contains("Refresh", response.Commands);
+    }
 }
 
 class TestViewModel : ViewModel
 {
-    [Bind]
+    [Bind(BindDirection.TwoWay)]
     public string Greeting { get; set; } = "";
+
+    [Command]
+    public void Refresh()
+    {
+        Greeting = "refreshed";
+    }
 
     public override Task LoadAsync()
     {
@@ -194,4 +240,3 @@ class TestViewModel : ViewModel
         return Task.CompletedTask;
     }
 }
-

@@ -7,8 +7,8 @@
     <cs:Form>
       <div class="form-group">
         <label for="city">City</label>
-        <input type="text" id="city" value="{Binding City}" cs:model="City" />
-        <button type="submit" cs:command="{Binding Refresh}">Search</button>
+        <input type="text" id="city" name="City" value="{Binding City}" />
+        <button type="submit" name="__command" value="Refresh">Search</button>
       </div>
     </cs:Form>
 

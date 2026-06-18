@@ -16,6 +16,7 @@ CodeSpirit maps Spring Boot's core concepts to idiomatic .NET 10:
 | `@Value` | `[Value("key")]` | Strong-typed config binding |
 | `@Transactional` | `[Transactional]` | AOP interceptor via Castle DynamicProxy |
 | `@Cacheable` | `[Cacheable]` | Declarable caching with interceptors |
+| WPF binding | `[Bind]` + `[Command]` | Property binding and command events for pages |
 | Actuator | `/actuator/*` | Built-in health, metrics, info endpoints |
 | `@SpringBootApplication` | `[CodeSpiritApplication]` | Auto-config entry point |
 
@@ -99,6 +100,39 @@ public class CustomerViewModel : ViewModel
     }
 }
 ```
+
+### WPF-Style Binding and Commands
+
+`[Bind]` exposes ViewModel properties to the page runtime. Use `BindDirection.TwoWay` to accept POSTed values back into the ViewModel, then invoke `[Command]` methods with `__command`:
+
+```csharp
+[PageDirective(Route = "/weather", Title = "Weather Forecast")]
+[Service]
+public class WeatherViewModel : ViewModel
+{
+    [FromQuery]
+    [Bind(BindDirection.TwoWay)]
+    public string? City { get; set; }
+
+    [Bind] public WeatherForecast[] Forecast { get; set; } = [];
+
+    [Command]
+    public void Refresh()
+    {
+        var service = Services.GetRequiredService<WeatherService>();
+        Forecast = service.GetForecast();
+    }
+}
+```
+
+```html
+<form method="post">
+  <input name="City" value="{Binding City}" />
+  <button type="submit" name="__command" value="Refresh">Search</button>
+</form>
+```
+
+The JSON response includes `state`, `bindings`, and `commands`, which gives a frontend runtime enough metadata to wire property binding and command events.
 
 ### Scheduled Tasks
 

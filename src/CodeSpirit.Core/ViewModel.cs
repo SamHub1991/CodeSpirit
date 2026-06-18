@@ -64,6 +64,35 @@ public abstract class ViewModel
         }
         return state;
     }
+
+    /// <summary>
+    /// Returns ViewModel state plus binding and command metadata for page runtimes.
+    /// </summary>
+    public ViewModelResponse ToResponse()
+    {
+        var bindings = new Dictionary<string, BindingDescriptor>();
+
+        foreach (var prop in GetType().GetProperties())
+        {
+            var attr = prop.GetCustomAttribute<BindAttribute>();
+            if (attr is null)
+                continue;
+
+            var name = attr.Name ?? prop.Name;
+            bindings[name] = new BindingDescriptor(name, prop.Name, attr.Direction.ToString());
+        }
+
+        var commands = GetType()
+            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+            .Select(method => new { Method = method, Attribute = method.GetCustomAttribute<CommandAttribute>() })
+            .Where(x => x.Attribute is not null)
+            .Select(x => x.Attribute!.Name ?? x.Method.Name)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return new ViewModelResponse(ToState(), bindings, commands);
+    }
 }
 
 /// <summary>
@@ -74,3 +103,10 @@ public record ViewModelContext(
     IServiceProvider Services,
     Dictionary<string, object?> Route,
     Dictionary<string, object?> Payload);
+
+public record BindingDescriptor(string Name, string Property, string Direction);
+
+public record ViewModelResponse(
+    Dictionary<string, object?> State,
+    Dictionary<string, BindingDescriptor> Bindings,
+    string[] Commands);

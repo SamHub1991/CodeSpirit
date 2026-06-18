@@ -11,14 +11,23 @@ namespace $safeprojectname$.ViewModels;
 [Service]
 public class WeatherViewModel : ViewModel
 {
-    [FromQuery] public string? City { get; set; }
+    [FromQuery]
+    [Bind(BindDirection.TwoWay)]
+    public string? City { get; set; }
+
     [Bind] public WeatherForecast[] Forecast { get; set; } = [];
     [Bind] public bool HasForecast => Forecast.Length > 0;
 
     public override Task LoadAsync()
     {
+        Refresh();
+        return Task.CompletedTask;
+    }
+
+    [Command]
+    public void Refresh()
+    {
         var service = Ctx!.Services.GetRequiredService<WeatherService>();
         Forecast = service.GetForecast();
-        return Task.CompletedTask;
     }
 }
