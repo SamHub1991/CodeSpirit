@@ -8,7 +8,7 @@
       <div class="form-group">
         <label for="city">City</label>
         <input type="text" id="city" name="City" value="{Binding City}" data-cs-bind="City" />
-        <button type="submit" name="__command" value="Refresh">Search</button>
+        <button type="submit" data-cs-command="Refresh">Search</button>
       </div>
     </form>
 

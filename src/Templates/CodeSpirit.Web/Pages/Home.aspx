@@ -18,7 +18,7 @@
 
     <section class="dashboard">
       <cs:Repeater Items="{Binding Cards}">
-        <div class="card" data-ui-clickable-card>
+        <div class="card" data-ui="clickable-card">
           <h3>{Binding Title}</h3>
           <p>{Binding Description}</p>
           <cs:Link NavigateTo="{Binding Url}">Learn more</cs:Link>

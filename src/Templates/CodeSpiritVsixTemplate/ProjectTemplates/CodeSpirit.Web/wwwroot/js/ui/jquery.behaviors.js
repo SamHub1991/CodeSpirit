@@ -5,22 +5,43 @@
     return;
   }
 
+  function findBehavior(root, query) {
+    return $(root).find(query).addBack(query);
+  }
+
   function initDatePicker(root) {
-    var elements = $(root).find('[data-ui-datepicker]');
+    var elements = findBehavior(root, '[data-ui~="datepicker"]').not('[data-ui-ready~="datepicker"]');
     if ($.fn.datepicker) {
       elements.datepicker();
     }
 
+    elements.attr('data-ui-ready', function (_, value) {
+      return [value, 'datepicker'].filter(Boolean).join(' ');
+    });
+
     elements.on('change', function () {
-      this.dispatchEvent(new Event('input', { bubbles: true }));
+      this.dispatchEvent(new CustomEvent('codespirit:input', {
+        bubbles: true,
+        detail: {
+          name: this.name || this.getAttribute('data-cs-bind'),
+          value: this.value
+        }
+      }));
     });
   }
 
   function initCards(root) {
-    $(root).find('[data-ui-clickable-card]').each(function () {
+    findBehavior(root, '[data-ui~="clickable-card"]').not('[data-ui-ready~="clickable-card"]').each(function () {
       var card = $(this);
+      card.attr('data-ui-ready', function (_, value) {
+        return [value, 'clickable-card'].filter(Boolean).join(' ');
+      });
       card.css('cursor', 'pointer');
-      card.on('click', function () {
+      card.on('click', function (event) {
+        if ($(event.target).closest('a, button, input, select, textarea').length) {
+          return;
+        }
+
         var link = card.find('a[href]').first();
         if (link.length) {
           window.location.href = link.attr('href');

@@ -126,9 +126,9 @@ public class WeatherViewModel : ViewModel
 ```
 
 ```html
-<form method="post">
-  <input name="City" value="{Binding City}" />
-  <button type="submit" name="__command" value="Refresh">Search</button>
+<form method="post" data-cs-vm>
+  <input name="City" value="{Binding City}" data-cs-bind="City" />
+  <button type="submit" data-cs-command="Refresh">Search</button>
 </form>
 ```
 
@@ -138,26 +138,35 @@ The JSON response includes `state`, `bindings`, and `commands`, which gives a fr
 
 CodeSpirit keeps page state and visual behaviors separated:
 
-| Prefix | Owner | Responsibility |
-|--------|-------|----------------|
+| Attribute | Owner | Responsibility |
+|-----------|-------|----------------|
 | `data-cs-*` | CodeSpirit MVVM runtime | property binding, form submission, command events, ViewModel state updates |
-| `data-ui-*` | jQuery UI behavior layer | widgets, animation, cards, tabs, tooltip, datepicker, third-party plugin setup |
+| `data-ui` | jQuery UI behavior layer | widgets, animation, cards, tabs, tooltip, datepicker, third-party plugin setup |
 
 Use MVVM for data and commands:
 
 ```html
 <form method="post" data-cs-vm>
   <input name="City" value="{Binding City}" data-cs-bind="City" />
-  <button type="submit" name="__command" value="Refresh">Search</button>
+  <button type="submit" data-cs-command="Refresh">Search</button>
 </form>
 ```
 
 Use jQuery for visual behaviors:
 
 ```html
-<div class="card" data-ui-clickable-card>
+<div class="card" data-ui="clickable-card">
   <a href="/weather">Weather</a>
 </div>
+```
+
+Use events when a jQuery widget changes a bound value:
+
+```javascript
+element.dispatchEvent(new CustomEvent('codespirit:input', {
+  bubbles: true,
+  detail: { name: 'City', value: element.value }
+}));
 ```
 
 The default template includes two separate files:
@@ -167,7 +176,7 @@ wwwroot/js/codespirit.runtime.js
 wwwroot/js/ui/jquery.behaviors.js
 ```
 
-The runtime owns `data-cs-*`. The jQuery layer owns `data-ui-*`. Business data changes should go through `[Bind]` and `[Command]`.
+The runtime owns `data-cs-*`. The jQuery layer owns `data-ui`. Business data changes should go through `[Bind]` and `[Command]`. UI widgets should notify MVVM with `codespirit:input`, then the runtime updates bound fields and emits `codespirit:changed`.
 
 ### Scheduled Tasks
 

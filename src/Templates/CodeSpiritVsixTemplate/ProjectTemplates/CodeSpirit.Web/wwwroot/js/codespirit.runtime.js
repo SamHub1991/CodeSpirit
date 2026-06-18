@@ -1,6 +1,14 @@
 (function () {
   'use strict';
 
+  function selector(name, value) {
+    return '[' + name + '="' + String(value).replace(/"/g, '\\"') + '"]';
+  }
+
+  function getViewModelRoot(element) {
+    return element.closest('[data-cs-vm]');
+  }
+
   function serializeForm(form) {
     var data = {};
     var formData = new FormData(form);
@@ -23,16 +31,39 @@
     });
   }
 
+  function readCommand(submitter) {
+    if (!submitter) {
+      return null;
+    }
+
+    return submitter.getAttribute('data-cs-command') || (submitter.name === '__command' ? submitter.value : null);
+  }
+
+  function updateField(root, name, value) {
+    if (!root || !name) {
+      return;
+    }
+
+    root.querySelectorAll(selector('name', name) + ', ' + selector('data-cs-bind', name)).forEach(function (element) {
+      if ('value' in element) {
+        element.value = value == null ? '' : value;
+      } else {
+        element.textContent = value == null ? '' : value;
+      }
+    });
+  }
+
   function applyState(root, state) {
     Object.keys(state || {}).forEach(function (key) {
-      root.querySelectorAll('[data-cs-bind="' + key + '"]').forEach(function (element) {
-        if ('value' in element) {
-          element.value = state[key] == null ? '' : state[key];
-        } else {
-          element.textContent = state[key] == null ? '' : state[key];
-        }
-      });
+      updateField(root, key, state[key]);
     });
+  }
+
+  function emit(root, name, detail) {
+    root.dispatchEvent(new CustomEvent(name, {
+      bubbles: true,
+      detail: detail
+    }));
   }
 
   function handleSubmit(event) {
@@ -44,26 +75,39 @@
     event.preventDefault();
     var payload = serializeForm(form);
     var submitter = event.submitter;
-    if (submitter && submitter.name) {
+    var command = readCommand(submitter);
+    if (command) {
+      payload.__command = command;
+    } else if (submitter && submitter.name) {
       payload[submitter.name] = submitter.value;
     }
 
     postViewModel(form, payload).then(function (result) {
       applyState(form, result.state || result);
-      form.dispatchEvent(new CustomEvent('codespirit:updated', {
-        bubbles: true,
-        detail: result
-      }));
+      emit(form, 'codespirit:updated', result);
     }).catch(function (error) {
-      form.dispatchEvent(new CustomEvent('codespirit:error', {
-        bubbles: true,
-        detail: error
-      }));
+      emit(form, 'codespirit:error', error);
     });
   }
 
+  function handleInput(event) {
+    var detail = event.detail || {};
+    var target = event.target;
+    var root = getViewModelRoot(target);
+    var name = detail.name || target.name || target.getAttribute('data-cs-bind');
+    var value = detail.value != null ? detail.value : target.value;
+
+    updateField(root, name, value);
+    if (root && name) {
+      emit(root, 'codespirit:changed', { name: name, value: value });
+    }
+  }
+
   document.addEventListener('submit', handleSubmit);
+  document.addEventListener('input', handleInput);
+  document.addEventListener('codespirit:input', handleInput);
 
   window.CodeSpirit = window.CodeSpirit || {};
   window.CodeSpirit.applyState = applyState;
+  window.CodeSpirit.updateField = updateField;
 })();
