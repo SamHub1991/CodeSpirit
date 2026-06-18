@@ -9,18 +9,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{Binding PageTitle} - CodeSpirit.Web</title>
+  <title>{Binding PageTitle} - LibraryOS</title>
   <link rel="stylesheet" href="/css/site.css" />
   <cs:PlaceHolder Name="Head" />
 </head>
 <body>
   <header class="cs-header">
     <nav class="cs-nav">
-      <a href="/" class="cs-brand">CodeSpirit.Web</a>
+      <a href="/" class="cs-brand">LibraryOS</a>
       <div class="cs-nav-links">
-        <a href="/">Home</a>
-        <a href="/weather">Weather</a>
-        <a href="/about">About</a>
+        <a href="/">Dashboard</a>
+        <a href="/admin">Admin</a>
         <a href="/actuator/health">Health</a>
       </div>
     </nav>
@@ -31,7 +30,7 @@
   </main>
 
   <footer class="cs-footer">
-    <p>Powered by CodeSpirit Framework</p>
+    <p>LibraryOS powered by CodeSpirit Framework</p>
   </footer>
 
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>

@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Mvvm;
+using CodeSpirit.Infrastructure.Page;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,9 +16,14 @@ namespace CodeSpirit.Infrastructure.Mvvm;
 public class ViewModelExecutor
 {
     private readonly ILogger<ViewModelExecutor> _logger;
+    private readonly PageRenderer _pageRenderer;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public ViewModelExecutor(ILogger<ViewModelExecutor> logger) => _logger = logger;
+    public ViewModelExecutor(ILogger<ViewModelExecutor> logger, PageRenderer pageRenderer)
+    {
+        _logger = logger;
+        _pageRenderer = pageRenderer;
+    }
 
     public async Task ExecuteAsync(HttpContext ctx, Type vmType)
     {
@@ -47,8 +53,14 @@ public class ViewModelExecutor
             await ExecuteCommandAsync(vm, GetCommandName(ctx, payload));
 
             await vm.RenderAsync();
-            
+
             var state = vm.ToResponse();
+            if (HttpMethods.IsGet(ctx.Request.Method))
+            {
+                await _pageRenderer.RenderAsync(ctx, vmType, state.State);
+                return;
+            }
+
             await WriteJson(ctx, state);
         }
         catch (Exception ex)

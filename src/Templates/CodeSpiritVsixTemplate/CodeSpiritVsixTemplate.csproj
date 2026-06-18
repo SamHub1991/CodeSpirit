@@ -11,6 +11,7 @@
     <DeployExtension>false</DeployExtension>
     <VsixVersion>0.2.0</VsixVersion>
     <RootNamespace>CodeSpiritVsixTemplate</RootNamespace>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,6 +30,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="ProjectTemplates\CodeSpirit.Web\**\*.cs" />
     <ProjectTemplate Include="ProjectTemplates\CodeSpirit.Web\**\*" />
   </ItemGroup>
 

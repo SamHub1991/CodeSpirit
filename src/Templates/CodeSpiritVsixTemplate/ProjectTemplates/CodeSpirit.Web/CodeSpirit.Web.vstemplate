@@ -26,6 +26,7 @@
 
       <Folder Name="Pages" TargetFolderName="Pages">
         <ProjectItem ReplaceParameters="true" TargetFileName="Home.aspx">Home.aspx</ProjectItem>
+        <ProjectItem ReplaceParameters="true" TargetFileName="Admin.aspx">Admin.aspx</ProjectItem>
         <ProjectItem ReplaceParameters="true" TargetFileName="Weather.aspx">Weather.aspx</ProjectItem>
         <ProjectItem ReplaceParameters="true" TargetFileName="About.aspx">About.aspx</ProjectItem>
         <ProjectItem ReplaceParameters="true" TargetFileName="Site.master">Site.master</ProjectItem>
@@ -33,6 +34,7 @@
 
       <Folder Name="ViewModels" TargetFolderName="ViewModels">
         <ProjectItem ReplaceParameters="true" TargetFileName="HomeViewModel.cs">HomeViewModel.cs</ProjectItem>
+        <ProjectItem ReplaceParameters="true" TargetFileName="AdminViewModel.cs">AdminViewModel.cs</ProjectItem>
         <ProjectItem ReplaceParameters="true" TargetFileName="WeatherViewModel.cs">WeatherViewModel.cs</ProjectItem>
         <ProjectItem ReplaceParameters="true" TargetFileName="AboutViewModel.cs">AboutViewModel.cs</ProjectItem>
       </Folder>
@@ -42,10 +44,12 @@
       </Folder>
 
       <Folder Name="Models" TargetFolderName="Models">
+        <ProjectItem ReplaceParameters="true" TargetFileName="BookItem.cs">BookItem.cs</ProjectItem>
         <ProjectItem ReplaceParameters="true" TargetFileName="WeatherForecast.cs">WeatherForecast.cs</ProjectItem>
       </Folder>
 
       <Folder Name="Services" TargetFolderName="Services">
+        <ProjectItem ReplaceParameters="true" TargetFileName="LibraryService.cs">LibraryService.cs</ProjectItem>
         <ProjectItem ReplaceParameters="true" TargetFileName="WeatherService.cs">WeatherService.cs</ProjectItem>
       </Folder>
 
@@ -60,6 +64,7 @@
           <ProjectItem ReplaceParameters="false" TargetFileName="site.css">site.css</ProjectItem>
           <Folder Name="pages" TargetFolderName="pages">
             <ProjectItem ReplaceParameters="false" TargetFileName="home.css">home.css</ProjectItem>
+            <ProjectItem ReplaceParameters="false" TargetFileName="admin.css">admin.css</ProjectItem>
             <ProjectItem ReplaceParameters="false" TargetFileName="weather.css">weather.css</ProjectItem>
             <ProjectItem ReplaceParameters="false" TargetFileName="about.css">about.css</ProjectItem>
           </Folder>

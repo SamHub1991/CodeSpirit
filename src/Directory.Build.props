@@ -7,6 +7,6 @@
     <PackageProjectUrl>https://github.com/SamHub1991/CodeSpirit</PackageProjectUrl>
     <PackageTags>dotnet;aspnetcore;framework;spring-boot;convention-over-configuration</PackageTags>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageOutputPath>$(MSBuildThisFileDirectory)../packages</PackageOutputPath>
+    <PackageOutputPath>$(MSBuildThisFileDirectory)packages</PackageOutputPath>
   </PropertyGroup>
 </Project>
