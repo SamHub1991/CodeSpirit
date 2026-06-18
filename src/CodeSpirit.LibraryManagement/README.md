@@ -1,0 +1,41 @@
+# CodeSpirit Library Management
+
+Enterprise library management sample application built with CodeSpirit.
+
+## Directory Layout
+
+```text
+CodeSpirit.LibraryManagement/
+├── Features/                    # Business modules grouped by capability
+│   ├── Admin/                   # Admin MVVM page model
+│   ├── Home/                    # Dashboard MVVM page model
+│   ├── Library/                 # Library domain models and services
+│   │   ├── Models/
+│   │   └── Services/
+│   └── Weather/                 # Example API + MVVM module
+│       ├── Controllers/
+│       ├── Models/
+│       └── Services/
+├── Pages/                       # ASPX pages and Site.master layout
+├── Components/                  # Reusable ASCX components
+├── Reports/                     # XML report templates
+├── wwwroot/                     # Static CSS, JavaScript, images, and fonts
+├── scripts/                     # Project-local validation scripts
+├── Program.cs                   # CodeSpirit application entry point
+└── appsettings.json             # Application configuration
+```
+
+## Module Guidelines
+
+- Put business code under `Features/{ModuleName}`.
+- Put page ViewModels beside their module, for example `Features/Admin/AdminViewModel.cs`.
+- Put shared domain services and models under a capability folder, for example `Features/Library`.
+- Keep framework convention files in root folders: `Pages`, `Components`, `Reports`, and `wwwroot`.
+- Use `scripts/validate-js-boundary.js` after changing `wwwroot/js/codespirit.runtime.js` or `wwwroot/js/ui/jquery.behaviors.js`.
+
+## Validation
+
+```bash
+node scripts/validate-js-boundary.js
+dotnet build CodeSpirit.LibraryManagement.csproj
+```

@@ -30,8 +30,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="ProjectTemplates\CodeSpirit.Web\**\*.cs" />
-    <ProjectTemplate Include="ProjectTemplates\CodeSpirit.Web\**\*" />
+    <Compile Remove="ProjectTemplates\CodeSpirit.LibraryManagement\**\*.cs" />
+    <ProjectTemplate Include="ProjectTemplates\CodeSpirit.LibraryManagement\**\*" />
   </ItemGroup>
 
   <ItemGroup>

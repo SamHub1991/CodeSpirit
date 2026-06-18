@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "CodeSpirit",
+  "classifications": ["Web", "CodeSpirit"],
+  "name": "CodeSpirit Library Management",
+  "description": "A .NET 10 CodeSpirit library management application with dashboard, admin workflows, MVVM pages, reports, and auto-configuration.",
+  "identity": "CodeSpirit.LibraryManagement.Template",
+  "groupIdentity": "CodeSpirit.LibraryManagement",
+  "shortName": "codespirit-library",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "CodeSpirit.LibraryManagement",
+  "preferNameDirectory": true,
+  "primaryOutputs": [
+    { "path": "CodeSpirit.LibraryManagement.csproj" }
+  ],
+  "symbols": {
+    "Framework": {
+      "type": "parameter",
+      "description": "The target framework for the project.",
+      "datatype": "choice",
+      "choices": [
+        { "choice": "net10.0", "description": "Target net10.0" },
+        { "choice": "net9.0", "description": "Target net9.0" }
+      ],
+      "defaultValue": "net10.0",
+      "replaces": "net10.0"
+    },
+    "SkipRestore": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "If specified, skips the automatic restore of the project on create."
+    }
+  },
+  "postActions": [
+    {
+      "condition": "(!SkipRestore)",
+      "description": "Restore NuGet packages required by this project.",
+      "manualInstructions": [
+        { "text": "Run 'dotnet restore'" }
+      ],
+      "actionId": "210D431B-A78B-4D2F-B762-4ED3E3EA9025",
+      "continueOnError": true
+    }
+  ]
+}

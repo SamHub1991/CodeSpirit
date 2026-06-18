@@ -36,8 +36,16 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
 - Context: Agent 在打磨 MVVM runtime 与 jQuery 行为层稳定 API 时发现
 - Category: 测试方法
 - Instructions:
-  - 使用 `node src/CodeSpirit.Web/scripts/validate-js-boundary.js` 验证 MVVM runtime 与 jQuery 行为层协作场景。
+  - 使用 `node src/CodeSpirit.LibraryManagement/scripts/validate-js-boundary.js` 验证 MVVM runtime 与 jQuery 行为层协作场景。
   - 该脚本覆盖原生输入、`CodeSpirit.input(...)`、命令提交、datepicker 通知、动态 DOM 初始化和重复初始化防护。
+
+[解决方案构建命令]
+- Date: 2026-06-18
+- Context: Agent 在执行项目重构验证时发现
+- Category: 构建方法
+- Instructions:
+  - 使用 `dotnet build src/CodeSpirit.slnx` 验证整个解决方案构建状态。
+  - 构建可能出现 `IsPackable` 被禁用的 NuGet 打包 warning，当前不影响 Debug 构建成功。
 
 [根目录脚本放置约定]
 - Date: 2026-06-18

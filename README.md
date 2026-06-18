@@ -26,8 +26,8 @@ CodeSpirit maps Spring Boot's core concepts to idiomatic .NET 10:
 
 ```bash
 dotnet new install CodeSpirit.Templates
-dotnet new codespirit-web -n MyApp
-cd MyApp
+dotnet new codespirit-library -n CodeSpirit.LibraryManagement
+cd CodeSpirit.LibraryManagement
 dotnet run
 ```
 
@@ -41,7 +41,7 @@ dotnet run
 
 ```bash
 dotnet build src/CodeSpirit.slnx
-dotnet run --project src/CodeSpirit.Host
+dotnet run --project src/CodeSpirit.LibraryManagement
 ```
 
 ## Features
@@ -169,7 +169,7 @@ CodeSpirit.input(element);
 Initialize jQuery behaviors after rendering new HTML:
 
 ```javascript
-CodeSpirit.ui.init(rootElement);
+CodeSpirit.refresh(rootElement);
 ```
 
 Stable browser APIs:
@@ -180,7 +180,11 @@ Stable browser APIs:
 | `CodeSpirit.input(element, name, value)` | notify MVVM with an explicit property and value |
 | `CodeSpirit.applyState(root, state)` | apply ViewModel state to `data-cs-bind` elements |
 | `CodeSpirit.updateField(root, name, value)` | update one bound field manually |
-| `CodeSpirit.ui.init(root)` | initialize `data-ui` behaviors inside a DOM root |
+| `CodeSpirit.mount(root)` | initialize a DOM root after initial render |
+| `CodeSpirit.refresh(root)` | initialize a DOM root after dynamic updates |
+| `CodeSpirit.ui.register(name, initializer)` | register a reusable `data-ui` behavior |
+| `CodeSpirit.ui.ready(elements, name)` | mark initialized UI behavior elements |
+| `CodeSpirit.ui.init(root)` | low-level `data-ui` behavior initializer |
 
 The default template includes two separate files:
 
@@ -189,7 +193,7 @@ wwwroot/js/codespirit.runtime.js
 wwwroot/js/ui/jquery.behaviors.js
 ```
 
-The runtime owns `data-cs-*`. The jQuery layer owns `data-ui`. Business data changes should go through `[Bind]` and `[Command]`. UI widgets should notify MVVM with `CodeSpirit.input(element)`, then the runtime updates bound fields and emits `codespirit:changed`. After MVVM returns new HTML, the jQuery layer can initialize new widgets with `CodeSpirit.ui.init(root)`.
+The runtime owns `data-cs-*`. The jQuery layer owns `data-ui`. Business data changes should go through `[Bind]` and `[Command]`. UI widgets should notify MVVM with `CodeSpirit.input(element)`, then the runtime updates bound fields and emits `codespirit:changed`. After MVVM returns new HTML, initialize new widgets with `CodeSpirit.refresh(root)`.
 
 ### Scheduled Tasks
 
@@ -278,29 +282,40 @@ src/
 ├── CodeSpirit.SourceGenerator/ # Compile-time service registration
 ├── CodeSpirit.Modules/        # Example business modules
 ├── CodeSpirit.Host/           # Demo host application
+├── CodeSpirit.LibraryManagement/ # Enterprise library management sample app
 ├── CodeSpirit.Tests/          # Unit tests
 └── Templates/                 # Project templates
-    ├── CodeSpirit.Web/       # dotnet new template
     └── CodeSpiritVsixTemplate/  # Visual Studio VSIX template
 ```
 
 ## Web Template Layout
 
-Both `dotnet new codespirit-web` and the VSIX template generate a complete project with organized folders:
+Both `dotnet new codespirit-library` and the VSIX template generate a complete project with organized folders:
 
 ```
 $safeprojectname$/
-├── Pages/            # .aspx pages + Site.master layout
-├── ViewModels/       # MVVM ViewModels with [PageDirective]
-├── Controllers/      # REST API controllers (api/[controller])
-├── Models/           # Domain entities
-├── Services/         # [Service]-annotated business logic
-├── Components/       # Reusable .ascx UI components
-├── Reports/          # XML report templates (.rpt.xml)
-├── wwwroot/          # Static assets (CSS/JS/images/fonts)
-├── Program.cs        # [CodeSpiritApplication] entry point
-└── appsettings.json  # Framework + app configuration
+├── Features/                    # Business modules grouped by capability
+│   ├── Admin/                   # Admin MVVM page model
+│   ├── Home/                    # Dashboard MVVM page model
+│   ├── Library/                 # Library domain models and services
+│   │   ├── Models/
+│   │   └── Services/
+│   └── Weather/                 # Example API + MVVM module
+│       ├── Controllers/
+│       ├── Models/
+│       └── Services/
+├── Pages/                       # .aspx pages + Site.master layout
+├── Components/                  # Reusable .ascx UI components
+├── Reports/                     # XML report templates (.rpt.xml)
+├── wwwroot/                     # Static assets (CSS/JS/images/fonts)
+│   ├── css/
+│   └── js/
+├── scripts/                     # Project-local validation and tooling scripts
+├── Program.cs                   # [CodeSpiritApplication] entry point
+└── appsettings.json             # Framework + app configuration
 ```
+
+Business code uses feature folders so enterprise applications can grow by module. Framework convention folders stay at the project root because pages, components, static assets, and reports are discovered by path.
 
 ## Configuration
 
@@ -336,7 +351,7 @@ $safeprojectname$/
 ```bash
 dotnet build src/CodeSpirit.slnx
 dotnet test src/CodeSpirit.Tests
-dotnet run --project src/CodeSpirit.Host
+dotnet run --project src/CodeSpirit.LibraryManagement
 ```
 
 ## Requirements
