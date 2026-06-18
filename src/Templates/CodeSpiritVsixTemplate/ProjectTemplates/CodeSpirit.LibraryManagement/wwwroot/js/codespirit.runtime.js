@@ -59,6 +59,25 @@
     });
   }
 
+  function applyRegions(root, regions) {
+    Object.keys(regions || {}).forEach(function (name) {
+      var current = document.querySelector(selector('data-cs-region', name));
+      if (!current) {
+        return;
+      }
+
+      var host = document.createElement('div');
+      host.innerHTML = regions[name];
+      var next = host.firstElementChild;
+      if (!next) {
+        return;
+      }
+
+      current.replaceWith(next);
+      mount(next);
+    });
+  }
+
   function mount(root) {
     var target = root || document;
     if (window.CodeSpirit && window.CodeSpirit.ui && typeof window.CodeSpirit.ui.init === 'function') {
@@ -95,6 +114,7 @@
     }
 
     postViewModel(form, payload).then(function (result) {
+      applyRegions(form, result.regions);
       applyState(form, result.state || result);
       emit(form, 'codespirit:updated', result);
     }).catch(function (error) {
@@ -135,6 +155,7 @@
 
   window.CodeSpirit = window.CodeSpirit || {};
   window.CodeSpirit.applyState = applyState;
+  window.CodeSpirit.applyRegions = applyRegions;
   window.CodeSpirit.input = input;
   window.CodeSpirit.mount = mount;
   window.CodeSpirit.refresh = refresh;

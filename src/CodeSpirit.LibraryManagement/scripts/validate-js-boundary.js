@@ -79,6 +79,35 @@ class Element extends EventTarget {
     return child;
   }
 
+  createElement(tagName) {
+    return new Element(tagName);
+  }
+
+  get firstElementChild() {
+    return this.children[0] || null;
+  }
+
+  set innerHTML(value) {
+    this.children = [];
+    const elementMatch = String(value).match(/^<([A-Za-z][A-Za-z0-9-]*)([^>]*)>([\s\S]*)<\/\1>$/);
+    if (!elementMatch) {
+      return;
+    }
+
+    const [, tagName, rawAttributes, content] = elementMatch;
+    const attributes = {};
+    rawAttributes.replace(/([A-Za-z][A-Za-z0-9_-]*)="([^"]*)"/g, (_, name, attrValue) => {
+      attributes[name] = attrValue;
+      return '';
+    });
+
+    const element = this.appendChild(new Element(tagName, attributes));
+    element.textContent = content.replace(/<[^>]+>/g, '');
+    if (/^\s*<[A-Za-z][A-Za-z0-9-]*[\s>]/.test(content)) {
+      element.innerHTML = content.trim();
+    }
+  }
+
   getAttribute(name) {
     return Object.prototype.hasOwnProperty.call(this.attributes, name) ? this.attributes[name] : null;
   }
@@ -121,6 +150,23 @@ class Element extends EventTarget {
     visit(this);
     return results;
   }
+
+  querySelector(selector) {
+    return this.querySelectorAll(selector)[0] || null;
+  }
+
+  replaceWith(next) {
+    if (!this.parentNode) {
+      return;
+    }
+
+    const index = this.parentNode.children.indexOf(this);
+    if (index >= 0) {
+      next.parentNode = this.parentNode;
+      this.parentNode.children[index] = next;
+      this.parentNode = null;
+    }
+  }
 }
 
 class Document extends Element {
@@ -130,6 +176,10 @@ class Document extends Element {
 
   matches() {
     return false;
+  }
+
+  createElement(tagName) {
+    return new Element(tagName);
   }
 }
 
@@ -260,8 +310,23 @@ async function main() {
   assert.strictEqual(cityLabel.textContent, 'Tokyo');
 
   const updated = new Promise((resolve) => form.addEventListener('codespirit:updated', resolve));
+  const region = document.appendChild(new Element('section', { 'data-cs-region': 'forecast' }));
+  region.textContent = 'Old Forecast';
+  const regionWidget = region.appendChild(new Element('div', { 'data-ui': 'custom-widget' }));
+  regionWidget.textContent = 'Old Widget';
   const submit = new Event('submit', { bubbles: true });
   submit.submitter = refresh;
+
+  context.fetch = async (url, options) => {
+    fetchPayload = { url, options: { ...options, body: JSON.parse(options.body) } };
+    return {
+      ok: true,
+      json: async () => ({
+        state: { City: 'Rome' },
+        regions: { forecast: '<section data-cs-region="forecast"><div data-ui="custom-widget">Fresh Forecast</div></section>' }
+      })
+    };
+  };
   form.dispatchEvent(submit);
   await updated;
   assert.strictEqual(submit.defaultPrevented, true);
@@ -270,6 +335,7 @@ async function main() {
   assert.strictEqual(fetchPayload.options.body.__command, 'Refresh');
   assert.strictEqual(city.value, 'Rome');
   assert.strictEqual(cityLabel.textContent, 'Rome');
+  assert.strictEqual(document.querySelector('[data-cs-region="forecast"]').textContent, 'Fresh Forecast');
 
   context.window.jQuery = createJQuery(document);
   context.window.$ = context.window.jQuery;
@@ -302,10 +368,12 @@ async function main() {
     context.window.CodeSpirit.ui.ready(elements, 'custom-widget');
   });
   const customWidget = form.appendChild(new Element('div', { 'data-ui': 'custom-widget' }));
-  context.window.CodeSpirit.refresh(form);
-  context.window.CodeSpirit.refresh(form);
+  const patchedWidget = document.querySelector('[data-cs-region="forecast"]').querySelector('[data-ui="custom-widget"]');
+  context.window.CodeSpirit.refresh(document);
+  context.window.CodeSpirit.refresh(document);
+  assert.strictEqual(patchedWidget.getAttribute('data-ui-ready'), 'custom-widget');
   assert.strictEqual(customWidget.getAttribute('data-ui-ready'), 'custom-widget');
-  assert.strictEqual(customBehaviorCount, 1);
+  assert.strictEqual(customBehaviorCount, 2);
 
   console.log('JS boundary validation passed');
 }

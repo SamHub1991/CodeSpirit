@@ -29,6 +29,9 @@ public class PageRenderer
     private static readonly Regex FormRegex = new(
         @"<cs:Form(?<attrs>[^>]*)>(?<content>.*?)</cs:Form>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex RegionRegex = new(
+        @"<cs:Region(?<attrs>[^>]*)>(?<content>.*?)</cs:Region>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
     private static readonly Regex ButtonRegex = new(
         @"<cs:Button\s+Command=\""(?<command>[^\"" ]+)\""(?<attrs>[^>]*)>(?<content>.*?)</cs:Button>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
@@ -69,6 +72,26 @@ public class PageRenderer
         var html = BuildHtml(httpContext, viewModelType, descriptor?.Layout, title, viewModelState);
         httpContext.Response.ContentType = "text/html; charset=utf-8";
         await httpContext.Response.WriteAsync(html);
+    }
+
+    public Dictionary<string, string> RenderRegions(HttpContext httpContext, Type viewModelType, Dictionary<string, object?> viewModelState)
+    {
+        var pagePath = ResolvePagePath(httpContext, viewModelType);
+        if (pagePath is null)
+            return [];
+
+        var page = File.ReadAllText(pagePath);
+        var regions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (Match match in RegionRegex.Matches(page))
+        {
+            var name = GetAttribute(match.Groups["attrs"].Value, "Name");
+            if (string.IsNullOrWhiteSpace(name))
+                continue;
+
+            regions[name] = RenderTemplate(match.Value, viewModelState);
+        }
+
+        return regions;
     }
 
     private static string BuildHtml(HttpContext httpContext, Type viewModelType, string? layout, string title, Dictionary<string, object?> state)
@@ -188,7 +211,20 @@ public class PageRenderer
             return $"<form method=\"{Html(method)}\" data-cs-vm{attrs}>{match.Groups["content"].Value}</form>";
         });
 
+        html = RegionRegex.Replace(html, match => RenderRegion(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
+
         return DirectiveRegex.Replace(RenderBindings(html, state), string.Empty);
+    }
+
+    private static string RenderRegion(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
+    {
+        var name = GetAttribute(rawAttributes, "Name");
+        if (string.IsNullOrWhiteSpace(name))
+            return RenderBindings(content, state);
+
+        var tag = GetAttribute(rawAttributes, "Tag") ?? "div";
+        var attrs = RenderHtmlAttributes(rawAttributes, state, "Name", "Tag");
+        return $"<{tag} data-cs-region=\"{Html(name)}\"{attrs}>{content}</{tag}>";
     }
 
     private static string RenderHtmlAttributes(string rawAttributes, IReadOnlyDictionary<string, object?> state, params string[] excluded)

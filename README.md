@@ -179,6 +179,7 @@ Stable browser APIs:
 | `CodeSpirit.input(element)` | notify MVVM that a bound widget changed |
 | `CodeSpirit.input(element, name, value)` | notify MVVM with an explicit property and value |
 | `CodeSpirit.applyState(root, state)` | apply ViewModel state to `data-cs-bind` elements |
+| `CodeSpirit.applyRegions(root, regions)` | apply server-rendered HTML patches to `data-cs-region` elements |
 | `CodeSpirit.updateField(root, name, value)` | update one bound field manually |
 | `CodeSpirit.mount(root)` | initialize a DOM root after initial render |
 | `CodeSpirit.refresh(root)` | initialize a DOM root after dynamic updates |
@@ -193,7 +194,22 @@ wwwroot/js/codespirit.runtime.js
 wwwroot/js/ui/jquery.behaviors.js
 ```
 
-The runtime owns `data-cs-*`. The jQuery layer owns `data-ui`. Business data changes should go through `[Bind]` and `[Command]`. UI widgets should notify MVVM with `CodeSpirit.input(element)`, then the runtime updates bound fields and emits `codespirit:changed`. After MVVM returns new HTML, initialize new widgets with `CodeSpirit.refresh(root)`.
+The runtime owns `data-cs-*`. The jQuery layer owns `data-ui`. Business data changes should go through `[Bind]` and `[Command]`. UI widgets should notify MVVM with `CodeSpirit.input(element)`, then the runtime updates bound fields and emits `codespirit:changed`. Server responses may include `regions` HTML patches for `cs:Region` blocks. After MVVM returns new HTML, initialize new widgets with `CodeSpirit.refresh(root)`.
+
+Page tags reduce common MVVM markup:
+
+```html
+<cs:Form class="search-card">
+  <cs:Field Name="Query" Label="Search" Placeholder="Title, author, or ISBN" />
+  <cs:Button Command="Search">Apply Filter</cs:Button>
+</cs:Form>
+
+<cs:Region Name="collection-table" Tag="section" class="book-table-card">
+  <cs:Table Items="{Binding Books}" Columns="Id:Id,Title:Title,Status:Status" />
+</cs:Region>
+```
+
+`cs:Region` renders as a normal element with `data-cs-region`. POST command responses include matching HTML patches so the browser can replace metrics, notices, or tables without reloading the full page.
 
 ### Scheduled Tasks
 

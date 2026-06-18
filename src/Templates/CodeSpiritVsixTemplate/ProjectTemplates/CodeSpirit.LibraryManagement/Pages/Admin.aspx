@@ -15,7 +15,7 @@
       <a class="screen-link" href="/">Back to Dashboard</a>
     </section>
 
-    <section class="admin-metrics">
+    <cs:Region Name="admin-metrics" Tag="section" class="admin-metrics">
       <cs:Repeater Items="{Binding Metrics}">
         <article class="admin-metric metric-{Binding Tone}">
           <span>{Binding Label}</span>
@@ -23,7 +23,7 @@
           <small>{Binding Hint}</small>
         </article>
       </cs:Repeater>
-    </section>
+    </cs:Region>
 
     <cs:Form class="search-card">
       <cs:Field Name="Query" Label="Search" Placeholder="Title, author, or ISBN" />
@@ -32,11 +32,11 @@
       <cs:Button Command="Search">Apply Filter</cs:Button>
     </cs:Form>
 
-    <section class="notice-row">
+    <cs:Region Name="admin-notices" Tag="section" class="notice-row">
       <cs:Repeater Items="{Binding Notices}">
         <div class="notice notice-{Binding Tone}">{Binding Text}</div>
       </cs:Repeater>
-    </section>
+    </cs:Region>
 
     <section class="admin-grid admin-grid-wide">
       <form class="admin-card" method="post" data-cs-vm>
@@ -138,7 +138,7 @@
       </form>
     </section>
 
-    <section class="book-table-card">
+    <cs:Region Name="collection-table" Tag="section" class="book-table-card">
       <div class="panel-title">
         <h2>Collection</h2>
         <span>Filtered catalog with stock, reservation, and due-date context</span>
@@ -158,9 +158,9 @@
           <cs:Column Header="Location">{Binding Location}</cs:Column>
         </cs:Table>
       </div>
-    </section>
+    </cs:Region>
 
-    <section class="split-tables">
+    <cs:Region Name="reader-loan-tables" Tag="section" class="split-tables">
       <article class="book-table-card">
         <div class="panel-title"><h2>Readers</h2><span>Active loans, reservations, and fines</span></div>
         <div class="table-scroll">
@@ -174,20 +174,20 @@
           <cs:Table Items="{Binding Loans}" Columns="Id:Loan,BookTitle:Book,ReaderName:Reader,BorrowedAt:Borrowed,DueAt:Due,ReturnedAt:Returned,Status:Status,RenewCount:Renew,Fine:Fine" />
         </div>
       </article>
-    </section>
+    </cs:Region>
 
-    <section class="book-table-card">
+    <cs:Region Name="reservation-table" Tag="section" class="book-table-card">
       <div class="panel-title"><h2>Reservations</h2><span>Waiting, completed, and cancelled reservations</span></div>
       <div class="table-scroll">
         <cs:Table Items="{Binding Reservations}" Columns="Id:Id,BookTitle:Book,ReaderName:Reader,CreatedAt:Created,Status:Status" />
       </div>
-    </section>
+    </cs:Region>
 
-    <section class="book-table-card">
+    <cs:Region Name="inventory-table" Tag="section" class="book-table-card">
       <div class="panel-title"><h2>Inventory Audit</h2><span>Inbound, write-off, and relocation events</span></div>
       <div class="table-scroll">
         <cs:Table Items="{Binding InventoryEvents}" Columns="Id:Id,BookTitle:Book,Type:Type,Quantity:Qty,Reason:Reason,CreatedAt:Created" />
       </div>
-    </section>
+    </cs:Region>
   </div>
 </cs:Content>

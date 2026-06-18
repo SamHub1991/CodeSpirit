@@ -61,6 +61,7 @@ public class ViewModelExecutor
                 return;
             }
 
+            state = state with { Regions = _pageRenderer.RenderRegions(ctx, vmType, state.State) };
             await WriteJson(ctx, state);
         }
         catch (Exception ex)

@@ -109,4 +109,7 @@ public record BindingDescriptor(string Name, string Property, string Direction);
 public record ViewModelResponse(
     Dictionary<string, object?> State,
     Dictionary<string, BindingDescriptor> Bindings,
-    string[] Commands);
+    string[] Commands)
+{
+    public Dictionary<string, string> Regions { get; init; } = [];
+}
