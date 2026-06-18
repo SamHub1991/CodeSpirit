@@ -48,6 +48,16 @@ ISBN,Title,Author,Category,Location,PublishedYear,CopyCount,Rating
 - New ISBN values add catalog records.
 - Rows without title or author are skipped and reported in the notice area.
 
+## Built-in Page Tags
+
+- `cs:Content` fills layout placeholders such as `Head`, `Body`, and `Scripts`.
+- `cs:PlaceHolder` marks layout regions in `Pages/Site.master`.
+- `cs:Repeater` renders a collection with item-level bindings.
+- `cs:Conditional` renders content when the bound value is truthy.
+- `cs:Link` renders an encoded anchor with binding support in `NavigateTo`.
+- `cs:Form` renders a standard MVVM form with `method="post"` and `data-cs-vm`.
+- `cs:Button` renders a submit button with `data-cs-command`.
+
 ## Validation
 
 ```bash

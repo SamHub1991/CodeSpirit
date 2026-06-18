@@ -4,13 +4,13 @@
   <div class="weather-page">
     <h1>Weather Forecast</h1>
 
-    <form method="post" data-cs-vm>
+    <cs:Form>
       <div class="form-group">
         <label for="city">City</label>
         <input type="text" id="city" name="City" value="{Binding City}" data-cs-bind="City" />
-        <button type="submit" data-cs-command="Refresh">Search</button>
+        <cs:Button Command="Refresh">Search</cs:Button>
       </div>
-    </form>
+    </cs:Form>
 
     <cs:Conditional Visible="{Binding HasForecast}">
       <table class="weather-table">

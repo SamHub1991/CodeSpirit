@@ -26,6 +26,15 @@ public class PageRenderer
     private static readonly Regex LinkRegex = new(
         @"<cs:Link\s+NavigateTo=\""(?<href>[^\"" ]+)\""\s*>(?<content>.*?)</cs:Link>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex FormRegex = new(
+        @"<cs:Form(?<attrs>[^>]*)>(?<content>.*?)</cs:Form>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex ButtonRegex = new(
+        @"<cs:Button\s+Command=\""(?<command>[^\"" ]+)\""(?<attrs>[^>]*)>(?<content>.*?)</cs:Button>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex AttributeRegex = new(
+        @"(?<name>[A-Za-z][A-Za-z0-9_-]*)=\""(?<value>[^\""]*)\""",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex BindingRegex = new(
         @"\{Binding\s+(?<name>[^}:]+)(:(?<format>[^}]+))?\}",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -147,7 +156,48 @@ public class PageRenderer
             return $"<a href=\"{Html(href)}\">{match.Groups["content"].Value}</a>";
         });
 
+        html = ButtonRegex.Replace(html, match =>
+        {
+            var command = Html(RenderBindings(match.Groups["command"].Value, state));
+            var attrs = RenderHtmlAttributes(match.Groups["attrs"].Value, state, "Command");
+            return $"<button type=\"submit\" data-cs-command=\"{command}\"{attrs}>{match.Groups["content"].Value}</button>";
+        });
+
+        html = FormRegex.Replace(html, match =>
+        {
+            var attrs = RenderHtmlAttributes(match.Groups["attrs"].Value, state, "Method");
+            var method = GetAttribute(match.Groups["attrs"].Value, "Method") ?? "post";
+            return $"<form method=\"{Html(method)}\" data-cs-vm{attrs}>{match.Groups["content"].Value}</form>";
+        });
+
         return DirectiveRegex.Replace(RenderBindings(html, state), string.Empty);
+    }
+
+    private static string RenderHtmlAttributes(string rawAttributes, IReadOnlyDictionary<string, object?> state, params string[] excluded)
+    {
+        var attributes = new StringBuilder();
+        foreach (Match match in AttributeRegex.Matches(rawAttributes))
+        {
+            var name = match.Groups["name"].Value;
+            if (excluded.Contains(name, StringComparer.OrdinalIgnoreCase))
+                continue;
+
+            var value = RenderBindings(match.Groups["value"].Value, state);
+            attributes.Append(' ').Append(name).Append("=\"").Append(Html(value)).Append('"');
+        }
+
+        return attributes.ToString();
+    }
+
+    private static string? GetAttribute(string rawAttributes, string targetName)
+    {
+        foreach (Match match in AttributeRegex.Matches(rawAttributes))
+        {
+            if (match.Groups["name"].Value.Equals(targetName, StringComparison.OrdinalIgnoreCase))
+                return match.Groups["value"].Value;
+        }
+
+        return null;
     }
 
     private static string RenderBindings(string template, object? source)
