@@ -57,6 +57,7 @@ ISBN,Title,Author,Category,Location,PublishedYear,CopyCount,Rating
 - `cs:Button` renders a submit button with `data-cs-command`.
 - `cs:Field` renders a bound input or textarea from `Name`, `Label`, `Placeholder`, `Type`, and `Rows`.
 - `cs:Table` renders a table from `Items`, `Columns`, and optional `EmptyText`.
+- `cs:Table` also supports nested `cs:Column` blocks for custom cell templates.
 
 ## Validation
 

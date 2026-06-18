@@ -144,40 +144,19 @@
         <span>Filtered catalog with stock, reservation, and due-date context</span>
       </div>
       <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Id</th>
-              <th>ISBN</th>
-              <th>Title</th>
-              <th>Author</th>
-              <th>Category</th>
-              <th>Status</th>
-              <th>Copies</th>
-              <th>Borrower</th>
-              <th>Reserved By</th>
-              <th>Due</th>
-              <th>Location</th>
-            </tr>
-          </thead>
-          <tbody>
-            <cs:Repeater Items="{Binding Books}">
-              <tr>
-                <td>{Binding Id}</td>
-                <td>{Binding Isbn}</td>
-                <td>{Binding Title}</td>
-                <td>{Binding Author}</td>
-                <td>{Binding Category}</td>
-                <td><span class="status status-{Binding Status}">{Binding Status}</span></td>
-                <td>{Binding AvailableCopies}/{Binding CopyCount}</td>
-                <td>{Binding Borrower}</td>
-                <td>{Binding ReservedBy}</td>
-                <td>{Binding DueDate}</td>
-                <td>{Binding Location}</td>
-              </tr>
-            </cs:Repeater>
-          </tbody>
-        </table>
+        <cs:Table Items="{Binding Books}">
+          <cs:Column Header="Id">{Binding Id}</cs:Column>
+          <cs:Column Header="ISBN">{Binding Isbn}</cs:Column>
+          <cs:Column Header="Title">{Binding Title}</cs:Column>
+          <cs:Column Header="Author">{Binding Author}</cs:Column>
+          <cs:Column Header="Category">{Binding Category}</cs:Column>
+          <cs:Column Header="Status"><span class="status status-{Binding Status}">{Binding Status}</span></cs:Column>
+          <cs:Column Header="Copies">{Binding AvailableCopies}/{Binding CopyCount}</cs:Column>
+          <cs:Column Header="Borrower">{Binding Borrower}</cs:Column>
+          <cs:Column Header="Reserved By">{Binding ReservedBy}</cs:Column>
+          <cs:Column Header="Due">{Binding DueDate}</cs:Column>
+          <cs:Column Header="Location">{Binding Location}</cs:Column>
+        </cs:Table>
       </div>
     </section>
 
@@ -185,28 +164,14 @@
       <article class="book-table-card">
         <div class="panel-title"><h2>Readers</h2><span>Active loans, reservations, and fines</span></div>
         <div class="table-scroll">
-          <table>
-            <thead><tr><th>Id</th><th>Name</th><th>Level</th><th>Status</th><th>Loans</th><th>Reservations</th><th>Fine</th><th>Email</th></tr></thead>
-            <tbody>
-              <cs:Repeater Items="{Binding Readers}">
-                <tr><td>{Binding Id}</td><td>{Binding Name}</td><td>{Binding Level}</td><td>{Binding Status}</td><td>{Binding ActiveLoans}</td><td>{Binding Reservations}</td><td>{Binding FineBalance}</td><td>{Binding Email}</td></tr>
-              </cs:Repeater>
-            </tbody>
-          </table>
+          <cs:Table Items="{Binding Readers}" Columns="Id:Id,Name:Name,Level:Level,Status:Status,ActiveLoans:Loans,Reservations:Reservations,FineBalance:Fine,Email:Email" />
         </div>
       </article>
 
       <article class="book-table-card">
         <div class="panel-title"><h2>Loans</h2><span>Borrowing, renewal, return, and overdue state</span></div>
         <div class="table-scroll">
-          <table>
-            <thead><tr><th>Loan</th><th>Book</th><th>Reader</th><th>Borrowed</th><th>Due</th><th>Returned</th><th>Status</th><th>Renew</th><th>Fine</th></tr></thead>
-            <tbody>
-              <cs:Repeater Items="{Binding Loans}">
-                <tr><td>{Binding Id}</td><td>{Binding BookTitle}</td><td>{Binding ReaderName}</td><td>{Binding BorrowedAt}</td><td>{Binding DueAt}</td><td>{Binding ReturnedAt}</td><td>{Binding Status}</td><td>{Binding RenewCount}</td><td>{Binding Fine}</td></tr>
-              </cs:Repeater>
-            </tbody>
-          </table>
+          <cs:Table Items="{Binding Loans}" Columns="Id:Loan,BookTitle:Book,ReaderName:Reader,BorrowedAt:Borrowed,DueAt:Due,ReturnedAt:Returned,Status:Status,RenewCount:Renew,Fine:Fine" />
         </div>
       </article>
     </section>
@@ -214,28 +179,14 @@
     <section class="book-table-card">
       <div class="panel-title"><h2>Reservations</h2><span>Waiting, completed, and cancelled reservations</span></div>
       <div class="table-scroll">
-        <table>
-          <thead><tr><th>Id</th><th>Book</th><th>Reader</th><th>Created</th><th>Status</th></tr></thead>
-          <tbody>
-            <cs:Repeater Items="{Binding Reservations}">
-              <tr><td>{Binding Id}</td><td>{Binding BookTitle}</td><td>{Binding ReaderName}</td><td>{Binding CreatedAt}</td><td>{Binding Status}</td></tr>
-            </cs:Repeater>
-          </tbody>
-        </table>
+        <cs:Table Items="{Binding Reservations}" Columns="Id:Id,BookTitle:Book,ReaderName:Reader,CreatedAt:Created,Status:Status" />
       </div>
     </section>
 
     <section class="book-table-card">
       <div class="panel-title"><h2>Inventory Audit</h2><span>Inbound, write-off, and relocation events</span></div>
       <div class="table-scroll">
-        <table>
-          <thead><tr><th>Id</th><th>Book</th><th>Type</th><th>Qty</th><th>Reason</th><th>Created</th></tr></thead>
-          <tbody>
-            <cs:Repeater Items="{Binding InventoryEvents}">
-              <tr><td>{Binding Id}</td><td>{Binding BookTitle}</td><td>{Binding Type}</td><td>{Binding Quantity}</td><td>{Binding Reason}</td><td>{Binding CreatedAt}</td></tr>
-            </cs:Repeater>
-          </tbody>
-        </table>
+        <cs:Table Items="{Binding InventoryEvents}" Columns="Id:Id,BookTitle:Book,Type:Type,Quantity:Qty,Reason:Reason,CreatedAt:Created" />
       </div>
     </section>
   </div>

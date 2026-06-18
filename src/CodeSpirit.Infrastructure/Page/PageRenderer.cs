@@ -38,6 +38,12 @@ public class PageRenderer
     private static readonly Regex TableRegex = new(
         @"<cs:Table(?<attrs>[^>]*)\s*/>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex TableBlockRegex = new(
+        @"<cs:Table(?<attrs>[^>]*)>(?<content>.*?)</cs:Table>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex ColumnRegex = new(
+        @"<cs:Column(?<attrs>[^>]*)>(?<content>.*?)</cs:Column>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
     private static readonly Regex AttributeRegex = new(
         @"(?<name>[A-Za-z][A-Za-z0-9_-]*)=\""(?<value>[^\""]*)\""",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -171,7 +177,9 @@ public class PageRenderer
 
         html = FieldRegex.Replace(html, match => RenderField(match.Groups["attrs"].Value, state));
 
-        html = TableRegex.Replace(html, match => RenderTable(match.Groups["attrs"].Value, state));
+        html = TableBlockRegex.Replace(html, match => RenderTable(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
+
+        html = TableRegex.Replace(html, match => RenderTable(match.Groups["attrs"].Value, string.Empty, state));
 
         html = FormRegex.Replace(html, match =>
         {
@@ -224,10 +232,10 @@ public class PageRenderer
         return $"<label for=\"{Html(id)}\">{Html(label)}<input id=\"{Html(id)}\" type=\"{Html(type)}\" name=\"{Html(name)}\" value=\"{inputValue}\" data-cs-bind=\"{Html(name)}\"{placeholderInput}{commonAttributes} /></label>";
     }
 
-    private static string RenderTable(string rawAttributes, IReadOnlyDictionary<string, object?> state)
+    private static string RenderTable(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
     {
         var itemsBinding = GetAttribute(rawAttributes, "Items");
-        var columns = ParseColumns(GetAttribute(rawAttributes, "Columns"));
+        var columns = ParseColumns(GetAttribute(rawAttributes, "Columns"), content);
         if (string.IsNullOrWhiteSpace(itemsBinding) || columns.Count == 0)
             return string.Empty;
 
@@ -247,7 +255,9 @@ public class PageRenderer
             body.Append("<tr>");
             foreach (var column in columns)
             {
-                var cell = Html(FormatValue(GetValue(item, column.Name), column.Format));
+                var cell = column.Template is null
+                    ? Html(FormatValue(GetValue(item, column.Name), column.Format))
+                    : RenderBindings(column.Template, item);
                 body.Append("<td>").Append(cell).Append("</td>");
             }
             body.Append("</tr>");
@@ -262,15 +272,29 @@ public class PageRenderer
         return $"<table{attrs}><thead><tr>{header}</tr></thead><tbody>{body}</tbody></table>";
     }
 
-    private static List<TableColumn> ParseColumns(string? rawColumns)
+    private static List<TableColumn> ParseColumns(string? rawColumns, string content)
     {
+        if (!string.IsNullOrWhiteSpace(content))
+        {
+            return ColumnRegex.Matches(content)
+                .Select(match =>
+                {
+                    var name = GetAttribute(match.Groups["attrs"].Value, "Name") ?? string.Empty;
+                    var header = GetAttribute(match.Groups["attrs"].Value, "Header") ?? name;
+                    var format = GetAttribute(match.Groups["attrs"].Value, "Format");
+                    return new TableColumn(name, header, format, match.Groups["content"].Value);
+                })
+                .Where(column => !string.IsNullOrWhiteSpace(column.Header))
+                .ToList();
+        }
+
         if (string.IsNullOrWhiteSpace(rawColumns))
             return [];
 
         return rawColumns.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(part => part.Split(':', 3, StringSplitOptions.TrimEntries))
             .Where(parts => parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
-            .Select(parts => new TableColumn(parts[0], parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1]) ? parts[1] : parts[0], parts.Length > 2 ? parts[2] : null))
+            .Select(parts => new TableColumn(parts[0], parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1]) ? parts[1] : parts[0], parts.Length > 2 ? parts[2] : null, null))
             .ToList();
     }
 
@@ -335,7 +359,7 @@ public class PageRenderer
 
     private static string Html(string value) => System.Net.WebUtility.HtmlEncode(value);
 
-    private sealed record TableColumn(string Name, string Header, string? Format);
+    private sealed record TableColumn(string Name, string Header, string? Format, string? Template);
 
     private static string? ResolvePagePath(HttpContext context, Type viewModelType)
     {
