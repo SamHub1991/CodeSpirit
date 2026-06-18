@@ -1,12 +1,12 @@
 <VSTemplate Version="3.0.0" xmlns="http://schemas.microsoft.com/developer/vstemplate/2005" Type="Project">
   <TemplateData>
-    <Name>CodeSpirit API Application</Name>
-    <Description>A .NET 10 CodeSpirit framework API application with MVVM, ASPX pages, reports, and auto-configuration. Inspired by Spring Boot's convention-over-configuration philosophy.</Description>
+    <Name>CodeSpirit Web Application</Name>
+    <Description>A .NET 10 CodeSpirit framework web application with MVVM pages, ASPX, reports, components, and auto-configuration. Inspired by Spring Boot's convention-over-configuration philosophy.</Description>
     <ProjectType>CSharp</ProjectType>
     <ProjectSubType>Web</ProjectSubType>
     <SortOrder>1000</SortOrder>
     <CreateNewFolder>true</CreateNewFolder>
-    <DefaultName>CodeSpiritApi</DefaultName>
+    <DefaultName>CodeSpirit.Web</DefaultName>
     <ProvideDefaultName>true</ProvideDefaultName>
     <LocationField>Enabled</LocationField>
     <EnableLocationBrowseButton>true</EnableLocationBrowseButton>
@@ -20,7 +20,7 @@
     <NumberOfParentCategoriesToRollUp>1</NumberOfParentCategoriesToRollUp>
   </TemplateData>
   <TemplateContent>
-    <Project File="CodeSpiritApi.csproj" ReplaceParameters="true">
+    <Project File="CodeSpirit.Web.csproj" ReplaceParameters="true">
       <ProjectItem ReplaceParameters="true" TargetFileName="Program.cs">Program.cs</ProjectItem>
       <ProjectItem ReplaceParameters="true" TargetFileName="appsettings.json">appsettings.json</ProjectItem>
       <ProjectItem ReplaceParameters="true" TargetFileName="appsettings.Development.json">appsettings.Development.json</ProjectItem>

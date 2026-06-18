@@ -1,20 +1,20 @@
 {
   "$schema": "http://json.schemastore.org/template",
   "author": "CodeSpirit",
-  "classifications": ["Web", "API", "CodeSpirit"],
-  "name": "CodeSpirit API Application",
-  "description": "A .NET 10 CodeSpirit framework API application with MVVM, scheduling, and auto-configuration.",
-  "identity": "CodeSpirit.Api.Template",
-  "groupIdentity": "CodeSpirit.Api",
-  "shortName": "codespirit-api",
+  "classifications": ["Web", "CodeSpirit"],
+  "name": "CodeSpirit Web Application",
+  "description": "A .NET 10 CodeSpirit framework web application with MVVM pages, scheduling, reports, and auto-configuration.",
+  "identity": "CodeSpirit.Web.Template",
+  "groupIdentity": "CodeSpirit.Web",
+  "shortName": "codespirit-web",
   "tags": {
     "language": "C#",
     "type": "project"
   },
-  "sourceName": "CodeSpiritApi",
+  "sourceName": "CodeSpirit.Web",
   "preferNameDirectory": true,
   "primaryOutputs": [
-    { "path": "CodeSpiritApi.csproj" }
+    { "path": "CodeSpirit.Web.csproj" }
   ],
   "symbols": {
     "Framework": {

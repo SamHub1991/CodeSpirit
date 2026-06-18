@@ -2,10 +2,10 @@ using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Mvvm;
 using CodeSpirit.Core.Page;
-using CodeSpiritApi.Models;
-using CodeSpiritApi.Services;
+using CodeSpirit.Web.Models;
+using CodeSpirit.Web.Services;
 
-namespace CodeSpiritApi.ViewModels;
+namespace CodeSpirit.Web.ViewModels;
 
 [PageDirective(Route = "/weather", Title = "Weather Forecast")]
 [Service]

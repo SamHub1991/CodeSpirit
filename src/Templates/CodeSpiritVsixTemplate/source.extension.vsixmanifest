@@ -2,8 +2,8 @@
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
     <Identity Id="CodeSpirit.Api.Template.1a2b3c4d-5678-90ab-cdef-1234567890ab" Version="0.1.0" Language="en-US" Publisher="CodeSpirit" />
-    <DisplayName>CodeSpirit API Project Template</DisplayName>
-    <Description xml:space="preserve">CodeSpirit framework API project template for .NET 10. Provides MVVM, scheduling, auto-configuration, and AOP features inspired by Spring Boot.</Description>
+    <DisplayName>CodeSpirit Web Project Template</DisplayName>
+    <Description xml:space="preserve">CodeSpirit framework web project template for .NET 10. Provides MVVM pages, ASPX layouts, reports, components, scheduling, auto-configuration, and AOP features inspired by Spring Boot.</Description>
     <License>LICENSE.txt</License>
     <Icon>Resources/Icon.png</Icon>
     <PreviewImage>Resources/Preview.png</PreviewImage>
@@ -21,6 +21,6 @@
     <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[17.0,18.0)" DisplayName="Visual Studio core editor" />
   </Prerequisites>
   <Assets>
-    <Asset Type="Microsoft.VisualStudio.ProjectTemplate" d:Source="Project" d:ProjectName="CodeSpiritApi" d:TargetPath="|CodeSpiritApi;TemplateProjectOutputGroup|" Path="ProjectTemplates" d:VsixSubPath="ProjectTemplates" />
+    <Asset Type="Microsoft.VisualStudio.ProjectTemplate" d:Source="Project" d:ProjectName="CodeSpirit.Web" d:TargetPath="|CodeSpirit.Web;TemplateProjectOutputGroup|" Path="ProjectTemplates" d:VsixSubPath="ProjectTemplates" />
   </Assets>
 </PackageManifest>

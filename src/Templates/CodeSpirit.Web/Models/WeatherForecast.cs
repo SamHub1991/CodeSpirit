@@ -1,4 +1,4 @@
-namespace CodeSpiritApi.Models;
+namespace CodeSpirit.Web.Models;
 
 public class WeatherForecast
 {

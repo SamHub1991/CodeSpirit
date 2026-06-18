@@ -1,8 +1,8 @@
 using CodeSpirit.Core.Attributes;
-using CodeSpiritApi.Models;
+using CodeSpirit.Web.Models;
 using Microsoft.Extensions.Logging;
 
-namespace CodeSpiritApi.Services;
+namespace CodeSpirit.Web.Services;
 
 [Service]
 public class WeatherService

@@ -25,7 +25,7 @@ CodeSpirit maps Spring Boot's core concepts to idiomatic .NET 10:
 
 ```bash
 dotnet new install CodeSpirit.Templates
-dotnet new codespirit-api -n MyApp
+dotnet new codespirit-web -n MyApp
 cd MyApp
 dotnet run
 ```
@@ -189,7 +189,7 @@ src/
 ├── CodeSpirit.Host/           # Demo host application
 ├── CodeSpirit.Tests/          # Unit tests
 └── Templates/                 # Project templates
-    ├── CodeSpiritApi/         # dotnet new template
+    ├── CodeSpirit.Web/       # dotnet new template
     └── CodeSpiritVsixTemplate/  # Visual Studio VSIX template
 ```
 
