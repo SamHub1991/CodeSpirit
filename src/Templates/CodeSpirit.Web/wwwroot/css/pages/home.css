@@ -97,6 +97,8 @@ body {
 .panel-title span,
 .book-row span,
 .category-row span,
+.loan-row span,
+.reservation-row span,
 .quick-links .card p {
   color: #8fb2d7;
 }
@@ -110,11 +112,16 @@ body {
 .metric-green { box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.18); }
 .metric-amber { box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.18); }
 .metric-purple { box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.18); }
+.metric-red { box-shadow: inset 0 0 0 1px rgba(248, 113, 113, 0.2); }
 
 .screen-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(260px, 0.8fr));
   gap: 1rem;
+}
+
+.compact-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .panel {
@@ -131,6 +138,8 @@ body {
 
 .book-row,
 .category-row,
+.loan-row,
+.reservation-row,
 .activity {
   display: flex;
   align-items: center;
@@ -142,21 +151,31 @@ body {
 
 .book-row:last-child,
 .category-row:last-child,
+.loan-row:last-child,
+.reservation-row:last-child,
 .activity:last-child {
   border-bottom: 0;
 }
 
 .book-row div,
-.category-row div {
+.category-row div,
+.loan-row div,
+.reservation-row div {
   display: grid;
 }
 
 .book-row b,
-.category-row em {
+.category-row em,
+.loan-row em,
+.reservation-row em {
   color: #38bdf8;
   font-size: 1.1rem;
   font-style: normal;
   font-weight: 800;
+}
+
+.loan-row.status-Overdue em {
+  color: #f87171;
 }
 
 .activity {
@@ -181,7 +200,8 @@ body {
 
 @media (max-width: 960px) {
   .screen-hero,
-  .screen-grid {
+  .screen-grid,
+  .compact-grid {
     grid-template-columns: 1fr;
   }
 

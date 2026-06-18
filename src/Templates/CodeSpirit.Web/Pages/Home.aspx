@@ -48,7 +48,7 @@
       <article class="panel">
         <div class="panel-title">
           <h2>Category Flow</h2>
-          <span>Available vs borrowed</span>
+          <span>Available copies vs borrowed titles</span>
         </div>
         <cs:Repeater Items="{Binding CategoryStats}">
           <div class="category-row">
@@ -70,6 +70,40 @@
           <div class="activity activity-{Binding Tone}">
             <time>{Binding Time}</time>
             <span>{Binding Text}</span>
+          </div>
+        </cs:Repeater>
+      </article>
+    </section>
+
+    <section class="screen-grid compact-grid">
+      <article class="panel">
+        <div class="panel-title">
+          <h2>Active Loans</h2>
+          <span>Borrowing and due dates</span>
+        </div>
+        <cs:Repeater Items="{Binding ActiveLoans}">
+          <div class="loan-row status-{Binding Status}">
+            <div>
+              <strong>{Binding BookTitle}</strong>
+              <span>{Binding ReaderName} · due {Binding DueAt}</span>
+            </div>
+            <em>{Binding Status}</em>
+          </div>
+        </cs:Repeater>
+      </article>
+
+      <article class="panel">
+        <div class="panel-title">
+          <h2>Reservations</h2>
+          <span>Waiting readers</span>
+        </div>
+        <cs:Repeater Items="{Binding Reservations}">
+          <div class="reservation-row">
+            <div>
+              <strong>{Binding BookTitle}</strong>
+              <span>{Binding ReaderName} · {Binding CreatedAt}</span>
+            </div>
+            <em>{Binding Status}</em>
           </div>
         </cs:Repeater>
       </article>

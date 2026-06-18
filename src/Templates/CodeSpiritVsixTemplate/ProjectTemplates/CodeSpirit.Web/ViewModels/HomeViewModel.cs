@@ -2,10 +2,10 @@ using CodeSpirit.Core;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Mvvm;
 using CodeSpirit.Core.Page;
-using $safeprojectname$.Models;
-using $safeprojectname$.Services;
+using CodeSpirit.Web.Models;
+using CodeSpirit.Web.Services;
 
-namespace $safeprojectname$.ViewModels;
+namespace CodeSpirit.Web.ViewModels;
 
 [PageDirective(Route = "/", Title = "Library Command Center", Layout = "~/Pages/Site.master")]
 [Service]
@@ -16,6 +16,8 @@ public class HomeViewModel : ViewModel
     [Bind] public List<LibraryMetric> Metrics { get; set; } = [];
     [Bind] public List<CategoryStat> CategoryStats { get; set; } = [];
     [Bind] public List<BookItem> PopularBooks { get; set; } = [];
+    [Bind] public List<LoanRecord> ActiveLoans { get; set; } = [];
+    [Bind] public List<ReservationItem> Reservations { get; set; } = [];
     [Bind] public List<LibraryActivity> Activities { get; set; } = [];
     [Bind] public List<DashboardCard> Cards { get; set; } = [];
 
@@ -25,10 +27,12 @@ public class HomeViewModel : ViewModel
         Metrics = snapshot.Metrics;
         CategoryStats = snapshot.CategoryStats;
         PopularBooks = snapshot.PopularBooks;
+        ActiveLoans = snapshot.Loans.Where(loan => loan.Status is "Active" or "Overdue").Take(5).ToList();
+        Reservations = snapshot.Reservations.Where(item => item.Status == "Waiting").Take(5).ToList();
         Activities = snapshot.Activities;
         Cards =
         [
-            new() { Title = "Backend Admin", Description = "Manage books, borrowing, and returns", Url = "/admin" },
+            new() { Title = "Backend Admin", Description = "Manage books, readers, loans, reservations, and fines", Url = "/admin" },
             new() { Title = "Health", Description = "Application health status", Url = "/actuator/health" },
             new() { Title = "About", Description = "Framework and app information", Url = "/about" }
         ];
