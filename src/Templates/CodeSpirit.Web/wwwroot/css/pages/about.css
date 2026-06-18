@@ -1,0 +1,14 @@
+/* About Page Styles */
+
+.about-page {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.about-page .version {
+  font-size: 0.875rem;
+  color: var(--cs-text-muted);
+  margin-bottom: 1.5rem;
+}

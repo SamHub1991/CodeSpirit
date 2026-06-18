@@ -19,4 +19,10 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Content Include="Pages\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Components\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Reports\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

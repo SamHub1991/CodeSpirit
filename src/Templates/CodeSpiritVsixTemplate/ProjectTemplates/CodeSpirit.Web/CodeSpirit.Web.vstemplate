@@ -10,8 +10,6 @@
     <ProvideDefaultName>true</ProvideDefaultName>
     <LocationField>Enabled</LocationField>
     <EnableLocationBrowseButton>true</EnableLocationBrowseButton>
-    <Icon>__TemplateIcon.ico</Icon>
-    <PreviewImage>__PreviewImage.png</PreviewImage>
     <LanguageTag>csharp</LanguageTag>
     <PlatformTag>windows</PlatformTag>
     <PlatformTag>linux</PlatformTag>
@@ -27,10 +25,10 @@
       <ProjectItem ReplaceParameters="true" TargetFileName="NuGet.Config">NuGet.Config</ProjectItem>
 
       <Folder Name="Pages" TargetFolderName="Pages">
-        <ProjectItem ReplaceParameters="false" TargetFileName="Home.aspx">Home.aspx</ProjectItem>
-        <ProjectItem ReplaceParameters="false" TargetFileName="Weather.aspx">Weather.aspx</ProjectItem>
-        <ProjectItem ReplaceParameters="false" TargetFileName="About.aspx">About.aspx</ProjectItem>
-        <ProjectItem ReplaceParameters="false" TargetFileName="Site.master">Site.master</ProjectItem>
+        <ProjectItem ReplaceParameters="true" TargetFileName="Home.aspx">Home.aspx</ProjectItem>
+        <ProjectItem ReplaceParameters="true" TargetFileName="Weather.aspx">Weather.aspx</ProjectItem>
+        <ProjectItem ReplaceParameters="true" TargetFileName="About.aspx">About.aspx</ProjectItem>
+        <ProjectItem ReplaceParameters="true" TargetFileName="Site.master">Site.master</ProjectItem>
       </Folder>
 
       <Folder Name="ViewModels" TargetFolderName="ViewModels">
@@ -77,7 +75,7 @@
       </Folder>
 
       <Folder Name="Reports" TargetFolderName="Reports">
-        <ProjectItem ReplaceParameters="false" TargetFileName="SampleReport.rpt.xml">SampleReport.rpt.xml</ProjectItem>
+        <ProjectItem ReplaceParameters="true" TargetFileName="SampleReport.rpt.xml">SampleReport.rpt.xml</ProjectItem>
         <ProjectItem ReplaceParameters="false" TargetFileName="UserActivity.rpt.xml">UserActivity.rpt.xml</ProjectItem>
       </Folder>
     </Project>

@@ -7,12 +7,13 @@ using CodeSpirit.Web.Services;
 
 namespace CodeSpirit.Web.ViewModels;
 
-[PageDirective(Route = "/weather", Title = "Weather Forecast")]
+[PageDirective(Route = "/weather", Title = "Weather Forecast", Layout = "~/Pages/Site.master")]
 [Service]
 public class WeatherViewModel : ViewModel
 {
     [FromQuery] public string? City { get; set; }
     [Bind] public WeatherForecast[] Forecast { get; set; } = [];
+    [Bind] public bool HasForecast => Forecast.Length > 0;
 
     public override Task LoadAsync()
     {

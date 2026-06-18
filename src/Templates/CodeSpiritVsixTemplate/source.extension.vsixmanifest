@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="CodeSpirit.Api.Template.1a2b3c4d-5678-90ab-cdef-1234567890ab" Version="0.1.0" Language="en-US" Publisher="CodeSpirit" />
+    <Identity Id="CodeSpirit.Web.Template.1a2b3c4d-5678-90ab-cdef-1234567890ab" Version="0.2.0" Language="en-US" Publisher="CodeSpirit" />
     <DisplayName>CodeSpirit Web Project Template</DisplayName>
     <Description xml:space="preserve">CodeSpirit framework web project template for .NET 10. Provides MVVM pages, ASPX layouts, reports, components, scheduling, auto-configuration, and AOP features inspired by Spring Boot.</Description>
     <License>LICENSE.txt</License>
     <Icon>Resources/Icon.png</Icon>
     <PreviewImage>Resources/Preview.png</PreviewImage>
-    <Tags>codespirit;api;web;dotnet;aspnetcore;mvvm;spring-boot</Tags>
+    <Tags>codespirit;web;dotnet;aspnetcore;mvvm;spring-boot</Tags>
   </Metadata>
   <Installation>
     <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0,19.0)" />

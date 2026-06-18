@@ -9,7 +9,7 @@
     <CopyOutputSymbolsToOutputDirectory>false</CopyOutputSymbolsToOutputDirectory>
     <CreateVsixContainer>true</CreateVsixContainer>
     <DeployExtension>false</DeployExtension>
-    <VsixVersion>0.1.0</VsixVersion>
+    <VsixVersion>0.2.0</VsixVersion>
     <RootNamespace>CodeSpiritVsixTemplate</RootNamespace>
   </PropertyGroup>
 

@@ -82,7 +82,7 @@ Lifetime control: `[Service(Lifetime = ServiceLifetime.Singleton)]`.
 
 ### MVVM Pages
 
-ViewModels drive routing and rendering. Access `GET /customers?Search=alice` returns ViewModel state as JSON (or HTML via ASPX layout):
+ViewModels drive routing and state rendering. Access `GET /customers?Search=alice` returns bindable ViewModel state as JSON:
 
 ```csharp
 [PageDirective(Route = "/customers", Title = "Customers")]
@@ -193,9 +193,9 @@ src/
     └── CodeSpiritVsixTemplate/  # Visual Studio VSIX template
 ```
 
-## VSIX Template Layout
+## Web Template Layout
 
-The VSIX template generates a complete project with organized folders:
+Both `dotnet new codespirit-web` and the VSIX template generate a complete project with organized folders:
 
 ```
 $safeprojectname$/

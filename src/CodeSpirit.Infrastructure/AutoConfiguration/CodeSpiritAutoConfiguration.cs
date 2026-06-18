@@ -53,15 +53,40 @@ public static class CodeSpiritAutoConfiguration
 
         app.UseMiddleware<CodeSpiritMiddleware>();
 
+        app.UseStaticFiles();
+
         app.UseCodeSpiritActuatorEndpoints();
 
         app.MapControllers();
 
         app.MapViewModels();
 
-        app.MapGet("/", () => Results.Ok(new { name = "CodeSpirit", status = "Running" }));
+        if (!HasViewModelRoute("/"))
+        {
+            app.MapGet("/", () => Results.Ok(new { name = "CodeSpirit", status = "Running" }));
+        }
 
         return app;
+    }
+
+    private static bool HasViewModelRoute(string route)
+    {
+        return Assemblies.Find<ViewModel>()
+            .Any(vm => string.Equals(GetViewModelRoute(vm), route, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string GetViewModelRoute(Type viewModelType)
+    {
+        var attr = viewModelType.GetCustomAttribute<CodeSpirit.Core.Page.PageDirectiveAttribute>();
+        if (!string.IsNullOrWhiteSpace(attr?.Route))
+            return attr.Route;
+
+        var name = viewModelType.Name;
+        if (name.EndsWith("ViewModel", StringComparison.OrdinalIgnoreCase))
+            name = name[..^"ViewModel".Length];
+
+        return "/" + string.Concat(name.Select((c, i) =>
+            i > 0 && char.IsUpper(c) ? "-" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));
     }
 
     private static void RegisterControllers(IServiceCollection services, List<Assembly> assemblies)
