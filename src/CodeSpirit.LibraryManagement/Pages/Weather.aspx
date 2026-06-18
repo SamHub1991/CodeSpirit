@@ -6,8 +6,7 @@
 
     <cs:Form>
       <div class="form-group">
-        <label for="city">City</label>
-        <input type="text" id="city" name="City" value="{Binding City}" data-cs-bind="City" />
+        <cs:Field Name="City" Label="City" />
         <cs:Button Command="Refresh">Search</cs:Button>
       </div>
     </cs:Form>

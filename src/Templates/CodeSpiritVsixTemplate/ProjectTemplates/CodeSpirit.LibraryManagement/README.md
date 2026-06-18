@@ -55,6 +55,7 @@ ISBN,Title,Author,Category,Location,PublishedYear,CopyCount,Rating
 - `cs:Link` renders an encoded anchor with binding support in `NavigateTo`.
 - `cs:Form` renders a standard MVVM form with `method="post"` and `data-cs-vm`.
 - `cs:Button` renders a submit button with `data-cs-command`.
+- `cs:Field` renders a bound input or textarea from `Name`, `Label`, `Placeholder`, `Type`, and `Rows`.
 
 ## Validation
 

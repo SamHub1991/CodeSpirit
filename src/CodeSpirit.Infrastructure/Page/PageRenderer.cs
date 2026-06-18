@@ -32,6 +32,9 @@ public class PageRenderer
     private static readonly Regex ButtonRegex = new(
         @"<cs:Button\s+Command=\""(?<command>[^\"" ]+)\""(?<attrs>[^>]*)>(?<content>.*?)</cs:Button>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex FieldRegex = new(
+        @"<cs:Field(?<attrs>[^>]*)\s*/>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
     private static readonly Regex AttributeRegex = new(
         @"(?<name>[A-Za-z][A-Za-z0-9_-]*)=\""(?<value>[^\""]*)\""",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -163,6 +166,8 @@ public class PageRenderer
             return $"<button type=\"submit\" data-cs-command=\"{command}\"{attrs}>{match.Groups["content"].Value}</button>";
         });
 
+        html = FieldRegex.Replace(html, match => RenderField(match.Groups["attrs"].Value, state));
+
         html = FormRegex.Replace(html, match =>
         {
             var attrs = RenderHtmlAttributes(match.Groups["attrs"].Value, state, "Method");
@@ -187,6 +192,31 @@ public class PageRenderer
         }
 
         return attributes.ToString();
+    }
+
+    private static string RenderField(string rawAttributes, IReadOnlyDictionary<string, object?> state)
+    {
+        var name = GetAttribute(rawAttributes, "Name");
+        if (string.IsNullOrWhiteSpace(name))
+            return string.Empty;
+
+        var label = GetAttribute(rawAttributes, "Label") ?? name;
+        var type = (GetAttribute(rawAttributes, "Type") ?? "text").Trim();
+        var rows = GetAttribute(rawAttributes, "Rows");
+        var id = GetAttribute(rawAttributes, "Id") ?? name;
+        var placeholder = GetAttribute(rawAttributes, "Placeholder");
+        var commonAttributes = RenderHtmlAttributes(rawAttributes, state, "Name", "Label", "Type", "Rows", "Id", "Placeholder");
+        var inputValue = Html(FormatValue(GetValue(state, name), null));
+
+        if (type.Equals("textarea", StringComparison.OrdinalIgnoreCase) || !string.IsNullOrWhiteSpace(rows))
+        {
+            var rowsAttribute = string.IsNullOrWhiteSpace(rows) ? string.Empty : $" rows=\"{Html(RenderBindings(rows, state))}\"";
+            var placeholderAttribute = string.IsNullOrWhiteSpace(placeholder) ? string.Empty : $" placeholder=\"{Html(RenderBindings(placeholder, state))}\"";
+            return $"<label for=\"{Html(id)}\">{Html(label)}<textarea id=\"{Html(id)}\" name=\"{Html(name)}\" data-cs-bind=\"{Html(name)}\"{rowsAttribute}{placeholderAttribute}{commonAttributes}>{inputValue}</textarea></label>";
+        }
+
+        var placeholderInput = string.IsNullOrWhiteSpace(placeholder) ? string.Empty : $" placeholder=\"{Html(RenderBindings(placeholder, state))}\"";
+        return $"<label for=\"{Html(id)}\">{Html(label)}<input id=\"{Html(id)}\" type=\"{Html(type)}\" name=\"{Html(name)}\" value=\"{inputValue}\" data-cs-bind=\"{Html(name)}\"{placeholderInput}{commonAttributes} /></label>";
     }
 
     private static string? GetAttribute(string rawAttributes, string targetName)

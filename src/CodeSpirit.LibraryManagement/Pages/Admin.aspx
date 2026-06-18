@@ -25,12 +25,12 @@
       </cs:Repeater>
     </section>
 
-    <form class="search-card" method="post" data-cs-vm>
-      <label>Search<input name="Query" value="{Binding Query}" data-cs-bind="Query" placeholder="Title, author, or ISBN" /></label>
-      <label>Status<input name="FilterStatus" value="{Binding FilterStatus}" data-cs-bind="FilterStatus" placeholder="All, Available, Borrowed, Reserved, Overdue, Archived" /></label>
-      <label>Category<input name="FilterCategory" value="{Binding FilterCategory}" data-cs-bind="FilterCategory" placeholder="All or category name" /></label>
-      <button type="submit" data-cs-command="Search">Apply Filter</button>
-    </form>
+    <cs:Form class="search-card">
+      <cs:Field Name="Query" Label="Search" Placeholder="Title, author, or ISBN" />
+      <cs:Field Name="FilterStatus" Label="Status" Placeholder="All, Available, Borrowed, Reserved, Overdue, Archived" />
+      <cs:Field Name="FilterCategory" Label="Category" Placeholder="All or category name" />
+      <cs:Button Command="Search">Apply Filter</cs:Button>
+    </cs:Form>
 
     <section class="notice-row">
       <cs:Repeater Items="{Binding Notices}">
