@@ -1,0 +1,14 @@
+/* Weather Page Styles */
+
+.weather-page {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.weather-page h1 {
+  margin-bottom: 1.5rem;
+}
+
+.weather-table {
+  margin-top: 1.5rem;
+}

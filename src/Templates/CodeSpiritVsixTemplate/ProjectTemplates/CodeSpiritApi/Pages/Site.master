@@ -1,0 +1,40 @@
+<%@ Master Language="C#" %>
+
+<!--
+  CodeSpirit Master Layout
+  Shared layout for all pages using the framework
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{Binding PageTitle} - $safeprojectname$</title>
+  <link rel="stylesheet" href="/css/site.css" />
+  <cs:PlaceHolder Name="Head" />
+</head>
+<body>
+  <header class="cs-header">
+    <nav class="cs-nav">
+      <a href="/" class="cs-brand">$safeprojectname$</a>
+      <div class="cs-nav-links">
+        <a href="/">Home</a>
+        <a href="/weather">Weather</a>
+        <a href="/about">About</a>
+        <a href="/actuator/health">Health</a>
+      </div>
+    </nav>
+  </header>
+
+  <main class="cs-main">
+    <cs:PlaceHolder Name="Body" />
+  </main>
+
+  <footer class="cs-footer">
+    <p>Powered by CodeSpirit Framework</p>
+  </footer>
+
+  <script src="/js/site.js"></script>
+  <cs:PlaceHolder Name="Scripts" />
+</body>
+</html>

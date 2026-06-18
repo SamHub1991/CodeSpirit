@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CodeSpirit Report Template
+  Define report layouts using XML with data-binding expressions.
+  Supports: tables, charts, summaries, and export to PDF/Excel.
+-->
+<Report xmlns="urn:codespirit:report"
+        Title="Sample Report"
+        Author="$safeprojectname$"
+        Orientation="Portrait"
+        PageSize="A4">
+
+  <ReportHeader>
+    <Text Style="Title" Alignment="Center">
+      {Binding ReportTitle}
+    </Text>
+    <Text Style="Subtitle" Alignment="Center">
+      Generated: {Binding GeneratedDate:yyyy-MM-dd HH:mm}
+    </Text>
+  </ReportHeader>
+
+  <PageHeader>
+    <Text Style="Small" Alignment="Right">
+      Page {#PageNumber} of {#TotalPages}
+    </Text>
+  </PageHeader>
+
+  <Body>
+    <Section Title="Summary">
+      <KeyValuePair Key="Total Records" Value="{Binding TotalRecords}" />
+      <KeyValuePair Key="Date Range" Value="{Binding DateRange}" />
+    </Section>
+
+    <Section Title="Data Table">
+      <Table DataSource="{Binding Items}">
+        <Columns>
+          <Column Header="ID" Field="Id" Width="10%" />
+          <Column Header="Name" Field="Name" Width="30%" />
+          <Column Header="Category" Field="Category" Width="20%" />
+          <Column Header="Value" Field="Value" Width="20%" Format="N2" />
+          <Column Header="Date" Field="CreatedAt" Width="20%" Format="yyyy-MM-dd" />
+        </Columns>
+      </Table>
+    </Section>
+
+    <Section Title="Chart">
+      <Chart Type="Bar" DataSource="{Binding ChartData}" Height="200">
+        <XAxis Field="Label" />
+        <YAxis Field="Value" />
+      </Chart>
+    </Section>
+  </Body>
+
+  <ReportFooter>
+    <Text Style="Small" Alignment="Center">
+      Confidential - $safeprojectname$
+    </Text>
+  </ReportFooter>
+</Report>

@@ -1,0 +1,89 @@
+<VSTemplate Version="3.0.0" xmlns="http://schemas.microsoft.com/developer/vstemplate/2005" Type="Project">
+  <TemplateData>
+    <Name>CodeSpirit API Application</Name>
+    <Description>A .NET 10 CodeSpirit framework API application with MVVM, ASPX pages, reports, and auto-configuration. Inspired by Spring Boot's convention-over-configuration philosophy.</Description>
+    <ProjectType>CSharp</ProjectType>
+    <ProjectSubType>Web</ProjectSubType>
+    <SortOrder>1000</SortOrder>
+    <CreateNewFolder>true</CreateNewFolder>
+    <DefaultName>CodeSpiritApi</DefaultName>
+    <ProvideDefaultName>true</ProvideDefaultName>
+    <LocationField>Enabled</LocationField>
+    <EnableLocationBrowseButton>true</EnableLocationBrowseButton>
+    <Icon>__TemplateIcon.ico</Icon>
+    <PreviewImage>__PreviewImage.png</PreviewImage>
+    <LanguageTag>csharp</LanguageTag>
+    <PlatformTag>windows</PlatformTag>
+    <PlatformTag>linux</PlatformTag>
+    <PlatformTag>macos</PlatformTag>
+    <ProjectTypeTag>Web</ProjectTypeTag>
+    <NumberOfParentCategoriesToRollUp>1</NumberOfParentCategoriesToRollUp>
+  </TemplateData>
+  <TemplateContent>
+    <Project File="CodeSpiritApi.csproj" ReplaceParameters="true">
+      <ProjectItem ReplaceParameters="true" TargetFileName="Program.cs">Program.cs</ProjectItem>
+      <ProjectItem ReplaceParameters="true" TargetFileName="appsettings.json">appsettings.json</ProjectItem>
+      <ProjectItem ReplaceParameters="true" TargetFileName="appsettings.Development.json">appsettings.Development.json</ProjectItem>
+      <ProjectItem ReplaceParameters="true" TargetFileName="NuGet.Config">NuGet.Config</ProjectItem>
+
+      <Folder Name="Pages" TargetFolderName="Pages">
+        <ProjectItem ReplaceParameters="false" TargetFileName="Home.aspx">Home.aspx</ProjectItem>
+        <ProjectItem ReplaceParameters="false" TargetFileName="Weather.aspx">Weather.aspx</ProjectItem>
+        <ProjectItem ReplaceParameters="false" TargetFileName="About.aspx">About.aspx</ProjectItem>
+        <ProjectItem ReplaceParameters="false" TargetFileName="Site.master">Site.master</ProjectItem>
+      </Folder>
+
+      <Folder Name="ViewModels" TargetFolderName="ViewModels">
+        <ProjectItem ReplaceParameters="true" TargetFileName="HomeViewModel.cs">HomeViewModel.cs</ProjectItem>
+        <ProjectItem ReplaceParameters="true" TargetFileName="WeatherViewModel.cs">WeatherViewModel.cs</ProjectItem>
+        <ProjectItem ReplaceParameters="true" TargetFileName="AboutViewModel.cs">AboutViewModel.cs</ProjectItem>
+      </Folder>
+
+      <Folder Name="Controllers" TargetFolderName="Controllers">
+        <ProjectItem ReplaceParameters="true" TargetFileName="WeatherApiController.cs">WeatherApiController.cs</ProjectItem>
+      </Folder>
+
+      <Folder Name="Models" TargetFolderName="Models">
+        <ProjectItem ReplaceParameters="true" TargetFileName="WeatherForecast.cs">WeatherForecast.cs</ProjectItem>
+      </Folder>
+
+      <Folder Name="Services" TargetFolderName="Services">
+        <ProjectItem ReplaceParameters="true" TargetFileName="WeatherService.cs">WeatherService.cs</ProjectItem>
+      </Folder>
+
+      <Folder Name="Components" TargetFolderName="Components">
+        <ProjectItem ReplaceParameters="false" TargetFileName="DataCard.ascx">DataCard.ascx</ProjectItem>
+        <ProjectItem ReplaceParameters="false" TargetFileName="NavBreadcrumb.ascx">NavBreadcrumb.ascx</ProjectItem>
+        <ProjectItem ReplaceParameters="false" TargetFileName="DataTable.ascx">DataTable.ascx</ProjectItem>
+      </Folder>
+
+      <Folder Name="wwwroot" TargetFolderName="wwwroot">
+        <Folder Name="css" TargetFolderName="css">
+          <ProjectItem ReplaceParameters="false" TargetFileName="site.css">site.css</ProjectItem>
+          <Folder Name="pages" TargetFolderName="pages">
+            <ProjectItem ReplaceParameters="false" TargetFileName="home.css">home.css</ProjectItem>
+            <ProjectItem ReplaceParameters="false" TargetFileName="weather.css">weather.css</ProjectItem>
+            <ProjectItem ReplaceParameters="false" TargetFileName="about.css">about.css</ProjectItem>
+          </Folder>
+        </Folder>
+        <Folder Name="js" TargetFolderName="js">
+          <ProjectItem ReplaceParameters="false" TargetFileName="site.js">site.js</ProjectItem>
+          <Folder Name="pages" TargetFolderName="pages">
+            <ProjectItem ReplaceParameters="false" TargetFileName="home.js">home.js</ProjectItem>
+          </Folder>
+        </Folder>
+        <Folder Name="images" TargetFolderName="images" />
+        <Folder Name="fonts" TargetFolderName="fonts" />
+      </Folder>
+
+      <Folder Name="Reports" TargetFolderName="Reports">
+        <ProjectItem ReplaceParameters="false" TargetFileName="SampleReport.rpt.xml">SampleReport.rpt.xml</ProjectItem>
+        <ProjectItem ReplaceParameters="false" TargetFileName="UserActivity.rpt.xml">UserActivity.rpt.xml</ProjectItem>
+      </Folder>
+    </Project>
+  </TemplateContent>
+  <WizardExtension>
+    <Assembly>Microsoft.VisualStudio.Web.ProjectSystem.Wizard, Version=17.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</Assembly>
+    <FullClassName>Microsoft.VisualStudio.Web.ProjectSystem.Wizard.ProjectWizard</FullClassName>
+  </WizardExtension>
+</VSTemplate>

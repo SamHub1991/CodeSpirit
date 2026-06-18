@@ -1,92 +1,91 @@
 # CodeSpirit
 
-A .NET 10 framework that brings Spring Boot's elegance to .NET, embracing convention over configuration.
+A .NET 10 framework that brings Spring Boot's developer experience to .NET.
 
-> Simple is better than complex. Readability counts.
+> Convention over configuration. One line to start. Attribute-driven everything.
 
-## Philosophy
+## Why CodeSpirit
 
-CodeSpirit combines Spring Boot's developer experience with .NET's performance:
+CodeSpirit maps Spring Boot's core concepts to idiomatic .NET 10:
 
-| Spring Boot | CodeSpirit | .NET Advantage |
-|-------------|------------|----------------|
+| Spring Boot | CodeSpirit | How |
+|-------------|------------|-----|
 | `@Service` | `[Service]` | Source Generator compile-time registration |
 | `@Scheduled` | `[Scheduled]` | Native async/await, no Quartz complexity |
-| `@RestTemplate` | `[Http.Get]` | Built-in typed HTTP client |
-| `@Value` | `IOptions<T>` | Strong-typed configuration |
-| Actuator | `/actuator/health` | Native HealthChecks |
+| `@Autowired` | `[Autowired]` | Property/field injection via DI |
+| `@Value` | `[Value("key")]` | Strong-typed config binding |
+| `@Transactional` | `[Transactional]` | AOP interceptor via Castle DynamicProxy |
+| `@Cacheable` | `[Cacheable]` | Declarable caching with interceptors |
+| Actuator | `/actuator/*` | Built-in health, metrics, info endpoints |
+| `@SpringBootApplication` | `[CodeSpiritApplication]` | Auto-config entry point |
 
 ## Quick Start
 
-```csharp
-// Program.cs - 3 lines to start
-var builder = WebApplication.CreateBuilder(args);
-builder.AddCodeSpirit();
-var app = builder.Build();
-app.UseCodeSpirit();
-app.Run();
+### Option A: Project Template (dotnet new)
+
+```bash
+dotnet new install CodeSpirit.Templates
+dotnet new codespirit-api -n MyApp
+cd MyApp
+dotnet run
+```
+
+### Option B: Visual Studio VSIX
+
+1. Build `src/Templates/CodeSpiritVsixTemplate` to produce `.vsix`
+2. Double-click the `.vsix` to install
+3. In Visual Studio: New Project -> search "CodeSpirit"
+
+### Option C: From Source
+
+```bash
+dotnet build src/CodeSpirit.slnx
+dotnet run --project src/CodeSpirit.Host
 ```
 
 ## Features
 
-### 1. Service Registration
+### One-Line Bootstrap
 
 ```csharp
-[Service]  // Auto-registered as Scoped
-public class UserService : IUserService
+[CodeSpiritApplication]
+public class Program
 {
-    public async Task<User> GetAsync(Guid id) => ...;
-}
-```
-
-### 2. Scheduled Tasks
-
-```csharp
-[Service]
-public class Jobs
-{
-    // Cron expression
-    [Scheduled("0 */5 * * * ?")]
-    public async Task SyncDataAsync() { }
-
-    // Simple interval (seconds)
-    [Every(60)]
-    public async Task HealthCheckAsync() { }
-
-    // Run on startup
-    [OnStartup(2000)]  // 2 second delay
-    public async Task WarmCacheAsync() { }
-}
-```
-
-### 3. HTTP Client
-
-```csharp
-[Service]
-public class ApiClient(IHttp http)
-{
-    public async Task<List<User>> GetUsersAsync()
+    public static void Main(string[] args)
     {
-        return await http.Get<List<User>>("https://api.example.com/users");
+        var builder = WebApplication.CreateBuilder(args);
+        builder.AddCodeSpirit();        // auto-config + module scan
+        var app = builder.Build();
+        app.UseCodeSpirit();            // middleware + routing
+        app.Run();
     }
 }
 ```
 
-Or annotate methods for auto-routing:
+### Attribute-Driven Services
+
+No manual DI registration. Annotate and go:
 
 ```csharp
-[Service]
-public class UserApi
+[Service]  // Scoped by default
+public class UserService
 {
-    [HttpGet("https://api.example.com/users")]
-    public async Task<List<User>> FetchUsers() { }
+    [Autowired]
+    private ILogger<UserService> _logger = null!;
+
+    [Value("CodeSpirit:Name")]
+    public string AppName { get; set; } = string.Empty;
 }
 ```
 
-### 4. MVVM ViewModels
+Lifetime control: `[Service(Lifetime = ServiceLifetime.Singleton)]`.
+
+### MVVM Pages
+
+ViewModels drive routing and rendering. Access `GET /customers?Search=alice` returns ViewModel state as JSON (or HTML via ASPX layout):
 
 ```csharp
-[Page("/customers")]  // Route convention
+[PageDirective(Route = "/customers", Title = "Customers")]
 [Service]
 public class CustomerViewModel : ViewModel
 {
@@ -95,41 +94,60 @@ public class CustomerViewModel : ViewModel
 
     public override Task LoadAsync()
     {
-        Customers = FetchCustomers(Search);
+        Customers = _repo.Search(Search);
         return Task.CompletedTask;
     }
 }
 ```
 
-Access via `GET /customers?Search=alice` - returns ViewModel state as JSON.
-
-### 5. Repository Pattern
+### Scheduled Tasks
 
 ```csharp
-// Entity with audit fields
-public class Order : IHasAuditFields
-{
-    public Guid Id { get; set; }
-    public string Name { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
-}
-
-// Usage
 [Service]
-public class OrderService(IRepository<Order> orders)
+public class Jobs
 {
-    public async Task<Order> CreateAsync(Order order)
-    {
-        return await orders.AddAsync(order);
-    }
+    [Scheduled("0 */5 * * * ?")]   // cron
+    public async Task SyncDataAsync() { }
+
+    [Every(60)]                     // every 60 seconds
+    public async Task HealthCheckAsync() { }
+
+    [OnStartup(2000)]              // 2s after boot
+    public async Task WarmCacheAsync() { }
 }
 ```
 
-### 6. Module System
+### Typed HTTP Client
 
 ```csharp
-[Require(typeof(RedisCache))]  // Conditional on class available
+[Service]
+public class ApiClient(IHttp http)
+{
+    public Task<List<User>> GetUsers() =>
+        http.Get<List<User>>("https://api.example.com/users");
+}
+```
+
+### AOP Interceptors
+
+```csharp
+[Service]
+public class OrderService
+{
+    [Transactional]
+    public async Task CreateAsync(Order order) { /* auto-commit/rollback */ }
+
+    [Cacheable(CacheKey = "orders:{0}", ExpirationSeconds = 300)]
+    public async Task<Order> GetByIdAsync(long id) { /* cached result */ }
+}
+```
+
+### Module System
+
+Conditional auto-configuration with dependency resolution:
+
+```csharp
+[Require(typeof(RedisCacheModule))]
 public class CachingModule : CodeSpiritModule
 {
     public override void ConfigureServices(ServiceConfigurationContext ctx)
@@ -139,25 +157,58 @@ public class CachingModule : CodeSpiritModule
 }
 ```
 
+### Production-Ready Actuator
+
+| Endpoint | Description |
+|----------|-------------|
+| `/actuator/health` | Liveness/readiness probes |
+| `/actuator/metrics` | Application metrics |
+| `/actuator/info` | Build and runtime info |
+
 ## Project Structure
 
 ```
 src/
-├── CodeSpirit.Core/           # Core abstractions & attributes
-│   ├── ServiceAttribute.cs
-│   ├── ScheduledAttribute.cs
-│   ├── HttpAttribute.cs
-│   ├── ViewModel.cs
-│   └── Assemblies.cs          # Assembly discovery
-├── CodeSpirit.Infrastructure/ # Implementations
-│   ├── Scheduling/            # Quartz integration
-│   ├── Http/                  # HTTP client
-│   ├── EntityFramework/       # Repository pattern
-│   └── Mvvm/                  # ViewModel executor
-├── CodeSpirit.Modules/        # Example modules
-│   ├── UserManagement/
-│   └── Demo/                  # Scheduled jobs demo
-└── CodeSpirit.Host/           # Entry point
+├── CodeSpirit.Core/              # Attributes, abstractions, ViewModel base
+├── CodeSpirit.Infrastructure/   # Implementations
+│   ├── AutoConfiguration/       # Service scanning + module loader
+│   ├── Scheduling/              # Background jobs
+│   ├── Http/                    # Typed HTTP client
+│   ├── EntityFramework/         # Repository pattern
+│   ├── Mvvm/                    # ViewModel executor
+│   ├── Page/                    # ASPX parser + HTML renderer
+│   ├── Aop/                     # Transaction/cache interceptors
+│   ├── Authentication/          # JWT
+│   ├── Caching / Redis/         # Cache + distributed cache
+│   ├── Messaging/              # RabbitMQ event bus
+│   ├── Monitoring/             # Actuator endpoints
+│   ├── Telemetry/              # OpenTelemetry
+│   └── Logging/               # Serilog
+├── CodeSpirit.SourceGenerator/ # Compile-time service registration
+├── CodeSpirit.Modules/        # Example business modules
+├── CodeSpirit.Host/           # Demo host application
+├── CodeSpirit.Tests/          # Unit tests
+└── Templates/                 # Project templates
+    ├── CodeSpiritApi/         # dotnet new template
+    └── CodeSpiritVsixTemplate/  # Visual Studio VSIX template
+```
+
+## VSIX Template Layout
+
+The VSIX template generates a complete project with organized folders:
+
+```
+$safeprojectname$/
+├── Pages/            # .aspx pages + Site.master layout
+├── ViewModels/       # MVVM ViewModels with [PageDirective]
+├── Controllers/      # REST API controllers (api/[controller])
+├── Models/           # Domain entities
+├── Services/         # [Service]-annotated business logic
+├── Components/       # Reusable .ascx UI components
+├── Reports/          # XML report templates (.rpt.xml)
+├── wwwroot/          # Static assets (CSS/JS/images/fonts)
+├── Program.cs        # [CodeSpiritApplication] entry point
+└── appsettings.json  # Framework + app configuration
 ```
 
 ## Configuration
@@ -166,7 +217,13 @@ src/
 {
   "CodeSpirit": {
     "Name": "MyApp",
-    "Profile": "development"
+    "Version": "1.0.0",
+    "Profile": "development",
+    "Actuator": {
+      "EnableHealthEndpoint": true,
+      "EnableMetricsEndpoint": true,
+      "EnableInfoEndpoint": true
+    }
   },
   "Jwt": {
     "Secret": "your-secret-key",
@@ -187,8 +244,14 @@ src/
 
 ```bash
 dotnet build src/CodeSpirit.slnx
+dotnet test src/CodeSpirit.Tests
 dotnet run --project src/CodeSpirit.Host
 ```
+
+## Requirements
+
+- .NET 10 SDK
+- Visual Studio 2022 17.10+ (for VSIX template, build the VSIX project)
 
 ## License
 
