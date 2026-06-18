@@ -1,6 +1,9 @@
 const fs = require('fs');
 const vm = require('vm');
 const assert = require('assert');
+const path = require('path');
+
+const templateRoot = path.resolve(__dirname, '..');
 
 class Event {
   constructor(type, options = {}) {
@@ -215,7 +218,7 @@ function createJQuery(document) {
 }
 
 function runScript(file, context) {
-  vm.runInContext(fs.readFileSync(file, 'utf8'), context, { filename: file });
+  vm.runInContext(fs.readFileSync(path.join(templateRoot, file), 'utf8'), context, { filename: file });
 }
 
 async function main() {
@@ -239,7 +242,7 @@ async function main() {
   });
   context.window.document = document;
 
-  runScript('src/Templates/CodeSpirit.Web/wwwroot/js/codespirit.runtime.js', context);
+  runScript('wwwroot/js/codespirit.runtime.js', context);
 
   let changed = null;
   form.addEventListener('codespirit:changed', (event) => {
@@ -274,7 +277,7 @@ async function main() {
   context.$ = context.window.$;
 
   const picker = form.appendChild(new Element('input', { name: 'City', 'data-cs-bind': 'City', 'data-ui': 'datepicker', value: 'Milan' }));
-  runScript('src/Templates/CodeSpirit.Web/wwwroot/js/ui/jquery.behaviors.js', context);
+  runScript('wwwroot/js/ui/jquery.behaviors.js', context);
   assert.strictEqual(picker.getAttribute('data-ui-ready'), 'datepicker');
   assert.strictEqual(picker.datepickerCount, 1);
 
