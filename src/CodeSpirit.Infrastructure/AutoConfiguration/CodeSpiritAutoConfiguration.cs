@@ -39,6 +39,8 @@ public static class CodeSpiritAutoConfiguration
 
         builder.Services.AddCodeSpiritActuator(builder.Configuration);
 
+        builder.Services.AddCodeSpiritAttributeInjection();
+
         builder.Services.Configure<CodeSpiritOptions>(
             builder.Configuration.GetSection("CodeSpirit"));
 
