@@ -35,6 +35,9 @@ public class PageRenderer
     private static readonly Regex FieldRegex = new(
         @"<cs:Field(?<attrs>[^>]*)\s*/>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex TableRegex = new(
+        @"<cs:Table(?<attrs>[^>]*)\s*/>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
     private static readonly Regex AttributeRegex = new(
         @"(?<name>[A-Za-z][A-Za-z0-9_-]*)=\""(?<value>[^\""]*)\""",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -168,6 +171,8 @@ public class PageRenderer
 
         html = FieldRegex.Replace(html, match => RenderField(match.Groups["attrs"].Value, state));
 
+        html = TableRegex.Replace(html, match => RenderTable(match.Groups["attrs"].Value, state));
+
         html = FormRegex.Replace(html, match =>
         {
             var attrs = RenderHtmlAttributes(match.Groups["attrs"].Value, state, "Method");
@@ -217,6 +222,62 @@ public class PageRenderer
 
         var placeholderInput = string.IsNullOrWhiteSpace(placeholder) ? string.Empty : $" placeholder=\"{Html(RenderBindings(placeholder, state))}\"";
         return $"<label for=\"{Html(id)}\">{Html(label)}<input id=\"{Html(id)}\" type=\"{Html(type)}\" name=\"{Html(name)}\" value=\"{inputValue}\" data-cs-bind=\"{Html(name)}\"{placeholderInput}{commonAttributes} /></label>";
+    }
+
+    private static string RenderTable(string rawAttributes, IReadOnlyDictionary<string, object?> state)
+    {
+        var itemsBinding = GetAttribute(rawAttributes, "Items");
+        var columns = ParseColumns(GetAttribute(rawAttributes, "Columns"));
+        if (string.IsNullOrWhiteSpace(itemsBinding) || columns.Count == 0)
+            return string.Empty;
+
+        var itemsName = ExtractBindingName(itemsBinding);
+        var value = itemsName is null ? null : GetValue(state, itemsName);
+        if (value is not System.Collections.IEnumerable items || value is string)
+            return string.Empty;
+
+        var attrs = RenderHtmlAttributes(rawAttributes, state, "Items", "Columns", "EmptyText");
+        var header = string.Concat(columns.Select(column => $"<th>{Html(column.Header)}</th>"));
+        var body = new StringBuilder();
+        var count = 0;
+
+        foreach (var item in items)
+        {
+            count++;
+            body.Append("<tr>");
+            foreach (var column in columns)
+            {
+                var cell = Html(FormatValue(GetValue(item, column.Name), column.Format));
+                body.Append("<td>").Append(cell).Append("</td>");
+            }
+            body.Append("</tr>");
+        }
+
+        if (count == 0)
+        {
+            var emptyText = GetAttribute(rawAttributes, "EmptyText") ?? "No records.";
+            body.Append($"<tr><td colspan=\"{columns.Count}\">{Html(emptyText)}</td></tr>");
+        }
+
+        return $"<table{attrs}><thead><tr>{header}</tr></thead><tbody>{body}</tbody></table>";
+    }
+
+    private static List<TableColumn> ParseColumns(string? rawColumns)
+    {
+        if (string.IsNullOrWhiteSpace(rawColumns))
+            return [];
+
+        return rawColumns.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(part => part.Split(':', 3, StringSplitOptions.TrimEntries))
+            .Where(parts => parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
+            .Select(parts => new TableColumn(parts[0], parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1]) ? parts[1] : parts[0], parts.Length > 2 ? parts[2] : null))
+            .ToList();
+    }
+
+    private static string? ExtractBindingName(string binding)
+    {
+        var match = BindingRegex.Match(binding);
+        return match.Success ? match.Groups["name"].Value : binding;
     }
 
     private static string? GetAttribute(string rawAttributes, string targetName)
@@ -273,6 +334,8 @@ public class PageRenderer
     };
 
     private static string Html(string value) => System.Net.WebUtility.HtmlEncode(value);
+
+    private sealed record TableColumn(string Name, string Header, string? Format);
 
     private static string? ResolvePagePath(HttpContext context, Type viewModelType)
     {

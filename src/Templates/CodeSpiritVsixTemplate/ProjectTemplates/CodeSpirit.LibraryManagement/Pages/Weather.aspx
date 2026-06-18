@@ -12,24 +12,7 @@
     </cs:Form>
 
     <cs:Conditional Visible="{Binding HasForecast}">
-      <table class="weather-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Temp (C)</th>
-            <th>Temp (F)</th>
-            <th>Summary</th>
-          </tr>
-        </thead>
-        <cs:Repeater Items="{Binding Forecast}">
-          <tr>
-            <td>{Binding Date:yyyy-MM-dd}</td>
-            <td>{Binding TemperatureC}</td>
-            <td>{Binding TemperatureF}</td>
-            <td>{Binding Summary}</td>
-          </tr>
-        </cs:Repeater>
-      </table>
+      <cs:Table class="weather-table" Items="{Binding Forecast}" Columns="Date:Date:yyyy-MM-dd,TemperatureC:Temp (C),TemperatureF:Temp (F),Summary:Summary" />
     </cs:Conditional>
   </div>
 </cs:Content>
