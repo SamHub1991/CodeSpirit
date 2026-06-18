@@ -160,13 +160,10 @@ Use jQuery for visual behaviors:
 </div>
 ```
 
-Use events when a jQuery widget changes a bound value:
+Tell MVVM when a jQuery widget changes a bound value:
 
 ```javascript
-element.dispatchEvent(new CustomEvent('codespirit:input', {
-  bubbles: true,
-  detail: { name: 'City', value: element.value }
-}));
+CodeSpirit.input(element);
 ```
 
 The default template includes two separate files:
@@ -176,7 +173,7 @@ wwwroot/js/codespirit.runtime.js
 wwwroot/js/ui/jquery.behaviors.js
 ```
 
-The runtime owns `data-cs-*`. The jQuery layer owns `data-ui`. Business data changes should go through `[Bind]` and `[Command]`. UI widgets should notify MVVM with `codespirit:input`, then the runtime updates bound fields and emits `codespirit:changed`.
+The runtime owns `data-cs-*`. The jQuery layer owns `data-ui`. Business data changes should go through `[Bind]` and `[Command]`. UI widgets should notify MVVM with `CodeSpirit.input(element)`, then the runtime updates bound fields and emits `codespirit:changed`.
 
 ### Scheduled Tasks
 

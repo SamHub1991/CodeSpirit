@@ -103,11 +103,26 @@
     }
   }
 
+  function input(element, name, value) {
+    if (!element) {
+      return;
+    }
+
+    element.dispatchEvent(new CustomEvent('codespirit:input', {
+      bubbles: true,
+      detail: {
+        name: name || element.name || element.getAttribute('data-cs-bind'),
+        value: arguments.length > 2 ? value : element.value
+      }
+    }));
+  }
+
   document.addEventListener('submit', handleSubmit);
   document.addEventListener('input', handleInput);
   document.addEventListener('codespirit:input', handleInput);
 
   window.CodeSpirit = window.CodeSpirit || {};
   window.CodeSpirit.applyState = applyState;
+  window.CodeSpirit.input = input;
   window.CodeSpirit.updateField = updateField;
 })();

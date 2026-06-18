@@ -20,13 +20,7 @@
     });
 
     elements.on('change', function () {
-      this.dispatchEvent(new CustomEvent('codespirit:input', {
-        bubbles: true,
-        detail: {
-          name: this.name || this.getAttribute('data-cs-bind'),
-          value: this.value
-        }
-      }));
+      window.CodeSpirit.input(this);
     });
   }
 
