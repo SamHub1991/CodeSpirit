@@ -7,7 +7,7 @@ using $safeprojectname$.Features.Library.Services;
 
 namespace $safeprojectname$.Features.Home;
 
-[PageDirective(Route = "/", Title = "Library Command Center", Layout = "~/Pages/Site.master")]
+[PageDirective(Route = "/", Title = "Library Command Center")]
 [Service]
 public class HomeViewModel : ViewModel
 {

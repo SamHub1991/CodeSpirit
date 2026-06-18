@@ -1,4 +1,4 @@
-<%@ Page ViewModel="CodeSpirit.LibraryManagement.Features.Weather.WeatherViewModel" Title="Weather Forecast" %>
+<%@ Page %>
 
 <cs:Content PlaceHolder="Body">
   <div class="weather-page">

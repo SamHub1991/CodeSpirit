@@ -7,7 +7,7 @@ using CodeSpirit.LibraryManagement.Features.Weather.Services;
 
 namespace CodeSpirit.LibraryManagement.Features.Weather;
 
-[PageDirective(Route = "/weather", Title = "Weather Forecast", Layout = "~/Pages/Site.master")]
+[PageDirective(Route = "/weather", Title = "Weather Forecast")]
 [Service]
 public class WeatherViewModel : ViewModel
 {

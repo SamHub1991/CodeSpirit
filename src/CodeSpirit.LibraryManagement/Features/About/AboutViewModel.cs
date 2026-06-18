@@ -5,7 +5,7 @@ using CodeSpirit.Core.Page;
 
 namespace CodeSpirit.LibraryManagement.Features.About;
 
-[PageDirective(Route = "/about", Title = "About", Layout = "~/Pages/Site.master")]
+[PageDirective(Route = "/about", Title = "About")]
 [Service]
 public class AboutViewModel : ViewModel
 {

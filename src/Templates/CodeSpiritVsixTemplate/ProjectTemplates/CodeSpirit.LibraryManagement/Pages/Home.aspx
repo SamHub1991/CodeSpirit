@@ -1,4 +1,4 @@
-<%@ Page ViewModel="$safeprojectname$.Features.Home.HomeViewModel" Title="Home" %>
+<%@ Page %>
 
 <!--
   Library dashboard powered by CodeSpirit MVVM

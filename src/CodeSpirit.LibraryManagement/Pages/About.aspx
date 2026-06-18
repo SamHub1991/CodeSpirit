@@ -1,4 +1,4 @@
-<%@ Page ViewModel="CodeSpirit.LibraryManagement.Features.About.AboutViewModel" Title="About" %>
+<%@ Page %>
 
 <cs:Content PlaceHolder="Body">
   <div class="about-page">

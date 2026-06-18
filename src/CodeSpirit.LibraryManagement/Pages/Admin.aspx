@@ -1,4 +1,4 @@
-<%@ Page ViewModel="CodeSpirit.LibraryManagement.Features.Admin.AdminViewModel" Title="Library Admin" %>
+<%@ Page %>
 
 <cs:Content PlaceHolder="Head">
   <link rel="stylesheet" href="/css/pages/admin.css" />

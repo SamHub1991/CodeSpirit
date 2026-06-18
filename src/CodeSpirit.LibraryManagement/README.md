@@ -31,6 +31,7 @@ CodeSpirit.LibraryManagement/
 - Put page ViewModels beside their module, for example `Features/Admin/AdminViewModel.cs`.
 - Put shared domain services and models under a capability folder, for example `Features/Library`.
 - Keep framework convention files in root folders: `Pages`, `Components`, `Reports`, and `wwwroot`.
+- Keep ASPX files focused on markup; `Route` and `Title` live on `PageDirective`, and the default layout is `Pages/Site.master`.
 - Use `scripts/validate-js-boundary.js` after changing `wwwroot/js/codespirit.runtime.js` or `wwwroot/js/ui/jquery.behaviors.js`.
 
 ## CSV Import and Export

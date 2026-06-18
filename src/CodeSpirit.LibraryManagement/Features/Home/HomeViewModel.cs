@@ -7,7 +7,7 @@ using CodeSpirit.LibraryManagement.Features.Library.Services;
 
 namespace CodeSpirit.LibraryManagement.Features.Home;
 
-[PageDirective(Route = "/", Title = "Library Command Center", Layout = "~/Pages/Site.master")]
+[PageDirective(Route = "/", Title = "Library Command Center")]
 [Service]
 public class HomeViewModel : ViewModel
 {

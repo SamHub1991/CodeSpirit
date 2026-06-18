@@ -7,7 +7,7 @@ using CodeSpirit.LibraryManagement.Features.Library.Services;
 
 namespace CodeSpirit.LibraryManagement.Features.Admin;
 
-[PageDirective(Route = "/admin", Title = "Library Admin", Layout = "~/Pages/Site.master")]
+[PageDirective(Route = "/admin", Title = "Library Admin")]
 [Service]
 public class AdminViewModel : ViewModel
 {

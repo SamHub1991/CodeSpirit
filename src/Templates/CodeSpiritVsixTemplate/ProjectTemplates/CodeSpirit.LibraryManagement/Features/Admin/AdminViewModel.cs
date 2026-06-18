@@ -7,7 +7,7 @@ using $safeprojectname$.Features.Library.Services;
 
 namespace $safeprojectname$.Features.Admin;
 
-[PageDirective(Route = "/admin", Title = "Library Admin", Layout = "~/Pages/Site.master")]
+[PageDirective(Route = "/admin", Title = "Library Admin")]
 [Service]
 public class AdminViewModel : ViewModel
 {

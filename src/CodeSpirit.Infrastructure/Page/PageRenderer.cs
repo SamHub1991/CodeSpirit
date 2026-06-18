@@ -9,6 +9,8 @@ namespace CodeSpirit.Infrastructure.Page;
 
 public class PageRenderer
 {
+    private const string DefaultLayout = "Pages/Site.master";
+
     private readonly PageParser _parser;
     private readonly ILogger<PageRenderer> _logger;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -203,10 +205,8 @@ public class PageRenderer
 
     private static string? ResolveLayout(HttpContext context, string? layout)
     {
-        if (string.IsNullOrWhiteSpace(layout))
-            return null;
-
-        var relative = layout.StartsWith("~/", StringComparison.Ordinal) ? layout[2..] : layout;
+        var configuredLayout = string.IsNullOrWhiteSpace(layout) ? DefaultLayout : layout;
+        var relative = configuredLayout.StartsWith("~/", StringComparison.Ordinal) ? configuredLayout[2..] : configuredLayout;
         var path = Path.Combine(AppContext.BaseDirectory, relative.Replace('/', Path.DirectorySeparatorChar));
         return File.Exists(path) ? path : null;
     }
