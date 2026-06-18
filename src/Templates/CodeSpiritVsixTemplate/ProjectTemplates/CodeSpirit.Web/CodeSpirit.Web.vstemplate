@@ -65,7 +65,11 @@
           </Folder>
         </Folder>
         <Folder Name="js" TargetFolderName="js">
+          <ProjectItem ReplaceParameters="false" TargetFileName="codespirit.runtime.js">codespirit.runtime.js</ProjectItem>
           <ProjectItem ReplaceParameters="false" TargetFileName="site.js">site.js</ProjectItem>
+          <Folder Name="ui" TargetFolderName="ui">
+            <ProjectItem ReplaceParameters="false" TargetFileName="jquery.behaviors.js">jquery.behaviors.js</ProjectItem>
+          </Folder>
           <Folder Name="pages" TargetFolderName="pages">
             <ProjectItem ReplaceParameters="false" TargetFileName="home.js">home.js</ProjectItem>
           </Folder>

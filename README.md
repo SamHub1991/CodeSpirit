@@ -134,6 +134,41 @@ public class WeatherViewModel : ViewModel
 
 The JSON response includes `state`, `bindings`, and `commands`, which gives a frontend runtime enough metadata to wire property binding and command events.
 
+### jQuery and MVVM Boundary
+
+CodeSpirit keeps page state and visual behaviors separated:
+
+| Prefix | Owner | Responsibility |
+|--------|-------|----------------|
+| `data-cs-*` | CodeSpirit MVVM runtime | property binding, form submission, command events, ViewModel state updates |
+| `data-ui-*` | jQuery UI behavior layer | widgets, animation, cards, tabs, tooltip, datepicker, third-party plugin setup |
+
+Use MVVM for data and commands:
+
+```html
+<form method="post" data-cs-vm>
+  <input name="City" value="{Binding City}" data-cs-bind="City" />
+  <button type="submit" name="__command" value="Refresh">Search</button>
+</form>
+```
+
+Use jQuery for visual behaviors:
+
+```html
+<div class="card" data-ui-clickable-card>
+  <a href="/weather">Weather</a>
+</div>
+```
+
+The default template includes two separate files:
+
+```text
+wwwroot/js/codespirit.runtime.js
+wwwroot/js/ui/jquery.behaviors.js
+```
+
+The runtime owns `data-cs-*`. The jQuery layer owns `data-ui-*`. Business data changes should go through `[Bind]` and `[Command]`.
+
 ### Scheduled Tasks
 
 ```csharp

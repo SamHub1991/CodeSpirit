@@ -34,6 +34,9 @@
     <p>Powered by CodeSpirit Framework</p>
   </footer>
 
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="/js/codespirit.runtime.js"></script>
+  <script src="/js/ui/jquery.behaviors.js"></script>
   <script src="/js/site.js"></script>
   <cs:PlaceHolder Name="Scripts" />
 </body>
