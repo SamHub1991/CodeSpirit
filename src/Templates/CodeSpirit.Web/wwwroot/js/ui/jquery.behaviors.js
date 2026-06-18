@@ -56,4 +56,8 @@
   $(document).on('codespirit:updated', function (event) {
     init(event.target);
   });
+
+  window.CodeSpirit = window.CodeSpirit || {};
+  window.CodeSpirit.ui = window.CodeSpirit.ui || {};
+  window.CodeSpirit.ui.init = init;
 })(window.jQuery || window.$);

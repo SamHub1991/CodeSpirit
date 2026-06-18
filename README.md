@@ -166,6 +166,22 @@ Tell MVVM when a jQuery widget changes a bound value:
 CodeSpirit.input(element);
 ```
 
+Initialize jQuery behaviors after rendering new HTML:
+
+```javascript
+CodeSpirit.ui.init(rootElement);
+```
+
+Stable browser APIs:
+
+| API | Use case |
+|-----|----------|
+| `CodeSpirit.input(element)` | notify MVVM that a bound widget changed |
+| `CodeSpirit.input(element, name, value)` | notify MVVM with an explicit property and value |
+| `CodeSpirit.applyState(root, state)` | apply ViewModel state to `data-cs-bind` elements |
+| `CodeSpirit.updateField(root, name, value)` | update one bound field manually |
+| `CodeSpirit.ui.init(root)` | initialize `data-ui` behaviors inside a DOM root |
+
 The default template includes two separate files:
 
 ```text
@@ -173,7 +189,7 @@ wwwroot/js/codespirit.runtime.js
 wwwroot/js/ui/jquery.behaviors.js
 ```
 
-The runtime owns `data-cs-*`. The jQuery layer owns `data-ui`. Business data changes should go through `[Bind]` and `[Command]`. UI widgets should notify MVVM with `CodeSpirit.input(element)`, then the runtime updates bound fields and emits `codespirit:changed`.
+The runtime owns `data-cs-*`. The jQuery layer owns `data-ui`. Business data changes should go through `[Bind]` and `[Command]`. UI widgets should notify MVVM with `CodeSpirit.input(element)`, then the runtime updates bound fields and emits `codespirit:changed`. After MVVM returns new HTML, the jQuery layer can initialize new widgets with `CodeSpirit.ui.init(root)`.
 
 ### Scheduled Tasks
 
