@@ -17,17 +17,29 @@ public static class Assemblies
     public static Assembly[] All => _cached.Value;
 
     /// <summary>
-    /// Only CodeSpirit assemblies (names starting with "CodeSpirit").
+    /// CodeSpirit framework assemblies plus the entry assembly.
+    /// This ensures the user's own [Service]/[ViewModel] classes are discovered.
     /// </summary>
-    public static Assembly[] CodeSpirit => All
-        .Where(a =>
+    public static Assembly[] CodeSpirit
+    {
+        get
         {
-            var name = a.GetName().Name;
-            return name is not null
-                && name.StartsWith("CodeSpirit", StringComparison.OrdinalIgnoreCase)
-                && !name.StartsWith("CodeSpirit.SourceGenerator", StringComparison.OrdinalIgnoreCase);
-        })
-        .ToArray();
+            var framework = All
+                .Where(a =>
+                {
+                    var name = a.GetName().Name;
+                    return name is not null
+                        && name.StartsWith("CodeSpirit", StringComparison.OrdinalIgnoreCase)
+                        && !name.StartsWith("CodeSpirit.SourceGenerator", StringComparison.OrdinalIgnoreCase);
+                });
+
+            var entry = Assembly.GetEntryAssembly();
+            if (entry is not null)
+                framework = framework.Append(entry);
+
+            return framework.Distinct().ToArray();
+        }
+    }
 
     /// <summary>
     /// Find all types that inherit from T in the specified assemblies.

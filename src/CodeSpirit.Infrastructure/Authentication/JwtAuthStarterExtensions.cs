@@ -20,15 +20,16 @@ public static class JwtAuthStarterExtensions
     {
         services.Configure<JwtOptions>(configuration.GetSection("Jwt"));
 
+        var jwtOptions = configuration.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions();
+
+        if (!jwtOptions.IsValid(out _))
+        {
+            return services;
+        }
+
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                var jwtOptions = configuration.GetSection("Jwt").Get<JwtOptions>()
-                    ?? new JwtOptions();
-
-                if (!jwtOptions.IsValid(out var error))
-                    throw new InvalidOperationException($"Invalid JWT configuration: {error}");
-
                 var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Secret));
 
                 options.TokenValidationParameters = new TokenValidationParameters

@@ -3,7 +3,6 @@
   <ItemGroup>
     <PackageReference Include="CodeSpirit.Core" Version="0.1.0" />
     <PackageReference Include="CodeSpirit.Infrastructure" Version="0.1.0" />
-    <PackageReference Include="CodeSpirit.Modules" Version="0.1.0" />
     <PackageReference Include="CodeSpirit.SourceGenerator" Version="0.1.0"
       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
