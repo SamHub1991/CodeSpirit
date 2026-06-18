@@ -324,7 +324,7 @@ Docker（可选，用于本地开发数据库、消息队列等）
 dotnet new install CodeSpirit.Templates
 
 # 2. 创建新项目
-dotnet new codespirit-api -n MyFirstApp
+dotnet new codespirit-web -n MyFirstApp
 
 # 3. 进入项目目录并运行
 cd MyFirstApp
