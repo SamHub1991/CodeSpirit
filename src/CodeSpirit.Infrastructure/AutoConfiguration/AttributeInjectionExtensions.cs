@@ -1,5 +1,7 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using CodeSpirit.Core.Attributes;
+using CodeSpirit.Infrastructure.Aop;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -7,6 +9,7 @@ namespace CodeSpirit.Infrastructure.AutoConfiguration;
 
 public static class AttributeInjectionExtensions
 {
+    private static readonly ConcurrentDictionary<Type, TypeInjectionMetadata> _metadataCache = new();
     public static IServiceCollection AddCodeSpiritAttributeInjection(this IServiceCollection services)
     {
         for (int i = 0; i < services.Count; i++)
@@ -15,15 +18,29 @@ public static class AttributeInjectionExtensions
             var implType = desc.ImplementationType;
             if (implType == null || implType.IsGenericTypeDefinition) continue;
 
-            if (!HasCodeSpiritAttribute(implType)) continue;
+            if (!HasCodeSpiritAttribute(implType) && !AopExtensions.NeedsAopProxy(implType))
+                continue;
+
+            var needsAutowired = HasCodeSpiritAttribute(implType);
+            var needsProxy = AopExtensions.NeedsAopProxy(implType);
 
             services[i] = ServiceDescriptor.Describe(
                 desc.ServiceType,
                 sp =>
                 {
                     var instance = ActivatorUtilities.CreateInstance(sp, implType);
-                    InjectAutowired(sp, instance);
-                    InjectValues(sp, instance);
+
+                    if (needsAutowired)
+                    {
+                        InjectAutowired(sp, instance);
+                        InjectValues(sp, instance);
+                    }
+
+                    if (needsProxy)
+                    {
+                        return AopExtensions.CreateProxy(sp, implType, instance);
+                    }
+
                     return instance;
                 },
                 desc.Lifetime
@@ -33,40 +50,49 @@ public static class AttributeInjectionExtensions
         return services;
     }
 
-    private static bool HasCodeSpiritAttribute(Type type)
-    {
-        foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
-        {
-            if (prop.GetCustomAttribute<AutowiredAttribute>() != null) return true;
-            if (prop.GetCustomAttribute<ValueAttribute>() != null) return true;
-        }
+    private const BindingFlags MemberFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
-        foreach (var field in type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+    private static TypeInjectionMetadata GetMetadata(Type type) =>
+        _metadataCache.GetOrAdd(type, key =>
         {
-            if (field.GetCustomAttribute<AutowiredAttribute>() != null) return true;
-        }
+            var meta = new TypeInjectionMetadata();
 
-        return false;
-    }
+            foreach (var prop in key.GetProperties(MemberFlags))
+            {
+                if (prop.GetCustomAttribute<AutowiredAttribute>() is not null)
+                    meta.AutowiredProperties.Add(prop);
+                if (prop.GetCustomAttribute<ValueAttribute>() is { } va)
+                    meta.ValueProperties.Add(new(prop, va.Key));
+            }
+
+            foreach (var field in key.GetFields(MemberFlags))
+            {
+                if (field.GetCustomAttribute<AutowiredAttribute>() is not null)
+                    meta.AutowiredFields.Add(field);
+                if (field.GetCustomAttribute<ValueAttribute>() is { } va)
+                    meta.ValueFields.Add(new(field, va.Key));
+            }
+
+            return meta;
+        });
+
+    private static bool HasCodeSpiritAttribute(Type type) =>
+        GetMetadata(type).HasCodeSpiritAttribute;
 
     private static void InjectAutowired(IServiceProvider sp, object instance)
     {
-        var type = instance.GetType();
-        var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-
-        foreach (var prop in type.GetProperties(flags))
+        var meta = GetMetadata(instance.GetType());
+        foreach (var prop in meta.AutowiredProperties)
         {
-            if (prop.GetCustomAttribute<AutowiredAttribute>() == null) continue;
+            if (!prop.CanWrite) continue;
             var dep = sp.GetService(prop.PropertyType);
-            if (dep != null && prop.CanWrite)
+            if (dep is not null)
                 prop.SetValue(instance, dep);
         }
-
-        foreach (var field in type.GetFields(flags))
+        foreach (var field in meta.AutowiredFields)
         {
-            if (field.GetCustomAttribute<AutowiredAttribute>() == null) continue;
             var dep = sp.GetService(field.FieldType);
-            if (dep != null)
+            if (dep is not null)
                 field.SetValue(instance, dep);
         }
     }
@@ -74,43 +100,33 @@ public static class AttributeInjectionExtensions
     private static void InjectValues(IServiceProvider sp, object instance)
     {
         var config = sp.GetService<IConfiguration>();
-        if (config == null) return;
+        if (config is null) return;
 
-        var type = instance.GetType();
-        foreach (var prop in type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance))
+        var meta = GetMetadata(instance.GetType());
+        foreach (var (prop, key) in meta.ValueProperties)
         {
-            var attr = prop.GetCustomAttribute<ValueAttribute>();
-            if (attr == null) continue;
-
-            var value = config[attr.Key];
-            if (value != null && prop.CanWrite)
-            {
-                var converted = ConvertValue(value, prop.PropertyType);
-                prop.SetValue(instance, converted);
-            }
+            if (!prop.CanWrite) continue;
+            var value = config[key];
+            if (value is not null)
+                prop.SetValue(instance, ValueConverter.ConvertValue(value, prop.PropertyType));
+        }
+        foreach (var (field, key) in meta.ValueFields)
+        {
+            var value = config[key];
+            if (value is not null)
+                field.SetValue(instance, ValueConverter.ConvertValue(value, field.FieldType));
         }
     }
 
-    private static object? ConvertValue(string value, Type target)
+    internal sealed class TypeInjectionMetadata
     {
-        var underlying = Nullable.GetUnderlyingType(target) ?? target;
-        try
-        {
-            return underlying switch
-            {
-                Type t when t == typeof(int) => int.Parse(value),
-                Type t when t == typeof(long) => long.Parse(value),
-                Type t when t == typeof(double) => double.Parse(value),
-                Type t when t == typeof(bool) => bool.Parse(value),
-                Type t when t == typeof(Guid) => Guid.Parse(value),
-                Type t when t == typeof(TimeSpan) => TimeSpan.Parse(value),
-                Type t when t == typeof(DateTime) => DateTime.Parse(value),
-                _ => Convert.ChangeType(value, underlying)
-            };
-        }
-        catch
-        {
-            return value;
-        }
+        public bool HasCodeSpiritAttribute =>
+            AutowiredProperties.Count > 0 || AutowiredFields.Count > 0 ||
+            ValueProperties.Count > 0 || ValueFields.Count > 0;
+
+        public List<PropertyInfo> AutowiredProperties { get; } = new();
+        public List<FieldInfo> AutowiredFields { get; } = new();
+        public List<(PropertyInfo Property, string Key)> ValueProperties { get; } = new();
+        public List<(FieldInfo Field, string Key)> ValueFields { get; } = new();
     }
 }

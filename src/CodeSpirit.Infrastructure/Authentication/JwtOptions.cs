@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace CodeSpirit.Infrastructure.Authentication;
 
 public record JwtOptions

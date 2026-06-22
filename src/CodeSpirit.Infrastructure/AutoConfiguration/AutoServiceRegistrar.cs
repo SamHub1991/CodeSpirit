@@ -9,7 +9,7 @@ namespace CodeSpirit.Infrastructure.AutoConfiguration;
 
 public class AutoServiceRegistrar : IAutoServiceRegistrar
 {
-    public void RegisterServices(IServiceCollection services, Assembly assembly)
+    public void RegisterServices(IServiceCollection services, Assembly assembly, IConfiguration? configuration = null)
     {
         Type[] types;
         try { types = assembly.GetTypes(); }
@@ -21,24 +21,23 @@ public class AutoServiceRegistrar : IAutoServiceRegistrar
 
         foreach (var type in types.Where(t => t.IsClass && !t.IsAbstract))
         {
-            if (!ShouldRegister(type)) continue;
+            if (!ShouldRegister(type, configuration)) continue;
 
             RegisterServiceAttribute(services, type);
             RegisterRepositoryAttribute(services, type);
         }
     }
 
-    private static bool ShouldRegister(Type type)
+    private static bool ShouldRegister(Type type, IConfiguration? configuration)
     {
-        var require = type.GetCustomAttribute<CodeSpirit.Core.RequireAttribute>();
+        var require = type.GetCustomAttribute<RequireAttribute>();
         if (require is not null)
             return require.IsSatisfied;
 
-        var requireConfig = type.GetCustomAttribute<CodeSpirit.Core.RequireConfigAttribute>();
+        var requireConfig = type.GetCustomAttribute<RequireConfigAttribute>();
         if (requireConfig is not null)
         {
-            var config = new ConfigurationBuilder().Build();
-            var value = config[requireConfig.Key];
+            var value = configuration?[requireConfig.Key];
             return requireConfig.Value is null
                 ? !string.IsNullOrEmpty(value)
                 : value == requireConfig.Value;

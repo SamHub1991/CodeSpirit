@@ -19,7 +19,8 @@
   }
 
   function postViewModel(form, payload) {
-    return fetch(form.getAttribute('action') || window.location.pathname, {
+    var targetUrl = form.getAttribute('action') || (window.location && window.location.pathname) || '/';
+    return fetch(targetUrl, {
       method: form.getAttribute('method') || 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -149,6 +150,101 @@
     }));
   }
 
+  function VmChain(root) {
+    this._root = root;
+    this._form = root.matches('[data-cs-vm]') ? root : (root.querySelector('[data-cs-vm]') || root.closest('[data-cs-vm]'));
+    if (!this._form) {
+      throw new Error('CodeSpirit.vm: no ViewModel form found in the element tree');
+    }
+  }
+
+  VmChain.prototype = {
+    set: function (name, value) {
+      if (arguments.length === 1 && typeof name === 'object') {
+        var self = this;
+        Object.keys(name).forEach(function (k) { self.set(k, name[k]); });
+        return this;
+      }
+      updateField(this._form, name, value);
+      var el = this._form.querySelector('[name="' + name + '"]');
+      if (el) {
+        el.value = value == null ? '' : String(value);
+        input(el, name, value);
+      }
+      return this;
+    },
+
+    get: function (name) {
+      var el = this._form.querySelector('[name="' + name + '"]');
+      return el ? el.value : undefined;
+    },
+
+    val: function (name, value) {
+      return arguments.length < 2 ? this.get(name) : this.set(name, value);
+    },
+
+    state: function () {
+      return serializeForm(this._form);
+    },
+
+    invoke: function (command) {
+      var form = this._form;
+      var payload = serializeForm(form);
+      if (command) {
+        payload.__command = command;
+      }
+
+      return postViewModel(form, payload).then(function (result) {
+        applyRegions(form, result.regions);
+        applyState(form, result.state || result);
+        emit(form, 'codespirit:updated', result);
+        return result;
+      });
+    },
+
+    on: function (event, handler) {
+      this._root.addEventListener(event, handler);
+      return this;
+    },
+
+    off: function (event, handler) {
+      this._root.removeEventListener(event, handler);
+      return this;
+    },
+
+    once: function (event, handler) {
+      var self = this;
+      var wrapped = function (e) {
+        self.off(event, wrapped);
+        handler.call(this, e);
+      };
+      return this.on(event, wrapped);
+    },
+
+    refresh: function () {
+      refresh(this._root);
+      return this;
+    },
+
+    el: function (query) {
+      return this._form.querySelector(query);
+    },
+
+    all: function (query) {
+      return Array.from(this._form.querySelectorAll(query));
+    }
+  };
+
+  function vm(root) {
+    if (typeof root === 'string') {
+      root = document.querySelector(root);
+    }
+    if (!root) {
+      throw new Error('CodeSpirit.vm: element not found');
+    }
+    return new VmChain(root);
+  }
+
   document.addEventListener('submit', handleSubmit);
   document.addEventListener('input', handleInput);
   document.addEventListener('codespirit:input', handleInput);
@@ -160,4 +256,9 @@
   window.CodeSpirit.mount = mount;
   window.CodeSpirit.refresh = refresh;
   window.CodeSpirit.updateField = updateField;
+  window.CodeSpirit.vm = vm;
+  window.CodeSpirit.VmChain = VmChain;
+  if (!window.$cs) {
+    window.$cs = window.CodeSpirit;
+  }
 })();

@@ -10,12 +10,14 @@ namespace CodeSpirit.Infrastructure.Plugin;
 public class PluginLoader : IPluginManager
 {
     private readonly ILogger<PluginLoader> _logger;
+    private readonly IServiceCollection? _services;
     private readonly ConcurrentDictionary<string, IPlugin> _plugins = new();
     private readonly ConcurrentDictionary<string, AssemblyLoadContext> _contexts = new();
 
-    public PluginLoader(ILogger<PluginLoader> logger)
+    public PluginLoader(ILogger<PluginLoader> logger, IServiceCollection? services = null)
     {
         _logger = logger;
+        _services = services;
     }
 
     public IReadOnlyList<IPlugin> LoadedPlugins => _plugins.Values.ToList();
@@ -49,6 +51,12 @@ public class PluginLoader : IPluginManager
 
         var plugin = (IPlugin)Activator.CreateInstance(pluginType)!;
 
+        if (_services != null)
+        {
+            await plugin.InstallAsync(_services);
+            _logger.LogInformation("Plugin services installed: {PluginName}", plugin.Name);
+        }
+
         await plugin.StartAsync();
         _plugins[pluginName] = plugin;
 
@@ -63,6 +71,10 @@ public class PluginLoader : IPluginManager
             return;
 
         await plugin.StopAsync();
+
+        if (_services != null)
+            await plugin.UninstallAsync();
+
         _plugins.TryRemove(pluginName, out _);
 
         if (_contexts.TryRemove(pluginName, out var context))

@@ -172,10 +172,11 @@ Initialize jQuery behaviors after rendering new HTML:
 CodeSpirit.refresh(rootElement);
 ```
 
-Stable browser APIs:
+Stable browser APIs (`$cs` is a short alias for `CodeSpirit` when that global name is available):
 
 | API | Use case |
 |-----|----------|
+| `CodeSpirit.vm(root)` | chainable facade over a ViewModel form (see below) |
 | `CodeSpirit.input(element)` | notify MVVM that a bound widget changed |
 | `CodeSpirit.input(element, name, value)` | notify MVVM with an explicit property and value |
 | `CodeSpirit.applyState(root, state)` | apply ViewModel state to `data-cs-bind` elements |
@@ -186,6 +187,28 @@ Stable browser APIs:
 | `CodeSpirit.ui.register(name, initializer)` | register a reusable `data-ui` behavior |
 | `CodeSpirit.ui.ready(elements, name)` | mark initialized UI behavior elements |
 | `CodeSpirit.ui.init(root)` | low-level `data-ui` behavior initializer |
+
+### Chainable ViewModel API
+
+`CodeSpirit.vm(root)` returns a chain that scopes reads, writes, commands, and events to a single ViewModel form. `root` may be the form element, any descendant, or a selector string. Every mutator returns `this` so calls compose:
+
+```javascript
+const vm = CodeSpirit.vm('#weatherForm');
+
+vm.set('City', 'Oslo')          // write one field, returns this
+  .set({ City: 'Rome' })        // or write many at once
+  .on('codespirit:updated', handler)
+  .invoke('Refresh')            // POSTs state + command, returns a Promise
+   .then(result => console.log(result.state));
+
+vm.val('City');                 // getter shorthand for vm.get('City')
+vm.state();                     // serialized form snapshot
+vm.el('[name="City"]');         // scoped querySelector
+vm.all('[data-cs-bind]');       // scoped querySelectorAll as Array
+vm.refresh();                   // re-initialize widgets inside the root
+```
+
+The chain emits the same events as the imperative runtime (`codespirit:changed`, `codespirit:updated`, `codespirit:error`), so jQuery behaviors and MVVM can stay decoupled while sharing one entry point.
 
 The default template includes two separate files:
 

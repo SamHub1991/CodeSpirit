@@ -1,15 +1,15 @@
 using CodeSpirit.Core.Abstractions;
 using CodeSpirit.Core.Attributes;
-using CodeSpirit.Infrastructure.Persistence;
-using CodeSpirit.Infrastructure.Security;
+using CodeSpirit.Infrastructure.Authentication;
 using CodeSpirit.Infrastructure.Caching;
+using CodeSpirit.Infrastructure.EntityFramework;
 using CodeSpirit.Modules.UserManagement.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeSpirit.Modules.UserManagement;
 
-[DependsOn(typeof(PersistenceModule))]
-[DependsOn(typeof(SecurityModule))]
+[DependsOn(typeof(EfCoreModule))]
+[DependsOn(typeof(JwtAuthModule))]
 [DependsOn(typeof(CachingModule))]
 [ConfigurationProfile("default,development")]
 public class UserManagementModule : CodeSpiritModule

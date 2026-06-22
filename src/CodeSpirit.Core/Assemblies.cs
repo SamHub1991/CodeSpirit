@@ -9,37 +9,11 @@ namespace CodeSpirit.Core;
 public static class Assemblies
 {
     private static readonly Lazy<Assembly[]> _cached = new(FindAll);
+    private static readonly Lazy<Assembly[]> _codeSpiritCached = new(ResolveCodeSpirit);
 
-    /// <summary>
-    /// All loaded assemblies in the current AppDomain.
-    /// Cached on first access for performance.
-    /// </summary>
     public static Assembly[] All => _cached.Value;
 
-    /// <summary>
-    /// CodeSpirit framework assemblies plus the entry assembly.
-    /// This ensures the user's own [Service]/[ViewModel] classes are discovered.
-    /// </summary>
-    public static Assembly[] CodeSpirit
-    {
-        get
-        {
-            var framework = All
-                .Where(a =>
-                {
-                    var name = a.GetName().Name;
-                    return name is not null
-                        && name.StartsWith("CodeSpirit", StringComparison.OrdinalIgnoreCase)
-                        && !name.StartsWith("CodeSpirit.SourceGenerator", StringComparison.OrdinalIgnoreCase);
-                });
-
-            var entry = Assembly.GetEntryAssembly();
-            if (entry is not null)
-                framework = framework.Append(entry);
-
-            return framework.Distinct().ToArray();
-        }
-    }
+    public static Assembly[] CodeSpirit => _codeSpiritCached.Value;
 
     /// <summary>
     /// Find all types that inherit from T in the specified assemblies.
@@ -62,7 +36,6 @@ public static class Assemblies
     {
         try
         {
-            // Preload all DLLs in the application directory
             var entryDir = Path.GetDirectoryName(Assembly.GetEntryAssembly()?.Location ?? "");
             if (!string.IsNullOrEmpty(entryDir) && Directory.Exists(entryDir))
             {
@@ -74,14 +47,32 @@ public static class Assemblies
                         if (!name.StartsWith("CodeSpirit.SourceGenerator", StringComparison.OrdinalIgnoreCase))
                             Assembly.Load(name);
                     }
-                    catch { /* Skip problematic assemblies */ }
+                    catch { }
                 }
             }
         }
-        catch { /* Ignore preload errors */ }
+        catch { }
 
         return AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => !a.IsDynamic)
             .ToArray();
+    }
+
+    private static Assembly[] ResolveCodeSpirit()
+    {
+        var framework = _cached.Value
+            .Where(a =>
+            {
+                var name = a.GetName().Name;
+                return name is not null
+                    && name.StartsWith("CodeSpirit", StringComparison.OrdinalIgnoreCase)
+                    && !name.StartsWith("CodeSpirit.SourceGenerator", StringComparison.OrdinalIgnoreCase);
+            });
+
+        var entry = Assembly.GetEntryAssembly();
+        if (entry is not null)
+            framework = framework.Append(entry);
+
+        return framework.Distinct().ToArray();
     }
 }

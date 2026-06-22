@@ -8,7 +8,7 @@ using RabbitMQ.Client.Events;
 
 namespace CodeSpirit.Infrastructure.Messaging;
 
-public class RabbitMQEventBus : IEventBus, IDisposable
+public class RabbitMQEventBus : IEventBus, IAsyncDisposable
 {
     private readonly RabbitMQOptions _options;
     private readonly ILogger<RabbitMQEventBus> _logger;
@@ -92,6 +92,11 @@ public class RabbitMQEventBus : IEventBus, IDisposable
 
     public void Dispose()
     {
+        DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
         if (_disposed) return;
         _disposed = true;
 
@@ -103,8 +108,10 @@ public class RabbitMQEventBus : IEventBus, IDisposable
 
         _subscriptions.Clear();
 
-        _channel?.Dispose();
-        _connection?.Dispose();
+        if (_channel is not null)
+            await _channel.DisposeAsync();
+        if (_connection is not null)
+            await _connection.DisposeAsync();
         _connectionLock.Dispose();
 
         _logger.LogInformation("RabbitMQEventBus disposed");
@@ -177,22 +184,24 @@ public class RabbitMQEventBus : IEventBus, IDisposable
     {
         if (_channel is { IsOpen: true })
         {
-            StartConsumerOnChannelAsync(_channel, subscription).GetAwaiter().GetResult();
+            _ = StartConsumerOnChannelAsync(_channel, subscription);
             return;
         }
 
-        EnsureChannelAsync().ContinueWith(async task =>
+        _ = StartConsumerDeferredAsync(subscription);
+    }
+
+    private async Task StartConsumerDeferredAsync(SubscriptionInfo subscription)
+    {
+        try
         {
-            if (task.IsCompletedSuccessfully)
-            {
-                var channel = task.Result;
-                await StartConsumerOnChannelAsync(channel, subscription);
-            }
-            else
-            {
-                _logger.LogError(task.Exception, "Failed to connect for consumer {QueueName}", subscription.QueueName);
-            }
-        }, TaskContinuationOptions.OnlyOnFaulted);
+            var channel = await EnsureChannelAsync();
+            await StartConsumerOnChannelAsync(channel, subscription);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to connect for consumer {QueueName}", subscription.QueueName);
+        }
     }
 
     private async Task StartConsumerOnChannelAsync(IChannel channel, SubscriptionInfo subscription)

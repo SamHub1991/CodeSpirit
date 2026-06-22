@@ -25,33 +25,7 @@ public static class EfCoreStarterExtensions
 
         services.AddDbContext<TDbContext>(options =>
         {
-            switch (provider.ToLowerInvariant())
-            {
-                case "postgres":
-                case "postgresql":
-                case "npgsql":
-                    options.UseNpgsql(connectionString, npgsqlOptions =>
-                    {
-                        npgsqlOptions.MigrationsAssembly(typeof(TDbContext).Assembly.FullName);
-                    });
-                    break;
-
-                case "sqlserver":
-                case "mssql":
-                    options.UseSqlServer(connectionString, sqlOptions =>
-                    {
-                        sqlOptions.MigrationsAssembly(typeof(TDbContext).Assembly.FullName);
-                    });
-                    break;
-
-                case "sqlite":
-                default:
-                    options.UseSqlite(connectionString, sqliteOptions =>
-                    {
-                        sqliteOptions.MigrationsAssembly(typeof(TDbContext).Assembly.FullName);
-                    });
-                    break;
-            }
+            ConfigureDatabaseProvider(options, provider, connectionString, typeof(TDbContext).Assembly.FullName!);
         });
 
         services.AddScoped(typeof(IRepository<>), typeof(RepositoryBase<>));
@@ -100,15 +74,40 @@ public static class EfCoreStarterExtensions
         if (!string.IsNullOrWhiteSpace(connectionString))
             return connectionString;
 
-        return provider.ToLowerInvariant() switch
+        var normalized = NormalizeProvider(provider);
+        return normalized switch
         {
-            "postgres" or "postgresql" or "npgsql" =>
-                BuildNpgsqlConnectionString(configuration),
-            "sqlserver" or "mssql" =>
-                BuildSqlServerConnectionString(configuration),
-            _ =>
-                BuildSqliteConnectionString(configuration),
+            "PostgreSql" => BuildNpgsqlConnectionString(configuration),
+            "SqlServer" => BuildSqlServerConnectionString(configuration),
+            _ => BuildSqliteConnectionString(configuration),
         };
+    }
+
+    private static string NormalizeProvider(string provider)
+    {
+        var lower = provider.ToLowerInvariant();
+        if (lower is "postgres" or "postgresql" or "npgsql")
+            return "PostgreSql";
+        if (lower is "sqlserver" or "mssql")
+            return "SqlServer";
+        return "Sqlite";
+    }
+
+    private static void ConfigureDatabaseProvider(DbContextOptionsBuilder options, string provider, string connectionString, string migrationsAssembly)
+    {
+        var normalized = NormalizeProvider(provider);
+        switch (normalized)
+        {
+            case "PostgreSql":
+                options.UseNpgsql(connectionString, o => o.MigrationsAssembly(migrationsAssembly));
+                break;
+            case "SqlServer":
+                options.UseSqlServer(connectionString, o => o.MigrationsAssembly(migrationsAssembly));
+                break;
+            default:
+                options.UseSqlite(connectionString, o => o.MigrationsAssembly(migrationsAssembly));
+                break;
+        }
     }
 
     private static string BuildNpgsqlConnectionString(IConfiguration configuration)

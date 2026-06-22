@@ -6,5 +6,6 @@ public class CachingModule : CodeSpiritModule
 {
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
+        context.Services.AddCodeSpiritCaching();
     }
 }

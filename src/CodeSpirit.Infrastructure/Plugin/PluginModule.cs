@@ -10,7 +10,10 @@ public class PluginModule : CodeSpiritModule
 {
     public override void ConfigureServices(ServiceConfigurationContext context)
     {
-        context.Services.AddSingleton<IPluginManager, PluginLoader>();
-        context.Services.AddSingleton<PluginLoader>();
+        context.Services.AddSingleton<IPluginManager>(sp =>
+        {
+            var logger = sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<PluginLoader>>();
+            return new PluginLoader(logger, context.Services);
+        });
     }
 }

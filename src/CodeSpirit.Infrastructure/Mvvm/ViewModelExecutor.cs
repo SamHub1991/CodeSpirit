@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Mvvm;
@@ -17,7 +16,6 @@ public class ViewModelExecutor
 {
     private readonly ILogger<ViewModelExecutor> _logger;
     private readonly PageRenderer _pageRenderer;
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public ViewModelExecutor(ILogger<ViewModelExecutor> logger, PageRenderer pageRenderer)
     {
@@ -73,34 +71,28 @@ public class ViewModelExecutor
 
     private void BindQueryParams(ViewModel vm, IQueryCollection query)
     {
-        foreach (var prop in vm.GetType().GetProperties())
+        foreach (var (prop, attr) in ViewModel.GetMetadata(vm.GetType()).FromQueryProps)
         {
-            var attr = prop.GetCustomAttribute<FromQueryAttribute>();
-            if (attr is null) continue;
-
             var name = attr.Name ?? prop.Name;
             if (query.TryGetValue(name, out var value) && value.Count > 0)
             {
                 var strValue = value[0];
                 if (strValue is not null)
-                    prop.SetValue(vm, ConvertValue(strValue, prop.PropertyType));
+                    prop.SetValue(vm, ValueConverter.ConvertValue(strValue, prop.PropertyType));
             }
         }
     }
 
     private void BindRouteParams(ViewModel vm, RouteValueDictionary route)
     {
-        foreach (var prop in vm.GetType().GetProperties())
+        foreach (var (prop, attr) in ViewModel.GetMetadata(vm.GetType()).FromRouteProps)
         {
-            var attr = prop.GetCustomAttribute<FromRouteAttribute>();
-            if (attr is null) continue;
-
             var name = attr.Name ?? prop.Name;
             if (route.TryGetValue(name, out var value) && value is not null)
             {
                 var strValue = value.ToString();
                 if (strValue is not null)
-                    prop.SetValue(vm, ConvertValue(strValue, prop.PropertyType));
+                    prop.SetValue(vm, ValueConverter.ConvertValue(strValue, prop.PropertyType));
             }
         }
     }
@@ -110,15 +102,14 @@ public class ViewModelExecutor
         if (payload.Count == 0)
             return;
 
-        foreach (var prop in vm.GetType().GetProperties())
+        foreach (var (prop, attr) in ViewModel.GetMetadata(vm.GetType()).BindWithMeta)
         {
-            var attr = prop.GetCustomAttribute<BindAttribute>();
-            if (attr is null || !prop.CanWrite || attr.Direction == BindDirection.OneWay)
+            if (!prop.CanWrite || attr.Direction == BindDirection.OneWay)
                 continue;
 
             var name = attr.Name ?? prop.Name;
             if (payload.TryGetValue(name, out var value))
-                prop.SetValue(vm, ConvertValue(value, prop.PropertyType));
+                prop.SetValue(vm, ValueConverter.ConvertValue(value, prop.PropertyType));
         }
     }
 
@@ -127,13 +118,10 @@ public class ViewModelExecutor
         if (string.IsNullOrWhiteSpace(commandName))
             return;
 
-        var command = vm.GetType()
-            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            .Select(method => new { Method = method, Attribute = method.GetCustomAttribute<CommandAttribute>() })
-            .FirstOrDefault(x => x.Attribute is not null &&
-                string.Equals(x.Attribute.Name ?? x.Method.Name, commandName, StringComparison.OrdinalIgnoreCase));
+        var command = ViewModel.GetMetadata(vm.GetType()).Commands
+            .FirstOrDefault(x => string.Equals(x.Attribute.Name ?? x.Method.Name, commandName, StringComparison.OrdinalIgnoreCase));
 
-        if (command is null)
+        if (command == default)
             throw new InvalidOperationException($"Command '{commandName}' was not found on ViewModel '{vm.GetType().Name}'.");
 
         if (command.Method.GetParameters().Length > 0)
@@ -146,11 +134,11 @@ public class ViewModelExecutor
 
     private static string? GetCommandName(HttpContext ctx, Dictionary<string, object?> payload)
     {
-        if (payload.TryGetValue("__command", out var command) || payload.TryGetValue("command", out command))
+        if (payload.TryGetValue(CodeSpiritDefaults.CommandParamKey, out var command) || payload.TryGetValue(CodeSpiritDefaults.CommandAltParamKey, out command))
             return command?.ToString();
 
-        if (ctx.Request.Query.TryGetValue("__command", out var queryCommand) ||
-            ctx.Request.Query.TryGetValue("command", out queryCommand))
+        if (ctx.Request.Query.TryGetValue(CodeSpiritDefaults.CommandParamKey, out var queryCommand) ||
+            ctx.Request.Query.TryGetValue(CodeSpiritDefaults.CommandAltParamKey, out queryCommand))
             return queryCommand.FirstOrDefault();
 
         return null;
@@ -170,7 +158,7 @@ public class ViewModelExecutor
         if (request.ContentLength == 0)
             return [];
 
-        var payload = await JsonSerializer.DeserializeAsync<Dictionary<string, JsonElement>>(request.Body, JsonOptions);
+        var payload = await JsonSerializer.DeserializeAsync<Dictionary<string, JsonElement>>(request.Body, CodeSpiritDefaults.JsonOptions);
         if (payload is null)
             return [];
 
@@ -198,41 +186,16 @@ public class ViewModelExecutor
         };
     }
 
-    private static object? ConvertValue(object? value, Type target)
-    {
-        if (value is null)
-            return null;
-
-        var underlying = Nullable.GetUnderlyingType(target) ?? target;
-        if (underlying.IsInstanceOfType(value))
-            return value;
-
-        var stringValue = value.ToString();
-        return underlying switch
-        {
-            Type t when t == typeof(string) => stringValue,
-            Type t when t == typeof(int) && int.TryParse(stringValue, out var i) => i,
-            Type t when t == typeof(long) && long.TryParse(stringValue, out var l) => l,
-            Type t when t == typeof(decimal) && decimal.TryParse(stringValue, out var d) => d,
-            Type t when t == typeof(double) && double.TryParse(stringValue, out var dbl) => dbl,
-            Type t when t == typeof(Guid) && Guid.TryParse(stringValue, out var g) => g,
-            Type t when t == typeof(DateTime) && DateTime.TryParse(stringValue, out var dt) => dt,
-            Type t when t == typeof(bool) && bool.TryParse(stringValue, out var b) => b,
-            Type t when t.IsEnum => Enum.Parse(t, stringValue!, ignoreCase: true),
-            _ => Convert.ChangeType(value, underlying)
-        };
-    }
-
     private static async Task WriteJson(HttpContext ctx, object data)
     {
-        ctx.Response.ContentType = "application/json; charset=utf-8";
-        await JsonSerializer.SerializeAsync(ctx.Response.Body, data, JsonOptions);
+        ctx.Response.ContentType = CodeSpiritDefaults.ContentTypeJsonUtf8;
+        await JsonSerializer.SerializeAsync(ctx.Response.Body, data, CodeSpiritDefaults.JsonOptions);
     }
 
     private static async Task WriteError(HttpContext ctx, int code, string msg)
     {
         ctx.Response.StatusCode = code;
-        ctx.Response.ContentType = "application/json; charset=utf-8";
+        ctx.Response.ContentType = CodeSpiritDefaults.ContentTypeJsonUtf8;
         await JsonSerializer.SerializeAsync(ctx.Response.Body, new { error = msg });
     }
 }

@@ -1,15 +1,60 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using Microsoft.AspNetCore.Http;
 using CodeSpirit.Core.Mvvm;
 
 namespace CodeSpirit.Core;
 
-/// <summary>
-/// Base class for MVVM ViewModels.
-/// Simple lifecycle: Init -> Load -> Render
-/// </summary>
 public abstract class ViewModel
 {
+    private static readonly ConcurrentDictionary<Type, VmMetadata> _metaCache = new();
+
+    public sealed class VmMetadata
+    {
+        public List<PropertyInfo> BindProps { get; } = new();
+        public List<(PropertyInfo Property, BindAttribute Attribute)> BindWithMeta { get; } = new();
+        public List<(PropertyInfo Property, FromQueryAttribute Attribute)> FromQueryProps { get; } = new();
+        public List<(PropertyInfo Property, FromRouteAttribute Attribute)> FromRouteProps { get; } = new();
+        public List<(MethodInfo Method, CommandAttribute Attribute)> Commands { get; } = new();
+    }
+
+    public static VmMetadata GetMetadata(Type vmType) =>
+        _metaCache.GetOrAdd(vmType, key =>
+        {
+            var meta = new VmMetadata();
+            foreach (var prop in key.GetProperties())
+            {
+                if (prop.GetCustomAttribute<BindAttribute>() is { } ba)
+                {
+                    meta.BindProps.Add(prop);
+                    meta.BindWithMeta.Add((prop, ba));
+                }
+                if (prop.GetCustomAttribute<FromQueryAttribute>() is { } fq)
+                    meta.FromQueryProps.Add((prop, fq));
+                if (prop.GetCustomAttribute<FromRouteAttribute>() is { } fr)
+                    meta.FromRouteProps.Add((prop, fr));
+            }
+            foreach (var method in key.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+            {
+                if (method.GetCustomAttribute<CommandAttribute>() is { } cmd)
+                    meta.Commands.Add((method, cmd));
+            }
+            return meta;
+        });
+
+    public static string GetRoute(Type viewModelType)
+    {
+        var attr = viewModelType.GetCustomAttribute<Page.PageDirectiveAttribute>();
+        if (!string.IsNullOrWhiteSpace(attr?.Route))
+            return attr.Route;
+
+        var name = viewModelType.Name;
+        if (name.EndsWith("ViewModel", StringComparison.OrdinalIgnoreCase))
+            name = name[..^"ViewModel".Length];
+
+        return "/" + string.Concat(name.Select((c, i) =>
+            i > 0 && char.IsUpper(c) ? "-" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));
+    }
     /// <summary>
     /// HTTP context for the current request.
     /// </summary>
@@ -57,36 +102,24 @@ public abstract class ViewModel
     public Dictionary<string, object?> ToState()
     {
         var state = new Dictionary<string, object?>();
-        foreach (var prop in GetType().GetProperties())
-        {
-            if (prop.GetCustomAttribute<BindAttribute>() is not null)
-                state[prop.Name] = prop.GetValue(this);
-        }
+        foreach (var prop in GetMetadata(GetType()).BindProps)
+            state[prop.Name] = prop.GetValue(this);
         return state;
     }
 
-    /// <summary>
-    /// Returns ViewModel state plus binding and command metadata for page runtimes.
-    /// </summary>
     public ViewModelResponse ToResponse()
     {
+        var meta = GetMetadata(GetType());
         var bindings = new Dictionary<string, BindingDescriptor>();
 
-        foreach (var prop in GetType().GetProperties())
+        foreach (var (prop, attr) in meta.BindWithMeta)
         {
-            var attr = prop.GetCustomAttribute<BindAttribute>();
-            if (attr is null)
-                continue;
-
             var name = attr.Name ?? prop.Name;
             bindings[name] = new BindingDescriptor(name, prop.Name, attr.Direction.ToString());
         }
 
-        var commands = GetType()
-            .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-            .Select(method => new { Method = method, Attribute = method.GetCustomAttribute<CommandAttribute>() })
-            .Where(x => x.Attribute is not null)
-            .Select(x => x.Attribute!.Name ?? x.Method.Name)
+        var commands = meta.Commands
+            .Select(x => x.Attribute.Name ?? x.Method.Name)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToArray();

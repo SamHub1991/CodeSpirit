@@ -10,6 +10,7 @@ namespace CodeSpirit.Core.Attributes;
 /// public class RedisModule : CodeSpiritModule { ... }
 /// </code>
 /// </remarks>
+[Obsolete("Use RequireConfigAttribute instead")]
 [AttributeUsage(AttributeTargets.Class)]
 public class ConditionalOnPropertyAttribute : Attribute
 {

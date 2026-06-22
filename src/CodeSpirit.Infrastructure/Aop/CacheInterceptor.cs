@@ -6,10 +6,12 @@ using CodeSpirit.Core.Attributes;
 
 namespace CodeSpirit.Infrastructure.Aop;
 
-public class CacheInterceptor : IInterceptor
+public class CacheInterceptor : AsyncInterceptorBase
 {
     private readonly IMemoryCache _cache;
     private readonly ILogger<CacheInterceptor> _logger;
+
+    private static readonly object CachedTaskMarker = new();
 
     public CacheInterceptor(IMemoryCache cache, ILogger<CacheInterceptor> logger)
     {
@@ -17,35 +19,72 @@ public class CacheInterceptor : IInterceptor
         _logger = logger;
     }
 
-    public void Intercept(IInvocation invocation)
-    {
-        var attr = invocation.Method.GetCustomAttribute<CacheableAttribute>();
-        if (attr == null)
-        {
-            invocation.Proceed();
-            return;
-        }
+    protected override bool ShouldIntercept(IInvocation invocation) =>
+        invocation.Method.GetCustomAttribute<CacheableAttribute>() != null;
 
+    protected override void ExecuteSync(IInvocation invocation)
+    {
+        var attr = invocation.Method.GetCustomAttribute<CacheableAttribute>()!;
         var cacheKey = BuildCacheKey(attr, invocation);
 
-        if (_cache.TryGetValue(cacheKey, out object? cachedResult))
+        if (_cache.TryGetValue(cacheKey, out object? cached))
         {
-            _logger.LogInformation("Cache hit for key: {CacheKey}", cacheKey);
-            invocation.ReturnValue = cachedResult;
+            _logger.LogInformation("Cache hit: {CacheKey}", cacheKey);
+            invocation.ReturnValue = cached;
             return;
         }
 
-        _logger.LogInformation("Cache miss for key: {CacheKey}", cacheKey);
+        _logger.LogInformation("Cache miss: {CacheKey}", cacheKey);
         invocation.Proceed();
 
         if (invocation.ReturnValue != null)
         {
-            var options = new MemoryCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(attr.ExpirationSeconds)
-            };
-            _cache.Set(cacheKey, invocation.ReturnValue, options);
+            _cache.Set(cacheKey, invocation.ReturnValue, TimeSpan.FromSeconds(attr.ExpirationSeconds));
+            _logger.LogInformation("Cached: {CacheKey}", cacheKey);
         }
+    }
+
+    protected override async Task ExecuteAsync(IInvocation invocation)
+    {
+        var attr = invocation.Method.GetCustomAttribute<CacheableAttribute>()!;
+        var cacheKey = BuildCacheKey(attr, invocation);
+
+        if (_cache.TryGetValue(cacheKey, out _))
+        {
+            _logger.LogInformation("Cache hit: {CacheKey}", cacheKey);
+            invocation.ReturnValue = Task.CompletedTask;
+            return;
+        }
+
+        _logger.LogInformation("Cache miss: {CacheKey}", cacheKey);
+        invocation.Proceed();
+        await (Task)invocation.ReturnValue!;
+        _cache.Set(cacheKey, CachedTaskMarker, TimeSpan.FromSeconds(attr.ExpirationSeconds));
+        _logger.LogInformation("Cached: {CacheKey}", cacheKey);
+    }
+
+    protected override async Task<T> ExecuteAsyncWithResult<T>(IInvocation invocation)
+    {
+        var attr = invocation.Method.GetCustomAttribute<CacheableAttribute>()!;
+        var cacheKey = BuildCacheKey(attr, invocation);
+
+        if (_cache.TryGetValue(cacheKey, out object? cached))
+        {
+            _logger.LogInformation("Cache hit: {CacheKey}", cacheKey);
+            return (T)cached!;
+        }
+
+        _logger.LogInformation("Cache miss: {CacheKey}", cacheKey);
+        invocation.Proceed();
+        var result = await (Task<T>)invocation.ReturnValue!;
+
+        if (result != null)
+        {
+            _cache.Set(cacheKey, result, TimeSpan.FromSeconds(attr.ExpirationSeconds));
+            _logger.LogInformation("Cached: {CacheKey}", cacheKey);
+        }
+
+        return result;
     }
 
     private static string BuildCacheKey(CacheableAttribute attr, IInvocation invocation)

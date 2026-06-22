@@ -1,8 +1,5 @@
 <%@ Page %>
 
-<!--
-  Library dashboard powered by CodeSpirit MVVM
--->
 <cs:Content PlaceHolder="Head">
   <link rel="stylesheet" href="/css/pages/home.css" />
 </cs:Content>
@@ -29,37 +26,41 @@
     </section>
 
     <section class="screen-grid">
-      <article class="panel wide-panel">
-        <div class="panel-title">
-          <h2>Popular Books</h2>
-          <span>Monthly activity</span>
-        </div>
-        <cs:Repeater Items="{Binding PopularBooks}">
-          <div class="book-row">
-            <div>
-              <strong>{Binding Title}</strong>
-              <span>{Binding Author} · {Binding Category}</span>
-            </div>
-            <b>{Binding MonthlyBorrows}</b>
+      <cs:Conditional Visible="{Binding PopularBooks}">
+        <article class="panel wide-panel">
+          <div class="panel-title">
+            <h2>Popular Books</h2>
+            <span>Monthly activity</span>
           </div>
-        </cs:Repeater>
-      </article>
+          <cs:Repeater Items="{Binding PopularBooks}">
+            <div class="book-row">
+              <div>
+                <strong>{Binding Title}</strong>
+                <span>{Binding Author} . {Binding Category}</span>
+              </div>
+              <b>{Binding MonthlyBorrows}</b>
+            </div>
+          </cs:Repeater>
+        </article>
+      </cs:Conditional>
 
-      <article class="panel">
-        <div class="panel-title">
-          <h2>Category Flow</h2>
-          <span>Available copies vs borrowed titles</span>
-        </div>
-        <cs:Repeater Items="{Binding CategoryStats}">
-          <div class="category-row">
-            <div>
-              <strong>{Binding Name}</strong>
-              <span>{Binding Total} books</span>
-            </div>
-            <em>{Binding Available}/{Binding Borrowed}</em>
+      <cs:Conditional Visible="{Binding CategoryStats}">
+        <article class="panel">
+          <div class="panel-title">
+            <h2>Category Flow</h2>
+            <span>Available copies vs borrowed titles</span>
           </div>
-        </cs:Repeater>
-      </article>
+          <cs:Repeater Items="{Binding CategoryStats}">
+            <div class="category-row">
+              <div>
+                <strong>{Binding Name}</strong>
+                <span>{Binding Total} books</span>
+              </div>
+              <em>{Binding Available}/{Binding Borrowed}</em>
+            </div>
+          </cs:Repeater>
+        </article>
+      </cs:Conditional>
 
       <article class="panel">
         <div class="panel-title">
@@ -75,39 +76,41 @@
       </article>
     </section>
 
-    <section class="screen-grid compact-grid">
-      <article class="panel">
-        <div class="panel-title">
-          <h2>Active Loans</h2>
-          <span>Borrowing and due dates</span>
-        </div>
-        <cs:Repeater Items="{Binding ActiveLoans}">
-          <div class="loan-row status-{Binding Status}">
-            <div>
-              <strong>{Binding BookTitle}</strong>
-              <span>{Binding ReaderName} · due {Binding DueAt}</span>
-            </div>
-            <em>{Binding Status}</em>
+    <cs:Conditional Visible="{Binding ActiveLoans}">
+      <section class="screen-grid compact-grid">
+        <article class="panel">
+          <div class="panel-title">
+            <h2>Active Loans</h2>
+            <span>Borrowing and due dates</span>
           </div>
-        </cs:Repeater>
-      </article>
+          <cs:Repeater Items="{Binding ActiveLoans}">
+            <div class="loan-row status-{Binding Status}">
+              <div>
+                <strong>{Binding BookTitle}</strong>
+                <span>{Binding ReaderName} . due {Binding DueAt}</span>
+              </div>
+              <em>{Binding Status}</em>
+            </div>
+          </cs:Repeater>
+        </article>
 
-      <article class="panel">
-        <div class="panel-title">
-          <h2>Reservations</h2>
-          <span>Waiting readers</span>
-        </div>
-        <cs:Repeater Items="{Binding Reservations}">
-          <div class="reservation-row">
-            <div>
-              <strong>{Binding BookTitle}</strong>
-              <span>{Binding ReaderName} · {Binding CreatedAt}</span>
-            </div>
-            <em>{Binding Status}</em>
+        <article class="panel">
+          <div class="panel-title">
+            <h2>Reservations</h2>
+            <span>Waiting readers</span>
           </div>
-        </cs:Repeater>
-      </article>
-    </section>
+          <cs:Repeater Items="{Binding Reservations}">
+            <div class="reservation-row">
+              <div>
+                <strong>{Binding BookTitle}</strong>
+                <span>{Binding ReaderName} . {Binding CreatedAt}</span>
+              </div>
+              <em>{Binding Status}</em>
+            </div>
+          </cs:Repeater>
+        </article>
+      </section>
+    </cs:Conditional>
 
     <section class="dashboard quick-links">
       <cs:Repeater Items="{Binding Cards}">

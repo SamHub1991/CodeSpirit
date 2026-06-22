@@ -19,15 +19,19 @@ namespace CodeSpirit.Infrastructure.AutoConfiguration;
 
 public static class CodeSpiritAutoConfiguration
 {
+    private static List<Assembly>? _cachedAssemblies;
+
     public static WebApplicationBuilder AddCodeSpirit(this WebApplicationBuilder builder)
     {
-        var assemblies = DiscoverAssemblies();
+        var assemblies = _cachedAssemblies = DiscoverAssemblies();
 
         RegisterGeneratedServices(builder.Services, builder.Configuration, assemblies);
 
-        RegisterAutoServices(builder.Services, assemblies);
+        RegisterAutoServices(builder.Services, builder.Configuration, assemblies);
 
-        LoadModules(builder.Services, builder.Configuration, assemblies);
+        RunModules(
+            builder.Services, builder.Configuration, assemblies,
+            (module, services, config) => module.ConfigureServices(new ServiceConfigurationContext(services, config)));
 
         RegisterControllers(builder.Services, assemblies);
 
@@ -49,7 +53,11 @@ public static class CodeSpiritAutoConfiguration
 
     public static WebApplication UseCodeSpirit(this WebApplication app)
     {
-        LoadAndConfigureModules(app);
+        var assemblies = _cachedAssemblies ?? DiscoverAssemblies();
+
+        RunModules(
+            app.Services, app.Configuration, assemblies,
+            (module, _, _) => module.Configure(app.Services));
 
         app.UseMiddleware<CodeSpiritMiddleware>();
 
@@ -72,21 +80,7 @@ public static class CodeSpiritAutoConfiguration
     private static bool HasViewModelRoute(string route)
     {
         return Assemblies.Find<ViewModel>()
-            .Any(vm => string.Equals(GetViewModelRoute(vm), route, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static string GetViewModelRoute(Type viewModelType)
-    {
-        var attr = viewModelType.GetCustomAttribute<CodeSpirit.Core.Page.PageDirectiveAttribute>();
-        if (!string.IsNullOrWhiteSpace(attr?.Route))
-            return attr.Route;
-
-        var name = viewModelType.Name;
-        if (name.EndsWith("ViewModel", StringComparison.OrdinalIgnoreCase))
-            name = name[..^"ViewModel".Length];
-
-        return "/" + string.Concat(name.Select((c, i) =>
-            i > 0 && char.IsUpper(c) ? "-" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));
+            .Any(vm => string.Equals(ViewModel.GetRoute(vm), route, StringComparison.OrdinalIgnoreCase));
     }
 
     private static void RegisterControllers(IServiceCollection services, List<Assembly> assemblies)
@@ -99,29 +93,7 @@ public static class CodeSpiritAutoConfiguration
         }
     }
 
-    private static List<Assembly> DiscoverAssemblies()
-    {
-        PreloadCodeSpiritAssemblies();
-        return Assemblies.CodeSpirit.ToList();
-    }
-
-    private static void PreloadCodeSpiritAssemblies()
-    {
-        try
-        {
-            var entry = Assembly.GetEntryAssembly();
-            var entryDir = Path.GetDirectoryName(entry?.Location);
-            if (string.IsNullOrEmpty(entryDir) || !Directory.Exists(entryDir)) return;
-
-            foreach (var dll in Directory.EnumerateFiles(entryDir, "CodeSpirit*.dll", SearchOption.TopDirectoryOnly))
-            {
-                var name = Path.GetFileNameWithoutExtension(dll);
-                try { Assembly.Load(name); }
-                catch { }
-            }
-        }
-        catch { }
-    }
+    private static List<Assembly> DiscoverAssemblies() => Assemblies.CodeSpirit.ToList();
 
     private static void RegisterGeneratedServices(
         IServiceCollection services, IConfiguration configuration, List<Assembly> assemblies)
@@ -143,19 +115,39 @@ public static class CodeSpiritAutoConfiguration
             return;
     }
 
-    private static void RegisterAutoServices(IServiceCollection services, List<Assembly> assemblies)
+    private static void RegisterAutoServices(IServiceCollection services, IConfiguration configuration, List<Assembly> assemblies)
     {
         var registrar = new AutoServiceRegistrar();
         foreach (var assembly in assemblies)
         {
-            registrar.RegisterServices(services, assembly);
+            registrar.RegisterServices(services, assembly, configuration);
         }
     }
 
-    private static void LoadModules(
-        IServiceCollection services, IConfiguration configuration, List<Assembly> assemblies)
+    private static void RunModules(
+        IServiceCollection services,
+        IConfiguration configuration,
+        List<Assembly> assemblies,
+        Action<ICodeSpiritModule, IServiceCollection, IConfiguration> configureAction)
     {
-        var activeProfile = configuration.GetValue<string>("CodeSpirit:Profile") ?? "default";
+        RunModulesCore(assemblies, configuration, module => configureAction(module, services, configuration));
+    }
+
+    private static void RunModules(
+        IServiceProvider serviceProvider,
+        IConfiguration configuration,
+        List<Assembly> assemblies,
+        Action<ICodeSpiritModule, IServiceProvider, IConfiguration> configureAction)
+    {
+        RunModulesCore(assemblies, configuration, module => configureAction(module, serviceProvider, configuration));
+    }
+
+    private static void RunModulesCore(
+        List<Assembly> assemblies,
+        IConfiguration configuration,
+        Action<ICodeSpiritModule> configure)
+    {
+        var activeProfile = configuration.GetValue<string>(CodeSpiritDefaults.ProfileKey) ?? CodeSpiritDefaults.ProfileDefault;
         var moduleLoader = new ModuleLoader();
 
         foreach (var assembly in assemblies)
@@ -167,10 +159,12 @@ public static class CodeSpiritAutoConfiguration
                 if (!IsProfileActive(moduleType, activeProfile))
                     continue;
 
+                if (!IsClassConditionSatisfied(moduleType))
+                    continue;
+
                 if (Activator.CreateInstance(moduleType) is ICodeSpiritModule moduleInstance)
                 {
-                    var context = new ServiceConfigurationContext(services, configuration);
-                    moduleInstance.ConfigureServices(context);
+                    configure(moduleInstance);
                 }
             }
         }
@@ -186,27 +180,19 @@ public static class CodeSpiritAutoConfiguration
         return profiles.Contains(activeProfile, StringComparer.OrdinalIgnoreCase);
     }
 
-    private static void LoadAndConfigureModules(WebApplication app)
+    private static bool IsClassConditionSatisfied(Type moduleType)
     {
-        var configuration = app.Services.GetRequiredService<IConfiguration>();
-        var activeProfile = configuration.GetValue<string>("CodeSpirit:Profile") ?? "default";
-        var moduleLoader = new ModuleLoader();
-        var assemblies = DiscoverAssemblies();
+        var conditional = moduleType.GetCustomAttribute<ConditionalOnClassAttribute>();
+        if (conditional is null)
+            return true;
 
-        foreach (var assembly in assemblies)
-        {
-            var moduleTypes = moduleLoader.ResolveModuleTopology(assembly);
-            foreach (var moduleType in moduleTypes)
-            {
-                if (!IsProfileActive(moduleType, activeProfile))
-                    continue;
+        if (conditional.ClassType is { } classType)
+            return Assemblies.All.Any(a => a.GetType(classType.FullName!) is not null);
 
-                if (Activator.CreateInstance(moduleType) is ICodeSpiritModule moduleInstance)
-                {
-                    moduleInstance.Configure(app.Services);
-                }
-            }
-        }
+        if (conditional.ClassName is { } className)
+            return Assemblies.All.Any(a => a.GetType(className) is not null);
+
+        return true;
     }
 }
 
@@ -214,7 +200,7 @@ public class CodeSpiritOptions
 {
     public string Name { get; set; } = "CodeSpirit Application";
     public string Version { get; set; } = "1.0.0";
-    public string Profile { get; set; } = "default";
+    public string Profile { get; set; } = CodeSpiritDefaults.ProfileDefault;
 }
 
 public class CodeSpiritMiddleware
@@ -228,7 +214,7 @@ public class CodeSpiritMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
-        context.Response.Headers["X-Powered-By"] = "CodeSpirit";
+        context.Response.Headers[CodeSpiritDefaults.PoweredByHeader] = CodeSpiritDefaults.ProductName;
         await _next(context);
     }
 }

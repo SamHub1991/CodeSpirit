@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="vsixmanifest" ContentType="text/xml" />
+  <Default Extension="pkgdef" ContentType="text/plain" />
+  <Default Extension="snippet" ContentType="text/xml" />
+  <Default Extension="png" ContentType="image/png" />
+  <Default Extension="vstemplate" ContentType="text/xml" />
+  <Default Extension="cs" ContentType="text/plain" />
+  <Default Extension="csproj" ContentType="text/plain" />
+  <Default Extension="aspx" ContentType="text/plain" />
+  <Default Extension="ascx" ContentType="text/plain" />
+  <Default Extension="css" ContentType="text/css" />
+  <Default Extension="js" ContentType="application/javascript" />
+  <Default Extension="json" ContentType="application/json" />
+  <Default Extension="config" ContentType="text/plain" />
+  <Default Extension="md" ContentType="text/plain" />
+  <Default Extension="xml" ContentType="text/xml" />
+  <Default Extension="txt" ContentType="text/plain" />
+</Types>

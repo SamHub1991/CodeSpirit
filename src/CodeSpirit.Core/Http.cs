@@ -26,7 +26,6 @@ public interface IHttp
 public class CodeSpiritHttp : IHttp
 {
     private readonly HttpClient _client;
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public CodeSpiritHttp(HttpClient client) => _client = client;
 
@@ -62,14 +61,14 @@ public class CodeSpiritHttp : IHttp
     private static StringContent? Serialize(object? body)
     {
         if (body is null) return null;
-        var json = JsonSerializer.Serialize(body, JsonOptions);
-        return new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+        var json = JsonSerializer.Serialize(body, CodeSpiritDefaults.JsonOptions);
+        return new StringContent(json, System.Text.Encoding.UTF8, CodeSpiritDefaults.ContentTypeJson);
     }
 
     private static async Task<T?> Deserialize<T>(HttpResponseMessage response, CancellationToken ct)
     {
         response.EnsureSuccessStatusCode();
         var stream = await response.Content.ReadAsStreamAsync(ct);
-        return await JsonSerializer.DeserializeAsync<T>(stream, JsonOptions, ct);
+        return await JsonSerializer.DeserializeAsync<T>(stream, CodeSpiritDefaults.JsonOptions, ct);
     }
 }

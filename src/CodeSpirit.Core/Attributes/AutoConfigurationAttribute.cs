@@ -17,10 +17,12 @@ public class AutoConfigurationAttribute : Attribute
     /// <summary>
     /// Optional bean type that must exist for this configuration to activate.
     /// </summary>
+    [Obsolete("Unused property")]
     public Type? ConditionalOnBean { get; set; }
 
     /// <summary>
     /// Optional class name that must be available for this configuration to activate.
     /// </summary>
+    [Obsolete("Use ConditionalOnClassAttribute instead")]
     public string? ConditionalOnClass { get; set; }
 }

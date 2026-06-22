@@ -32,75 +32,77 @@
       <cs:Button Command="Search">Apply Filter</cs:Button>
     </cs:Form>
 
-    <cs:Region Name="admin-notices" Tag="section" class="notice-row">
-      <cs:Repeater Items="{Binding Notices}">
-        <div class="notice notice-{Binding Tone}">{Binding Text}</div>
-      </cs:Repeater>
-    </cs:Region>
+    <cs:Conditional Visible="{Binding Notices}">
+      <cs:Region Name="admin-notices" Tag="section" class="notice-row">
+        <cs:Repeater Items="{Binding Notices}">
+          <div class="notice notice-{Binding Tone}">{Binding Text}</div>
+        </cs:Repeater>
+      </cs:Region>
+    </cs:Conditional>
 
     <section class="admin-grid admin-grid-wide">
-      <form class="admin-card" method="post" data-cs-vm>
+      <cs:Form class="admin-card">
         <h2>Book Catalog</h2>
         <p>Add a book, or provide Book Id to update/archive/restore existing records.</p>
-        <label>Book Id<input name="BookId" value="{Binding BookId}" data-cs-bind="BookId" /></label>
-        <label>ISBN<input name="BookIsbn" value="{Binding BookIsbn}" data-cs-bind="BookIsbn" /></label>
-        <label>Title<input name="BookTitle" value="{Binding BookTitle}" data-cs-bind="BookTitle" /></label>
-        <label>Author<input name="BookAuthor" value="{Binding BookAuthor}" data-cs-bind="BookAuthor" /></label>
-        <label>Category<input name="BookCategory" value="{Binding BookCategory}" data-cs-bind="BookCategory" /></label>
-        <label>Location<input name="BookLocation" value="{Binding BookLocation}" data-cs-bind="BookLocation" /></label>
-        <label>Year<input name="BookPublishedYear" value="{Binding BookPublishedYear}" data-cs-bind="BookPublishedYear" /></label>
-        <label>Copies<input name="BookCopyCount" value="{Binding BookCopyCount}" data-cs-bind="BookCopyCount" /></label>
+        <cs:Field Name="BookId" Label="Book Id" />
+        <cs:Field Name="BookIsbn" Label="ISBN" />
+        <cs:Field Name="BookTitle" Label="Title" />
+        <cs:Field Name="BookAuthor" Label="Author" />
+        <cs:Field Name="BookCategory" Label="Category" />
+        <cs:Field Name="BookLocation" Label="Location" />
+        <cs:Field Name="BookPublishedYear" Label="Year" />
+        <cs:Field Name="BookCopyCount" Label="Copies" />
         <div class="button-row wrap">
-          <button type="submit" data-cs-command="AddBook">Add</button>
-          <button type="submit" data-cs-command="UpdateBook">Update</button>
-          <button type="submit" data-cs-command="ArchiveBook">Archive</button>
-          <button type="submit" data-cs-command="RestoreBook">Restore</button>
+          <cs:Button Command="AddBook">Add</cs:Button>
+          <cs:Button Command="UpdateBook">Update</cs:Button>
+          <cs:Button Command="ArchiveBook">Archive</cs:Button>
+          <cs:Button Command="RestoreBook">Restore</cs:Button>
         </div>
-      </form>
+      </cs:Form>
 
-      <form class="admin-card" method="post" data-cs-vm>
+      <cs:Form class="admin-card">
         <h2>Readers</h2>
         <p>Register readers, update profiles, and control active/suspended status.</p>
-        <label>Reader Id<input name="ReaderId" value="{Binding ReaderId}" data-cs-bind="ReaderId" /></label>
-        <label>Name<input name="ReaderName" value="{Binding ReaderName}" data-cs-bind="ReaderName" /></label>
-        <label>Email<input name="ReaderEmail" value="{Binding ReaderEmail}" data-cs-bind="ReaderEmail" /></label>
-        <label>Phone<input name="ReaderPhone" value="{Binding ReaderPhone}" data-cs-bind="ReaderPhone" /></label>
-        <label>Level<input name="ReaderLevel" value="{Binding ReaderLevel}" data-cs-bind="ReaderLevel" placeholder="Standard, Premium, Student" /></label>
+        <cs:Field Name="ReaderId" Label="Reader Id" />
+        <cs:Field Name="ReaderName" Label="Name" />
+        <cs:Field Name="ReaderEmail" Label="Email" />
+        <cs:Field Name="ReaderPhone" Label="Phone" />
+        <cs:Field Name="ReaderLevel" Label="Level" Placeholder="Standard, Premium, Student" />
         <div class="button-row wrap">
-          <button type="submit" data-cs-command="RegisterReader">Register</button>
-          <button type="submit" data-cs-command="UpdateReader">Update</button>
-          <button type="submit" data-cs-command="SuspendReader">Suspend</button>
-          <button type="submit" data-cs-command="ActivateReader">Activate</button>
+          <cs:Button Command="RegisterReader">Register</cs:Button>
+          <cs:Button Command="UpdateReader">Update</cs:Button>
+          <cs:Button Command="SuspendReader">Suspend</cs:Button>
+          <cs:Button Command="ActivateReader">Activate</cs:Button>
         </div>
-      </form>
+      </cs:Form>
 
-      <form class="admin-card" method="post" data-cs-vm>
+      <cs:Form class="admin-card">
         <h2>Circulation</h2>
         <p>Borrow by Book Id and Reader Id. Return or renew by Loan Id.</p>
-        <label>Book Id<input name="BookId" value="{Binding BookId}" data-cs-bind="BookId" /></label>
-        <label>Reader Id<input name="LoanReaderId" value="{Binding LoanReaderId}" data-cs-bind="LoanReaderId" /></label>
-        <label>Loan Id<input name="LoanId" value="{Binding LoanId}" data-cs-bind="LoanId" /></label>
+        <cs:Field Name="BookId" Label="Book Id" />
+        <cs:Field Name="LoanReaderId" Label="Reader Id" />
+        <cs:Field Name="LoanId" Label="Loan Id" />
         <div class="button-row wrap">
-          <button type="submit" data-cs-command="BorrowBook">Borrow</button>
-          <button type="submit" data-cs-command="ReturnBook">Return</button>
-          <button type="submit" data-cs-command="RenewLoan">Renew</button>
+          <cs:Button Command="BorrowBook">Borrow</cs:Button>
+          <cs:Button Command="ReturnBook">Return</cs:Button>
+          <cs:Button Command="RenewLoan">Renew</cs:Button>
         </div>
-      </form>
+      </cs:Form>
 
-      <form class="admin-card" method="post" data-cs-vm>
+      <cs:Form class="admin-card">
         <h2>Reservations and Fines</h2>
         <p>Queue reservations, cancel waiting reservations, and collect reader fines.</p>
-        <label>Book Id<input name="BookId" value="{Binding BookId}" data-cs-bind="BookId" /></label>
-        <label>Reader Id<input name="ReservationReaderId" value="{Binding ReservationReaderId}" data-cs-bind="ReservationReaderId" /></label>
-        <label>Reservation Id<input name="ReservationId" value="{Binding ReservationId}" data-cs-bind="ReservationId" /></label>
-        <label>Fine Reader Id<input name="ReaderId" value="{Binding ReaderId}" data-cs-bind="ReaderId" /></label>
-        <label>Fine Amount<input name="FineAmount" value="{Binding FineAmount}" data-cs-bind="FineAmount" /></label>
+        <cs:Field Name="BookId" Label="Book Id" />
+        <cs:Field Name="ReservationReaderId" Label="Reader Id" />
+        <cs:Field Name="ReservationId" Label="Reservation Id" />
+        <cs:Field Name="ReaderId" Label="Fine Reader Id" />
+        <cs:Field Name="FineAmount" Label="Fine Amount" />
         <div class="button-row wrap">
-          <button type="submit" data-cs-command="ReserveBook">Reserve</button>
-          <button type="submit" data-cs-command="CancelReservation">Cancel Reservation</button>
-          <button type="submit" data-cs-command="CollectFine">Collect Fine</button>
+          <cs:Button Command="ReserveBook">Reserve</cs:Button>
+          <cs:Button Command="CancelReservation">Cancel Reservation</cs:Button>
+          <cs:Button Command="CollectFine">Collect Fine</cs:Button>
         </div>
-      </form>
+      </cs:Form>
 
       <article class="admin-card activity-card">
         <h2>Activity</h2>
@@ -112,30 +114,30 @@
         </cs:Repeater>
       </article>
 
-      <form class="admin-card inventory-card" method="post" data-cs-vm>
+      <cs:Form class="admin-card inventory-card">
         <h2>Inventory Control</h2>
         <p>Receive new copies, write off damaged copies, and relocate collection items with audit history.</p>
-        <label>Book Id<input name="InventoryBookId" value="{Binding InventoryBookId}" data-cs-bind="InventoryBookId" /></label>
-        <label>Quantity<input name="InventoryQuantity" value="{Binding InventoryQuantity}" data-cs-bind="InventoryQuantity" /></label>
-        <label>New Location<input name="InventoryLocation" value="{Binding InventoryLocation}" data-cs-bind="InventoryLocation" placeholder="A-01, B-12, Archive" /></label>
-        <label>Reason<input name="InventoryReason" value="{Binding InventoryReason}" data-cs-bind="InventoryReason" placeholder="Purchase order, damaged copy, shelf optimization" /></label>
+        <cs:Field Name="InventoryBookId" Label="Book Id" />
+        <cs:Field Name="InventoryQuantity" Label="Quantity" />
+        <cs:Field Name="InventoryLocation" Label="New Location" Placeholder="A-01, B-12, Archive" />
+        <cs:Field Name="InventoryReason" Label="Reason" Placeholder="Purchase order, damaged copy, shelf optimization" />
         <div class="button-row wrap">
-          <button type="submit" data-cs-command="ReceiveCopies">Receive</button>
-          <button type="submit" data-cs-command="WriteOffCopies">Write Off</button>
-          <button type="submit" data-cs-command="RelocateBook">Relocate</button>
+          <cs:Button Command="ReceiveCopies">Receive</cs:Button>
+          <cs:Button Command="WriteOffCopies">Write Off</cs:Button>
+          <cs:Button Command="RelocateBook">Relocate</cs:Button>
         </div>
-      </form>
+      </cs:Form>
 
-      <form class="admin-card import-export-card" method="post" data-cs-vm>
+      <cs:Form class="admin-card import-export-card">
         <h2>CSV Import and Export</h2>
         <p>Export the current catalog filter, edit the CSV, and import it back. Existing ISBN values are updated, new ISBN values are added.</p>
-        <label>CSV Workspace<textarea name="ImportExportCsv" data-cs-bind="ImportExportCsv" rows="9" placeholder="ISBN,Title,Author,Category,Location,PublishedYear,CopyCount,Rating">{Binding ImportExportCsv}</textarea></label>
+        <cs:Field Name="ImportExportCsv" Label="CSV Workspace" Type="textarea" Rows="9" Placeholder="ISBN,Title,Author,Category,Location,PublishedYear,CopyCount,Rating" />
         <div class="button-row wrap">
-          <button type="submit" data-cs-command="ExportBooks">Export Filtered Books</button>
-          <button type="submit" data-cs-command="ImportBooks">Import CSV</button>
-          <button type="submit" data-cs-command="ClearImportExport">Clear</button>
+          <cs:Button Command="ExportBooks">Export Filtered Books</cs:Button>
+          <cs:Button Command="ImportBooks">Import CSV</cs:Button>
+          <cs:Button Command="ClearImportExport">Clear</cs:Button>
         </div>
-      </form>
+      </cs:Form>
     </section>
 
     <cs:Region Name="collection-table" Tag="section" class="book-table-card">

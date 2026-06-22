@@ -1,4 +1,3 @@
-using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -20,7 +19,7 @@ public static class CodeSpiritErrorHandler
             _ => 500
         };
 
-        context.Response.ContentType = "application/json";
+        context.Response.ContentType = CodeSpiritDefaults.ContentTypeJson;
         await System.Text.Json.JsonSerializer.SerializeAsync(context.Response.Body, new
         {
             error = ex.GetType().Name,

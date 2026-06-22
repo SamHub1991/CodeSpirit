@@ -15,6 +15,11 @@ public class CodeSpiritServiceGenerator : IIncrementalGenerator
     private const string ServiceAttributeName = "CodeSpirit.Core.Attributes.ServiceAttribute";
     private const string RepositoryAttributeName = "CodeSpirit.Core.Attributes.RepositoryAttribute";
     private const string CommandAttributeName = "CodeSpirit.Core.Mvvm.CommandAttribute";
+    private const string TransactionalAttributeName = "CodeSpirit.Core.Attributes.TransactionalAttribute";
+    private const string CacheableAttributeName = "CodeSpirit.Core.Attributes.CacheableAttribute";
+    private const string AutowiredAttributeName = "CodeSpirit.Core.Attributes.AutowiredAttribute";
+    private const string ValueAttributeName = "CodeSpirit.Core.Attributes.ValueAttribute";
+    private const string BindAttributeName = "CodeSpirit.Core.Mvvm.BindAttribute";
 
     private static readonly DiagnosticDescriptor AbstractServiceWarning = new(
         "CSP001",
@@ -40,6 +45,46 @@ public class CodeSpiritServiceGenerator : IIncrementalGenerator
         DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    private static readonly DiagnosticDescriptor NonVirtualAopWarning = new(
+        "CSP004",
+        "[Transactional] or [Cacheable] on non-virtual method has no effect",
+        "Method '{0}' with [{1}] is not virtual. AOP class proxies can only intercept virtual/override methods. Add 'virtual' keyword.",
+        "CodeSpirit",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor NonWritablePropertyWarning = new(
+        "CSP005",
+        "[Autowired] or [Value] on non-writable property has no effect",
+        "Property '{0}' with [{1}] has no writable setter. Injection requires a writable property. Add a 'set;' accessor.",
+        "CodeSpirit",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor NonPublicBoundPropertyWarning = new(
+        "CSP006",
+        "[Bind] on non-public property",
+        "Property '{0}' with [Bind] is not public. MVVM binding works on public properties only.",
+        "CodeSpirit",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor NonPublicCommandWarning = new(
+        "CSP007",
+        "[Command] on non-public or static method is unreachable",
+        "Method '{0}' with [Command] is {1}. Command methods must be public instance methods.",
+        "CodeSpirit",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor AopOnNonServiceWarning = new(
+        "CSP008",
+        "[Transactional] or [Cacheable] on non-[Service] class has no effect",
+        "Method '{0}' with [{1}] is in class '{2}' which is not marked with [Service]. AOP proxy interception only works on [Service]-registered classes. Add [Service] to the class.",
+        "CodeSpirit",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var classDeclarations = context.SyntaxProvider
@@ -59,6 +104,38 @@ public class CodeSpiritServiceGenerator : IIncrementalGenerator
             .Where(static info => info is not null);
 
         context.RegisterSourceOutput(methods.Collect(), GenerateCommandDiagnostics);
+
+        var aopMethods = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: static (node, _) => node is MethodDeclarationSyntax m && m.AttributeLists.Count > 0,
+                transform: static (ctx, _) => GetAopDiagnosticInfo(ctx))
+            .Where(static info => info is not null);
+
+        context.RegisterSourceOutput(aopMethods.Collect(), GenerateAopDiagnostics);
+
+        var injectionProperties = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: static (node, _) => node is PropertyDeclarationSyntax p && p.AttributeLists.Count > 0,
+                transform: static (ctx, _) => GetPropertyInjectionDiagnosticInfo(ctx))
+            .Where(static info => info is not null);
+
+        context.RegisterSourceOutput(injectionProperties.Collect(), GeneratePropertyInjectionDiagnostics);
+
+        var bindProperties = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: static (node, _) => node is PropertyDeclarationSyntax p && p.AttributeLists.Count > 0,
+                transform: static (ctx, _) => GetBindAccessibilityInfo(ctx))
+            .Where(static info => info is not null);
+
+        context.RegisterSourceOutput(bindProperties.Collect(), GenerateBindAccessibilityDiagnostics);
+
+        var commandMethods = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: static (node, _) => node is MethodDeclarationSyntax m && m.AttributeLists.Count > 0,
+                transform: static (ctx, _) => GetCommandAccessibilityInfo(ctx))
+            .Where(static info => info is not null);
+
+        context.RegisterSourceOutput(commandMethods.Collect(), GenerateCommandAccessibilityDiagnostics);
     }
 
     private static ServiceRegistrationInfo? GetServiceRegistrationInfo(GeneratorSyntaxContext ctx)
@@ -144,6 +221,57 @@ public class CodeSpiritServiceGenerator : IIncrementalGenerator
         };
     }
 
+    private static AopDiagnosticInfo? GetAopDiagnosticInfo(GeneratorSyntaxContext ctx)
+    {
+        var methodDecl = (MethodDeclarationSyntax)ctx.Node;
+        var symbol = ctx.SemanticModel.GetDeclaredSymbol(methodDecl);
+
+        if (symbol is not IMethodSymbol methodSymbol)
+            return null;
+
+        string? aopAttrName = null;
+        foreach (var attr in methodSymbol.GetAttributes())
+        {
+            var fullName = attr.AttributeClass?.ToDisplayString();
+            if (fullName == TransactionalAttributeName)
+                aopAttrName = "Transactional";
+            else if (fullName == CacheableAttributeName)
+                aopAttrName = "Cacheable";
+
+            if (aopAttrName != null)
+                break;
+        }
+
+        if (aopAttrName == null)
+            return null;
+
+        var containingType = methodSymbol.ContainingType;
+        var isInServiceClass = false;
+        if (containingType is not null)
+        {
+            foreach (var attr in containingType.GetAttributes())
+            {
+                if (attr.AttributeClass?.ToDisplayString() == ServiceAttributeName)
+                {
+                    isInServiceClass = true;
+                    break;
+                }
+            }
+        }
+
+        return new AopDiagnosticInfo
+        {
+            MethodName = methodSymbol.Name,
+            AttributeName = aopAttrName,
+            ContainingClassName = containingType?.Name ?? "?",
+            IsInServiceClass = isInServiceClass,
+            IsVirtual = methodSymbol.IsVirtual,
+            IsOverride = methodSymbol.IsOverride,
+            IsAbstract = methodSymbol.IsAbstract,
+            Location = methodSymbol.Locations.FirstOrDefault()
+        };
+    }
+
     private static void GenerateServiceRegistration(
         SourceProductionContext context,
         (Compilation Left, ImmutableArray<ServiceRegistrationInfo?> Right) source)
@@ -215,6 +343,145 @@ public class CodeSpiritServiceGenerator : IIncrementalGenerator
                 context.ReportDiagnostic(Diagnostic.Create(CommandHasParametersError, info.Location, info.MethodName));
         }
     }
+
+    private static void GenerateAopDiagnostics(
+        SourceProductionContext context,
+        ImmutableArray<AopDiagnosticInfo?> infos)
+    {
+        foreach (var info in infos)
+        {
+            if (info?.Location is null)
+                continue;
+
+            if (!info.IsInServiceClass)
+                context.ReportDiagnostic(Diagnostic.Create(
+                    AopOnNonServiceWarning, info.Location, info.MethodName, info.AttributeName, info.ContainingClassName));
+
+            if (!info.IsVirtual && !info.IsOverride && !info.IsAbstract)
+                context.ReportDiagnostic(Diagnostic.Create(
+                    NonVirtualAopWarning, info.Location, info.MethodName, info.AttributeName));
+        }
+    }
+
+    private static PropertyDiagnosticInfo? GetPropertyInjectionDiagnosticInfo(GeneratorSyntaxContext ctx)
+    {
+        var propDecl = (PropertyDeclarationSyntax)ctx.Node;
+        var symbol = ctx.SemanticModel.GetDeclaredSymbol(propDecl);
+        if (symbol is not IPropertySymbol propSymbol)
+            return null;
+
+        string? attrName = null;
+        foreach (var attr in propSymbol.GetAttributes())
+        {
+            var fullName = attr.AttributeClass?.ToDisplayString();
+            if (fullName == AutowiredAttributeName)
+                attrName = "Autowired";
+            else if (fullName == ValueAttributeName)
+                attrName = "Value";
+
+            if (attrName is not null) break;
+        }
+
+        if (attrName is null)
+            return null;
+
+        var setMethod = propSymbol.SetMethod;
+        if (setMethod is not null && !setMethod.IsInitOnly)
+            return null;
+
+        return new PropertyDiagnosticInfo
+        {
+            MemberName = propSymbol.Name,
+            AttributeName = attrName!,
+            Location = propSymbol.Locations.FirstOrDefault()
+        };
+    }
+
+    private static void GeneratePropertyInjectionDiagnostics(
+        SourceProductionContext context,
+        ImmutableArray<PropertyDiagnosticInfo?> infos)
+    {
+        foreach (var info in infos)
+        {
+            if (info?.Location is not null)
+                context.ReportDiagnostic(Diagnostic.Create(
+                    NonWritablePropertyWarning, info.Location, info.MemberName, info.AttributeName));
+        }
+    }
+
+    private static PropertyDiagnosticInfo? GetBindAccessibilityInfo(GeneratorSyntaxContext ctx)
+    {
+        var propDecl = (PropertyDeclarationSyntax)ctx.Node;
+        var symbol = ctx.SemanticModel.GetDeclaredSymbol(propDecl);
+        if (symbol is not IPropertySymbol propSymbol)
+            return null;
+
+        if (propSymbol.DeclaredAccessibility == Accessibility.Public)
+            return null;
+
+        var hasBind = propSymbol.GetAttributes().Any(a =>
+            a.AttributeClass?.ToDisplayString() == BindAttributeName);
+
+        if (!hasBind)
+            return null;
+
+        return new PropertyDiagnosticInfo
+        {
+            MemberName = propSymbol.Name,
+            AttributeName = "Bind",
+            Location = propSymbol.Locations.FirstOrDefault()
+        };
+    }
+
+    private static void GenerateBindAccessibilityDiagnostics(
+        SourceProductionContext context,
+        ImmutableArray<PropertyDiagnosticInfo?> infos)
+    {
+        foreach (var info in infos)
+        {
+            if (info?.Location is not null)
+                context.ReportDiagnostic(Diagnostic.Create(
+                    NonPublicBoundPropertyWarning, info.Location, info.MemberName));
+        }
+    }
+
+    private static PropertyDiagnosticInfo? GetCommandAccessibilityInfo(GeneratorSyntaxContext ctx)
+    {
+        var methodDecl = (MethodDeclarationSyntax)ctx.Node;
+        var symbol = ctx.SemanticModel.GetDeclaredSymbol(methodDecl);
+        if (symbol is not IMethodSymbol methodSymbol)
+            return null;
+
+        var hasCommand = methodSymbol.GetAttributes().Any(a =>
+            a.AttributeClass?.ToDisplayString() == CommandAttributeName);
+
+        if (!hasCommand)
+            return null;
+
+        if (methodSymbol.DeclaredAccessibility == Accessibility.Public && !methodSymbol.IsStatic)
+            return null;
+
+        var reason = methodSymbol.IsStatic ? "static" : methodSymbol.DeclaredAccessibility.ToString().ToLowerInvariant();
+
+        return new PropertyDiagnosticInfo
+        {
+            MemberName = methodSymbol.Name,
+            AttributeName = reason,
+            Location = methodSymbol.Locations.FirstOrDefault()
+        };
+    }
+
+    private static void GenerateCommandAccessibilityDiagnostics(
+        SourceProductionContext context,
+        ImmutableArray<PropertyDiagnosticInfo?> infos)
+    {
+        foreach (var info in infos)
+        {
+            if (info?.Location is not null)
+                context.ReportDiagnostic(Diagnostic.Create(
+                    NonPublicCommandWarning, info.Location, info.MemberName, info.AttributeName));
+        }
+    }
 }
 
 internal sealed class ServiceRegistrationInfo
@@ -231,6 +498,25 @@ internal sealed class ServiceRegistrationInfo
 internal sealed class CommandDiagnosticInfo
 {
     public string MethodName { get; set; } = string.Empty;
+    public Location? Location { get; set; }
+}
+
+internal sealed class AopDiagnosticInfo
+{
+    public string MethodName { get; set; } = string.Empty;
+    public string AttributeName { get; set; } = string.Empty;
+    public string ContainingClassName { get; set; } = string.Empty;
+    public bool IsInServiceClass { get; set; }
+    public bool IsVirtual { get; set; }
+    public bool IsOverride { get; set; }
+    public bool IsAbstract { get; set; }
+    public Location? Location { get; set; }
+}
+
+internal sealed class PropertyDiagnosticInfo
+{
+    public string MemberName { get; set; } = string.Empty;
+    public string AttributeName { get; set; } = string.Empty;
     public Location? Location { get; set; }
 }
 

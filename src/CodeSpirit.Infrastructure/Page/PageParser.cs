@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Mvvm;
@@ -22,7 +21,7 @@ public class PageParser
             return null;
 
         return new PageDescriptor(
-            attr.Route ?? InferRoute(viewModelType),
+            ViewModel.GetRoute(viewModelType),
             viewModelType,
             attr.Layout,
             attr.Title);
@@ -68,27 +67,6 @@ public class PageParser
         }
 
         return result;
-    }
-
-    private static string InferRoute(Type viewModelType)
-    {
-        var name = viewModelType.Name;
-        if (name.EndsWith("ViewModel", StringComparison.OrdinalIgnoreCase))
-            name = name[..^"ViewModel".Length];
-
-        return "/" + ToKebabCase(name);
-    }
-
-    private static string ToKebabCase(string s)
-    {
-        var sb = new StringBuilder();
-        for (var i = 0; i < s.Length; i++)
-        {
-            if (i > 0 && char.IsUpper(s[i]))
-                sb.Append('-');
-            sb.Append(char.ToLowerInvariant(s[i]));
-        }
-        return sb.ToString();
     }
 
     private static Dictionary<string, string> ParseDirectiveProperties(string directiveText)

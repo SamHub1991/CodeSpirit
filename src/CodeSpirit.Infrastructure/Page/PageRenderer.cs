@@ -1,7 +1,9 @@
+using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using CodeSpirit.Core.Mvvm;
+using CodeSpirit.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
@@ -13,7 +15,15 @@ public class PageRenderer
 
     private readonly PageParser _parser;
     private readonly ILogger<PageRenderer> _logger;
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly RegexOptions DefaultOptions = RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline;
+    private static readonly ConcurrentDictionary<(Type Type, string Name), PropertyInfo?> _propCache = new();
+
+    private static Regex TagBlock(string tag) => new(
+        $@"<cs:{tag}(?<attrs>[^>]*)>(?<content>.*?)</cs:{tag}>", DefaultOptions);
+
+    private static Regex SelfClosing(string tag) => new(
+        $@"<cs:{tag}(?<attrs>[^>]*)\s*/>", DefaultOptions);
+
     private static readonly Regex ContentRegex = new(
         @"<cs:Content\s+PlaceHolder=\""(?<name>[^\"" ]+)\""\s*>(?<content>.*?)</cs:Content>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
@@ -26,27 +36,15 @@ public class PageRenderer
     private static readonly Regex LinkRegex = new(
         @"<cs:Link\s+NavigateTo=\""(?<href>[^\"" ]+)\""\s*>(?<content>.*?)</cs:Link>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
-    private static readonly Regex FormRegex = new(
-        @"<cs:Form(?<attrs>[^>]*)>(?<content>.*?)</cs:Form>",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
-    private static readonly Regex RegionRegex = new(
-        @"<cs:Region(?<attrs>[^>]*)>(?<content>.*?)</cs:Region>",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex FormRegex = TagBlock("Form");
+    private static readonly Regex RegionRegex = TagBlock("Region");
     private static readonly Regex ButtonRegex = new(
         @"<cs:Button\s+Command=\""(?<command>[^\"" ]+)\""(?<attrs>[^>]*)>(?<content>.*?)</cs:Button>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
-    private static readonly Regex FieldRegex = new(
-        @"<cs:Field(?<attrs>[^>]*)\s*/>",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
-    private static readonly Regex TableRegex = new(
-        @"<cs:Table(?<attrs>[^>]*)\s*/>",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
-    private static readonly Regex TableBlockRegex = new(
-        @"<cs:Table(?<attrs>[^>]*)>(?<content>.*?)</cs:Table>",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
-    private static readonly Regex ColumnRegex = new(
-        @"<cs:Column(?<attrs>[^>]*)>(?<content>.*?)</cs:Column>",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex FieldRegex = SelfClosing("Field");
+    private static readonly Regex TableRegex = SelfClosing("Table");
+    private static readonly Regex TableBlockRegex = TagBlock("Table");
+    private static readonly Regex ColumnRegex = TagBlock("Column");
     private static readonly Regex AttributeRegex = new(
         @"(?<name>[A-Za-z][A-Za-z0-9_-]*)=\""(?<value>[^\""]*)\""",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -80,7 +78,7 @@ public class PageRenderer
         if (pagePath is null)
             return [];
 
-        var page = File.ReadAllText(pagePath);
+        var page = ReadPageContent(pagePath);
         var regions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (Match match in RegionRegex.Matches(page))
         {
@@ -100,7 +98,7 @@ public class PageRenderer
         if (pagePath is null)
             return BuildFallbackHtml(title, state);
 
-        var page = File.ReadAllText(pagePath);
+        var page = ReadPageContent(pagePath);
         var sections = ContentRegex.Matches(page)
             .ToDictionary(match => match.Groups["name"].Value, match => match.Groups["content"].Value, StringComparer.OrdinalIgnoreCase);
 
@@ -109,7 +107,7 @@ public class PageRenderer
         var scripts = sections.GetValueOrDefault("Scripts", string.Empty);
 
         var html = ResolveLayout(httpContext, layout) is { } layoutPath
-            ? File.ReadAllText(layoutPath)
+            ? ReadPageContent(layoutPath)
                 .Replace("<cs:PlaceHolder Name=\"Head\" />", head)
                 .Replace("<cs:PlaceHolder Name=\"Body\" />", body)
                 .Replace("<cs:PlaceHolder Name=\"Scripts\" />", scripts)
@@ -120,7 +118,7 @@ public class PageRenderer
 
     private static string BuildFallbackHtml(string title, Dictionary<string, object?> state)
     {
-        var json = JsonSerializer.Serialize(state, JsonOptions);
+        var json = JsonSerializer.Serialize(state, CodeSpiritDefaults.JsonOptions);
         var propsHtml = BuildPropsHtml(state);
 
         return $$"""
@@ -369,7 +367,10 @@ public class PageRenderer
         if (source is IReadOnlyDictionary<string, object?> dictionary && dictionary.TryGetValue(name.Trim(), out var value))
             return value;
 
-        var prop = source.GetType().GetProperty(name.Trim());
+        var type = source.GetType();
+        var propName = name.Trim();
+        var prop = _propCache.GetOrAdd((type, propName), static key =>
+            key.Type.GetProperty(key.Name));
         return prop?.GetValue(source);
     }
 
@@ -402,15 +403,61 @@ public class PageRenderer
         var name = viewModelType.Name.EndsWith("ViewModel", StringComparison.OrdinalIgnoreCase)
             ? viewModelType.Name[..^"ViewModel".Length]
             : viewModelType.Name;
-        var path = Path.Combine(AppContext.BaseDirectory, "Pages", name + ".aspx");
-        return File.Exists(path) ? path : null;
+
+        var relativeName = $"Pages/{name}.aspx";
+        return ResolveContent(relativeName);
     }
 
     private static string? ResolveLayout(HttpContext context, string? layout)
     {
         var configuredLayout = string.IsNullOrWhiteSpace(layout) ? DefaultLayout : layout;
         var relative = configuredLayout.StartsWith("~/", StringComparison.Ordinal) ? configuredLayout[2..] : configuredLayout;
-        var path = Path.Combine(AppContext.BaseDirectory, relative.Replace('/', Path.DirectorySeparatorChar));
-        return File.Exists(path) ? path : null;
+        return ResolveContent(relative);
+    }
+
+    private static string? ResolveContent(string relativePath)
+    {
+        var normalizedPath = relativePath.Replace('/', Path.DirectorySeparatorChar);
+
+        var physicalPath = Path.Combine(AppContext.BaseDirectory, normalizedPath);
+        if (File.Exists(physicalPath))
+            return physicalPath;
+
+        var embeddedName = normalizedPath.Replace(Path.DirectorySeparatorChar, '.');
+
+        var assembly = Assembly.GetEntryAssembly();
+        if (assembly?.GetManifestResourceStream($"{assembly.GetName().Name}.{embeddedName}") != null)
+            return $"embedded:{assembly.GetName().Name}.{embeddedName}";
+
+        var infraAssembly = typeof(PageRenderer).Assembly;
+        if (infraAssembly.GetManifestResourceStream($"{infraAssembly.GetName().Name}.{embeddedName}") != null)
+            return $"embedded:{infraAssembly.GetName().Name}.{embeddedName}";
+
+        return null;
+    }
+
+    private static string ReadPageContent(string pathOrEmbedded)
+    {
+        if (pathOrEmbedded.StartsWith("embedded:", StringComparison.Ordinal))
+        {
+            var resourceName = pathOrEmbedded["embedded:".Length..];
+            var assembly = Assembly.GetEntryAssembly();
+            using var stream = assembly?.GetManifestResourceStream(resourceName);
+            if (stream != null)
+            {
+                using var reader = new StreamReader(stream);
+                return reader.ReadToEnd();
+            }
+
+            var infraAssembly = typeof(PageRenderer).Assembly;
+            using var infraStream = infraAssembly.GetManifestResourceStream(resourceName);
+            if (infraStream != null)
+            {
+                using var reader = new StreamReader(infraStream);
+                return reader.ReadToEnd();
+            }
+        }
+
+        return File.ReadAllText(pathOrEmbedded);
     }
 }

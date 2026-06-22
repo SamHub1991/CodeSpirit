@@ -94,8 +94,9 @@ public static class SchedulingExtensions
         // Handle [OnStartup] methods
         var startupMethods = targets
             .SelectMany(t => t.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Where(m => m.GetCustomAttribute<OnStartupAttribute>() is not null)
-                .Select(m => (Type: t, Method: m, Attr: m.GetCustomAttribute<OnStartupAttribute>()!)));
+                .Select(m => (Type: t, Method: m, Attr: m.GetCustomAttribute<OnStartupAttribute>()))
+                .Where(x => x.Attr is not null)
+                .Select(x => (x.Type, x.Method, Attr: x.Attr!)));
 
         foreach (var (type, method, attr) in startupMethods)
             services.AddTransient(type);

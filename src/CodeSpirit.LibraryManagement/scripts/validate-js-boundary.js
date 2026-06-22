@@ -196,77 +196,6 @@ class FormDataStub {
   }
 }
 
-class JQuerySet {
-  constructor(items, previousItems = []) {
-    this.items = items;
-    this.previousItems = previousItems;
-    this.length = items.length;
-  }
-
-  find(selector) {
-    return new JQuerySet(this.items.flatMap((item) => item.querySelectorAll(selector)), this.items);
-  }
-
-  addBack(selector) {
-    return new JQuerySet(this.items.concat(this.previousItems.filter((item) => item.matches && item.matches(selector))));
-  }
-
-  not(selector) {
-    return new JQuerySet(this.items.filter((item) => !item.matches(selector)));
-  }
-
-  each(callback) {
-    this.items.forEach((item, index) => callback.call(item, index, item));
-    return this;
-  }
-
-  attr(name, value) {
-    this.items.forEach((item, index) => {
-      item.setAttribute(name, typeof value === 'function' ? value(index, item.getAttribute(name)) : value);
-    });
-    return this;
-  }
-
-  css(name, value) {
-    this.items.forEach((item) => {
-      item.style[name] = value;
-    });
-    return this;
-  }
-
-  on(type, handler) {
-    this.items.forEach((item) => item.addEventListener(type, handler));
-    return this;
-  }
-
-  first() {
-    return new JQuerySet(this.items.slice(0, 1));
-  }
-
-  datepicker() {
-    this.items.forEach((item) => {
-      item.datepickerCount = (item.datepickerCount || 0) + 1;
-    });
-    return this;
-  }
-}
-
-function createJQuery(document) {
-  function $(value) {
-    if (typeof value === 'function') {
-      value();
-      return new JQuerySet([]);
-    }
-    if (value instanceof JQuerySet) {
-      return value;
-    }
-    return new JQuerySet(value ? [value] : []);
-  }
-
-  $.fn = JQuerySet.prototype;
-  return $;
-}
-
 function runScript(file, context) {
   vm.runInContext(fs.readFileSync(path.join(templateRoot, file), 'utf8'), context, { filename: file });
 }
@@ -276,6 +205,7 @@ async function main() {
   const form = document.appendChild(new Element('form', { 'data-cs-vm': '', method: 'post' }));
   const city = form.appendChild(new Element('input', { name: 'City', 'data-cs-bind': 'City', value: 'Paris' }));
   const cityLabel = form.appendChild(new Element('span', { 'data-cs-bind': 'City' }));
+  const token = form.appendChild(new Element('input', { name: 'Token', value: '' }));
   const refresh = form.appendChild(new Element('button', { type: 'submit', 'data-cs-command': 'Refresh' }));
 
   let fetchPayload = null;
@@ -293,6 +223,71 @@ async function main() {
   context.window.document = document;
 
   runScript('wwwroot/js/codespirit.runtime.js', context);
+
+  // Verify chain API is exposed
+  assert.strictEqual(typeof context.window.CodeSpirit.vm, 'function');
+  assert.strictEqual(typeof context.window.CodeSpirit.VmChain, 'function');
+
+  // Verify short alias is exposed without the collision-prone CS global.
+  assert.strictEqual(context.window.$cs, context.window.CodeSpirit);
+  assert.strictEqual(context.window.CS, undefined);
+
+  const occupiedAlias = { existing: true };
+  const occupiedDocument = new Document();
+  const occupiedContext = vm.createContext({
+    window: { $cs: occupiedAlias, location: { pathname: '/weather' } },
+    document: occupiedDocument,
+    FormData: FormDataStub,
+    Event,
+    CustomEvent: Event,
+    fetch: context.fetch
+  });
+  occupiedContext.window.document = occupiedDocument;
+  runScript('wwwroot/js/codespirit.runtime.js', occupiedContext);
+  assert.strictEqual(occupiedContext.window.$cs, occupiedAlias);
+  assert.strictEqual(typeof occupiedContext.window.CodeSpirit.vm, 'function');
+
+  // Verify chain initialization
+  var chain = context.window.CodeSpirit.vm(form);
+  assert.ok(chain instanceof context.window.CodeSpirit.VmChain);
+  assert.strictEqual(chain._form, form);
+
+  // Verify .set() / .get() / .state()
+  chain.set('City', 'Oslo');
+  assert.strictEqual(city.value, 'Oslo');
+  assert.strictEqual(cityLabel.textContent, 'Oslo');
+  assert.strictEqual(chain.get('City'), 'Oslo');
+
+  chain.set({ City: 'Stockholm', Token: 'x' });
+  assert.strictEqual(city.value, 'Stockholm');
+  assert.strictEqual(chain.get('City'), 'Stockholm');
+
+  var snap = chain.state();
+  assert.strictEqual(snap.City, 'Stockholm');
+  assert.strictEqual(snap.Token, 'x');
+
+  // Verify .val() getter form
+  assert.strictEqual(chain.val('City'), 'Stockholm');
+
+  // Verify chaining: set returns this
+  assert.strictEqual(chain.set('City', 'Copenhagen'), chain);
+
+  // Verify .on() / .off() / .once() return this
+  assert.strictEqual(chain.on('codespirit:updated', function () {}), chain);
+  assert.strictEqual(chain.once('codespirit:loaded', function () {}), chain);
+
+  // Verify .el() / .all() scoped queries
+  assert.strictEqual(chain.el('[name="City"]'), city);
+  assert.ok(chain.all('[name="City"]').length >= 1);
+
+  // Verify .invoke() returns a Promise
+  var invoked = chain.invoke('Refresh');
+  assert.ok(invoked && typeof invoked.then === 'function');
+  assert.ok(invoked && typeof invoked.catch === 'function');
+
+  // Reset city for existing tests after chain modifications
+  city.value = 'Paris';
+  cityLabel.textContent = 'Paris';
 
   let changed = null;
   form.addEventListener('codespirit:changed', (event) => {
@@ -337,30 +332,11 @@ async function main() {
   assert.strictEqual(cityLabel.textContent, 'Rome');
   assert.strictEqual(document.querySelector('[data-cs-region="forecast"]').textContent, 'Fresh Forecast');
 
-  context.window.jQuery = createJQuery(document);
-  context.window.$ = context.window.jQuery;
-  context.jQuery = context.window.jQuery;
-  context.$ = context.window.$;
-
-  const picker = form.appendChild(new Element('input', { name: 'City', 'data-cs-bind': 'City', 'data-ui': 'datepicker', value: 'Milan' }));
-  runScript('wwwroot/js/ui/jquery.behaviors.js', context);
+  runScript('wwwroot/js/ui/ui.behaviors.js', context);
   assert.strictEqual(typeof context.window.CodeSpirit.mount, 'function');
   assert.strictEqual(typeof context.window.CodeSpirit.refresh, 'function');
-  assert.strictEqual(picker.getAttribute('data-ui-ready'), 'datepicker');
-  assert.strictEqual(picker.datepickerCount, 1);
-
-  picker.value = 'Madrid';
-  picker.dispatchEvent(new Event('change', { bubbles: true }));
-  assert.strictEqual(city.value, 'Madrid');
-  assert.strictEqual(cityLabel.textContent, 'Madrid');
 
   context.window.CodeSpirit.mount(document);
-  assert.strictEqual(picker.datepickerCount, 1);
-
-  const dynamicPicker = form.appendChild(new Element('input', { name: 'City', 'data-cs-bind': 'City', 'data-ui': 'datepicker', value: 'Lisbon' }));
-  context.window.CodeSpirit.refresh(form);
-  assert.strictEqual(dynamicPicker.getAttribute('data-ui-ready'), 'datepicker');
-  assert.strictEqual(dynamicPicker.datepickerCount, 1);
 
   let customBehaviorCount = 0;
   context.window.CodeSpirit.ui.register('custom-widget', (elements) => {
@@ -374,6 +350,30 @@ async function main() {
   assert.strictEqual(patchedWidget.getAttribute('data-ui-ready'), 'custom-widget');
   assert.strictEqual(customWidget.getAttribute('data-ui-ready'), 'custom-widget');
   assert.strictEqual(customBehaviorCount, 2);
+
+  // Verify built-in datepicker behavior
+  const dateInput = document.createElement('input');
+  dateInput.setAttribute('data-ui', 'datepicker');
+  const dateWidget = form.appendChild(dateInput);
+  context.window.CodeSpirit.mount(document);
+  assert.strictEqual(dateWidget.getAttribute('type'), 'date');
+  assert.ok(dateWidget.getAttribute('data-ui-ready').split(/\s+/).indexOf('datepicker') >= 0);
+
+  // Verify confirm-click behavior
+  const confirmBtn = document.createElement('button');
+  confirmBtn.setAttribute('data-ui', 'confirm-click');
+  confirmBtn.setAttribute('data-confirm', 'Proceed?');
+  form.appendChild(confirmBtn);
+  context.window.CodeSpirit.mount(document);
+  assert.ok(confirmBtn.getAttribute('data-ui-ready').split(/\s+/).indexOf('confirm-click') >= 0);
+
+  // Verify auto-submit behavior
+  const autoField = document.createElement('input');
+  autoField.setAttribute('data-ui', 'auto-submit');
+  autoField.setAttribute('data-debounce', '500');
+  form.appendChild(autoField);
+  context.window.CodeSpirit.mount(document);
+  assert.ok(autoField.getAttribute('data-ui-ready').split(/\s+/).indexOf('auto-submit') >= 0);
 
   console.log('JS boundary validation passed');
 }

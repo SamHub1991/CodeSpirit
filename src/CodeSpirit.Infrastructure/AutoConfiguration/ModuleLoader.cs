@@ -1,7 +1,6 @@
 using CodeSpirit.Core.Abstractions;
 using CodeSpirit.Core.Attributes;
 using CodeSpirit.Core.Interfaces;
-using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 
 namespace CodeSpirit.Infrastructure.AutoConfiguration;
