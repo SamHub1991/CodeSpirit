@@ -41,6 +41,9 @@ public class PageRenderer
     private static readonly Regex ButtonRegex = new(
         @"<cs:Button\s+Command=\""(?<command>[^\"" ]+)\""(?<attrs>[^>]*)>(?<content>.*?)</cs:Button>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex ShowRegex = new(
+        @"<cs:Show(?<attrs>[^>]*)\s*>(?<content>.*?)</cs:Show>",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
     private static readonly Regex FieldRegex = SelfClosing("Field");
     private static readonly Regex TableRegex = SelfClosing("Table");
     private static readonly Regex TableBlockRegex = TagBlock("Table");
@@ -202,6 +205,8 @@ public class PageRenderer
 
         html = TableRegex.Replace(html, match => RenderTable(match.Groups["attrs"].Value, string.Empty, state));
 
+        html = ShowRegex.Replace(html, match => RenderShow(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
+
         html = FormRegex.Replace(html, match =>
         {
             var attrs = RenderHtmlAttributes(match.Groups["attrs"].Value, state, "Method");
@@ -223,6 +228,45 @@ public class PageRenderer
         var tag = GetAttribute(rawAttributes, "Tag") ?? "div";
         var attrs = RenderHtmlAttributes(rawAttributes, state, "Name", "Tag");
         return $"<{tag} data-cs-region=\"{Html(name)}\"{attrs}>{content}</{tag}>";
+    }
+
+    private static string RenderShow(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
+    {
+        var visibleBinding = GetAttribute(rawAttributes, "Visible");
+        var hideBinding = GetAttribute(rawAttributes, "HideWhen");
+        var classBinding = GetAttribute(rawAttributes, "Class");
+        var className = GetAttribute(rawAttributes, "ClassName");
+        var tag = GetAttribute(rawAttributes, "Tag") ?? "div";
+        var attrs = RenderHtmlAttributes(rawAttributes, state, "Visible", "HideWhen", "Class", "ClassName", "Tag");
+        var dataAttrs = new StringBuilder();
+
+        if (!string.IsNullOrWhiteSpace(visibleBinding))
+        {
+            var name = ExtractBindingName(visibleBinding);
+            if (name is not null)
+                dataAttrs.Append($" data-cs-visible=\"{Html(name)}\"");
+        }
+
+        if (!string.IsNullOrWhiteSpace(hideBinding))
+        {
+            var name = ExtractBindingName(hideBinding);
+            if (name is not null)
+                dataAttrs.Append($" data-cs-hidden=\"{Html(name)}\"");
+        }
+
+        if (!string.IsNullOrWhiteSpace(classBinding))
+        {
+            var name = ExtractBindingName(classBinding);
+            if (name is not null)
+            {
+                var classExpr = Html(name);
+                if (!string.IsNullOrWhiteSpace(className))
+                    classExpr += ":" + Html(className);
+                dataAttrs.Append($" data-cs-class=\"{classExpr}\"");
+            }
+        }
+
+        return $"<{tag}{dataAttrs}{attrs}>{content}</{tag}>";
     }
 
     private static string RenderHtmlAttributes(string rawAttributes, IReadOnlyDictionary<string, object?> state, params string[] excluded)
@@ -460,4 +504,10 @@ public class PageRenderer
 
         return File.ReadAllText(pathOrEmbedded);
     }
+
+    /// <summary>
+    /// Exposes template rendering for tests.
+    /// </summary>
+    public static string RenderTemplateForTests(string template, IReadOnlyDictionary<string, object?> state)
+        => RenderTemplate(template, state);
 }

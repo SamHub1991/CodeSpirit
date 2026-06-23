@@ -221,6 +221,59 @@ public class ViewModelTests
         Assert.Equal("TwoWay", response.Bindings["Greeting"].Direction);
         Assert.Contains("Refresh", response.Commands);
     }
+
+    [Fact]
+    public void ViewModel_ModelState_IsValidByDefault()
+    {
+        var vm = new TestViewModel();
+        Assert.True(vm.IsValid);
+        Assert.Empty(vm.ModelState);
+    }
+
+    [Fact]
+    public void ViewModel_AddModelError_PopulatesModelState()
+    {
+        var vm = new TestViewModel();
+        vm.AddModelError("Greeting", "Greeting is required");
+
+        Assert.False(vm.IsValid);
+        Assert.Single(vm.ModelState);
+        Assert.Equal("Greeting is required", vm.ModelState["Greeting"][0]);
+    }
+
+    [Fact]
+    public void ViewModel_AddModelError_MultipleErrorsForSameField()
+    {
+        var vm = new TestViewModel();
+        vm.AddModelError("Greeting", "Too short");
+        vm.AddModelError("Greeting", "No special chars");
+
+        Assert.Equal(2, vm.ModelState["Greeting"].Count);
+    }
+
+    [Fact]
+    public void ViewModel_ToResponse_IncludesErrors()
+    {
+        var vm = new TestViewModel { Greeting = "" };
+        vm.AddModelError("Greeting", "Greeting is required");
+        vm.AddModelError("Greeting", "Too short");
+
+        var response = vm.ToResponse();
+
+        Assert.NotNull(response.Errors);
+        Assert.Contains("Greeting is required", response.Errors!["Greeting"]);
+        Assert.Contains("Too short", response.Errors!["Greeting"]);
+    }
+
+    [Fact]
+    public void ViewModel_ToResponse_NoErrors_WhenValid()
+    {
+        var vm = new TestViewModel { Greeting = "hello" };
+
+        var response = vm.ToResponse();
+
+        Assert.Null(response.Errors);
+    }
 }
 
 class TestViewModel : ViewModel

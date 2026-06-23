@@ -1,6 +1,8 @@
 (function () {
   'use strict';
 
+  var NULL_VALUE = '';
+
   function selector(name, value) {
     return '[' + name + '="' + String(value).replace(/"/g, '\\"') + '"]';
   }
@@ -18,15 +20,28 @@
     return data;
   }
 
-  function postViewModel(form, payload) {
+  function postViewModel(form, payload, options) {
     var targetUrl = form.getAttribute('action') || (window.location && window.location.pathname) || '/';
+    var method = form.getAttribute('method') || 'POST';
+    var opts = options || {};
+    var headers = { 'Content-Type': 'application/json' };
+    if (opts.headers) {
+      Object.keys(opts.headers).forEach(function (k) { headers[k] = opts.headers[k]; });
+    }
+
     return fetch(targetUrl, {
-      method: form.getAttribute('method') || 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: method,
+      headers: headers,
       body: JSON.stringify(payload)
     }).then(function (response) {
       if (!response.ok) {
-        throw new Error('ViewModel request failed: ' + response.status);
+        var status = response.status;
+        return response.text().then(function (body) {
+          var err = new Error('ViewModel request failed: ' + status);
+          err.status = status;
+          try { err.body = JSON.parse(body); } catch (_) { err.body = body; }
+          throw err;
+        });
       }
       return response.json();
     });
@@ -47,11 +62,100 @@
 
     root.querySelectorAll(selector('name', name) + ', ' + selector('data-cs-bind', name)).forEach(function (element) {
       if ('value' in element) {
-        element.value = value == null ? '' : value;
+        element.value = value == null ? NULL_VALUE : value;
       } else {
-        element.textContent = value == null ? '' : value;
+        element.textContent = value == null ? NULL_VALUE : value;
       }
     });
+
+    applyAttr(root, name, value);
+    applyVisibility(root, name, value);
+    applyCssClass(root, name, value);
+    applyEnabled(root, name, value);
+  }
+
+  function queryAttr(root, attr, boundName) {
+    var results = [];
+    root.querySelectorAll('[' + attr + ']').forEach(function (el) {
+      var expr = el.getAttribute(attr);
+      var colonPos = expr.indexOf(':');
+      var name = (colonPos >= 0 ? expr.substring(0, colonPos) : expr).trim();
+      if (name === boundName) {
+        results.push(el);
+      }
+    });
+    return results;
+  }
+
+  function applyVisibility(root, name, value) {
+    queryAttr(root, 'data-cs-visible', name).forEach(function (el) {
+      var expr = el.getAttribute('data-cs-visible');
+      var colonPos = expr.indexOf(':');
+      var expected = colonPos >= 0 ? expr.substring(colonPos + 1).trim() : null;
+      var visible = expected === null ? isTruthy(value) : String(value) === expected;
+      el.style.display = visible ? '' : 'none';
+    });
+
+    queryAttr(root, 'data-cs-hidden', name).forEach(function (el) {
+      var expr = el.getAttribute('data-cs-hidden');
+      var colonPos = expr.indexOf(':');
+      var expected = colonPos >= 0 ? expr.substring(colonPos + 1).trim() : null;
+      var hidden = expected === null ? isTruthy(value) : String(value) === expected;
+      el.style.display = hidden ? 'none' : '';
+    });
+  }
+
+  function applyCssClass(root, name, value) {
+    queryAttr(root, 'data-cs-class', name).forEach(function (el) {
+      var expr = el.getAttribute('data-cs-class');
+      var parts = expr.split(':');
+      var className = parts.length > 1 ? parts[1].trim() : name.toLowerCase();
+      var expected = parts.length > 2 ? parts[2].trim() : null;
+      var shouldAdd = expected === null ? isTruthy(value) : String(value) === expected;
+      if (shouldAdd) {
+        el.classList.add(className);
+      } else {
+        el.classList.remove(className);
+      }
+    });
+  }
+
+  function applyAttr(root, name, value) {
+    queryAttr(root, 'data-cs-attr', name).forEach(function (el) {
+      var expr = el.getAttribute('data-cs-attr');
+      var colonPos = expr.indexOf(':');
+      var attrName = colonPos >= 0 ? expr.substring(colonPos + 1).trim() : name.toLowerCase();
+      if (value == null || value === NULL_VALUE) {
+        el.removeAttribute(attrName);
+      } else {
+        el.setAttribute(attrName, String(value));
+      }
+    });
+  }
+
+  function applyEnabled(root, name, value) {
+    queryAttr(root, 'data-cs-enabled', name).forEach(function (el) {
+      var enabled = isTruthy(value);
+      el.disabled = !enabled;
+    });
+
+    queryAttr(root, 'data-cs-disabled', name).forEach(function (el) {
+      var disabled = isTruthy(value);
+      el.disabled = disabled;
+    });
+  }
+
+  function isTruthy(value) {
+    if (value == null || value === false || value === 0 || value === NULL_VALUE) {
+      return false;
+    }
+    if (typeof value === 'string') {
+      var lower = value.toLowerCase();
+      if (lower === 'false' || lower === '0' || lower === 'no' || lower === 'off') {
+        return false;
+      }
+    }
+    return true;
   }
 
   function applyState(root, state) {
@@ -77,6 +181,92 @@
       current.replaceWith(next);
       mount(next);
     });
+  }
+
+  function applyErrors(root, errors) {
+    clearErrors(root);
+    if (!errors) {
+      return;
+    }
+
+    var summaryMessages = [];
+    Object.keys(errors).forEach(function (fieldName) {
+      var message = errors[fieldName];
+      var matched = false;
+      root.querySelectorAll(selector('name', fieldName) + ', ' + selector('data-cs-bind', fieldName)).forEach(function (el) {
+        matched = true;
+        el.classList.add('cs-invalid');
+        var summary = el.closest('label') || el.parentElement;
+        if (summary && !summary.querySelector('.cs-error')) {
+          var span = document.createElement('span');
+          span.className = 'cs-error';
+          span.textContent = message;
+          summary.appendChild(span);
+        }
+      });
+
+      if (!matched) {
+        summaryMessages.push(message);
+      }
+    });
+
+    if (summaryMessages.length) {
+      var summary = root.querySelector('.cs-error-summary');
+      if (!summary) {
+        summary = document.createElement('div');
+        summary.className = 'cs-error-summary';
+        summary.setAttribute('role', 'alert');
+        root.appendChild(summary);
+      }
+
+      summary.innerHTML = '';
+      summaryMessages.forEach(function (message) {
+        var item = document.createElement('div');
+        item.className = 'cs-error-summary-item';
+        item.textContent = message;
+        summary.appendChild(item);
+      });
+    }
+
+    root.classList.add('cs-has-errors');
+    emit(root, 'codespirit:validation', { errors: errors });
+  }
+
+  function clearErrors(root) {
+    root.classList.remove('cs-has-errors');
+    root.querySelectorAll('.cs-invalid').forEach(function (el) {
+      el.classList.remove('cs-invalid');
+    });
+    root.querySelectorAll('.cs-error').forEach(function (el) {
+      el.remove();
+    });
+    root.querySelectorAll('.cs-error-summary').forEach(function (el) {
+      el.remove();
+    });
+  }
+
+  function setLoading(form, isLoading) {
+    var controls = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+    if (isLoading) {
+      form.classList.add('cs-loading');
+      form.setAttribute('data-cs-busy', '');
+      controls.forEach(function (btn) {
+        if (btn.getAttribute('data-cs-prev-disabled') == null) {
+          btn.setAttribute('data-cs-prev-disabled', btn.disabled ? 'true' : 'false');
+        }
+        btn.disabled = true;
+      });
+    } else {
+      form.classList.remove('cs-loading');
+      form.removeAttribute('data-cs-busy');
+      controls.forEach(function (btn) {
+        var prevDisabled = btn.getAttribute('data-cs-prev-disabled');
+        if (prevDisabled !== null) {
+          btn.disabled = prevDisabled === 'true';
+          btn.removeAttribute('data-cs-prev-disabled');
+        }
+      });
+    }
   }
 
   function mount(root) {
@@ -105,6 +295,8 @@
     }
 
     event.preventDefault();
+    setLoading(form, true);
+    clearErrors(form);
     var payload = serializeForm(form);
     var submitter = event.submitter;
     var command = readCommand(submitter);
@@ -115,10 +307,17 @@
     }
 
     postViewModel(form, payload).then(function (result) {
+      setLoading(form, false);
+      if (result.errors) {
+        applyErrors(form, result.errors);
+        emit(form, 'codespirit:error', result.errors);
+        return;
+      }
       applyRegions(form, result.regions);
       applyState(form, result.state || result);
       emit(form, 'codespirit:updated', result);
     }).catch(function (error) {
+      setLoading(form, false);
       emit(form, 'codespirit:error', error);
     });
   }
@@ -150,69 +349,214 @@
     }));
   }
 
+  var _observers = {};
+
+  function notifyObservers(form, changes) {
+    var id = form.getAttribute('data-cs-vm-id') || form.id || form.getAttribute('name') || '';
+    var list = _observers[id];
+    if (!list) {
+      return;
+    }
+
+    list.forEach(function (entry) {
+      Object.keys(changes).forEach(function (field) {
+        if (entry.fields.indexOf(field) >= 0 || entry.fields.length === 0) {
+          entry.callback(changes[field], field);
+        }
+      });
+    });
+  }
+
   function VmChain(root) {
     this._root = root;
     this._form = root.matches('[data-cs-vm]') ? root : (root.querySelector('[data-cs-vm]') || root.closest('[data-cs-vm]'));
     if (!this._form) {
       throw new Error('CodeSpirit.vm: no ViewModel form found in the element tree');
     }
+    this._id = this._form.getAttribute('data-cs-vm-id') || this._form.id || this._form.getAttribute('name') || '';
+    this._original = serializeForm(this._form);
+    this._destroyed = false;
   }
 
   VmChain.prototype = {
     set: function (name, value) {
+      this._checkDestroyed();
       if (arguments.length === 1 && typeof name === 'object') {
         var self = this;
-        Object.keys(name).forEach(function (k) { self.set(k, name[k]); });
+        var changes = {};
+        Object.keys(name).forEach(function (k) {
+          self.set(k, name[k]);
+          changes[k] = name[k];
+        });
+        notifyObservers(this._form, changes);
         return this;
       }
       updateField(this._form, name, value);
       var el = this._form.querySelector('[name="' + name + '"]');
       if (el) {
-        el.value = value == null ? '' : String(value);
+        el.value = value == null ? NULL_VALUE : String(value);
         input(el, name, value);
       }
+      notifyObservers(this._form, { [name]: value });
       return this;
     },
 
     get: function (name) {
+      this._checkDestroyed();
       var el = this._form.querySelector('[name="' + name + '"]');
       return el ? el.value : undefined;
     },
 
     val: function (name, value) {
+      this._checkDestroyed();
       return arguments.length < 2 ? this.get(name) : this.set(name, value);
     },
 
     state: function () {
+      this._checkDestroyed();
       return serializeForm(this._form);
     },
 
-    invoke: function (command) {
+    reset: function (names) {
+      this._checkDestroyed();
+      var self = this;
+      if (names) {
+        var changes = {};
+        names.forEach(function (n) {
+          var orig = self._original[n] || NULL_VALUE;
+          self.set(n, orig);
+          changes[n] = orig;
+        });
+        notifyObservers(this._form, changes);
+      } else {
+        Object.keys(this._original).forEach(function (k) {
+          self.set(k, self._original[k]);
+        });
+        notifyObservers(this._form, this._original);
+      }
+      clearErrors(this._form);
+      emit(this._form, 'codespirit:reset', {});
+      return this;
+    },
+
+    invoke: function (command, options) {
+      this._checkDestroyed();
       var form = this._form;
+      setLoading(form, true);
+      clearErrors(form);
       var payload = serializeForm(form);
       if (command) {
         payload.__command = command;
       }
 
-      return postViewModel(form, payload).then(function (result) {
+      return postViewModel(form, payload, options).then(function (result) {
+        setLoading(form, false);
+        if (result.errors) {
+          applyErrors(form, result.errors);
+          emit(form, 'codespirit:error', result.errors);
+          return result;
+        }
         applyRegions(form, result.regions);
         applyState(form, result.state || result);
         emit(form, 'codespirit:updated', result);
         return result;
+      }).catch(function (error) {
+        setLoading(form, false);
+        emit(form, 'codespirit:error', error);
+        throw error;
       });
     },
 
+    submit: function () {
+      this._checkDestroyed();
+      this._form.requestSubmit();
+      return this;
+    },
+
+    validate: function (rules) {
+      this._checkDestroyed();
+      clearErrors(this._form);
+      if (!rules) {
+        return true;
+      }
+
+      var self = this;
+      var valid = true;
+      Object.keys(rules).forEach(function (field) {
+        var fieldRules = rules[field];
+        var value = self.get(field);
+        if (value === undefined) {
+          value = null;
+        }
+
+        if (fieldRules.required && (value == null || String(value).trim() === NULL_VALUE)) {
+          applyErrors(self._form, { [field]: fieldRules.message || (field + ' is required') });
+          valid = false;
+          return;
+        }
+
+        if (fieldRules.minLength != null && String(value || '').length < fieldRules.minLength) {
+          applyErrors(self._form, { [field]: fieldRules.message || (field + ' must be at least ' + fieldRules.minLength + ' characters') });
+          valid = false;
+          return;
+        }
+
+        if (fieldRules.maxLength != null && String(value || '').length > fieldRules.maxLength) {
+          applyErrors(self._form, { [field]: fieldRules.message || (field + ' must be at most ' + fieldRules.maxLength + ' characters') });
+          valid = false;
+          return;
+        }
+
+        if (fieldRules.pattern && !fieldRules.pattern.test(String(value || ''))) {
+          applyErrors(self._form, { [field]: fieldRules.message || (field + ' is invalid') });
+          valid = false;
+          return;
+        }
+
+        if (fieldRules.custom && typeof fieldRules.custom === 'function') {
+          var customResult = fieldRules.custom(value, field);
+          if (customResult !== true) {
+            applyErrors(self._form, { [field]: typeof customResult === 'string' ? customResult : (field + ' is invalid') });
+            valid = false;
+          }
+        }
+      });
+
+      if (!valid) {
+        emit(this._form, 'codespirit:validation', { errors: {} });
+      }
+
+      return valid;
+    },
+
+    observe: function (fields, callback) {
+      this._checkDestroyed();
+      if (!this._id) {
+        this._id = 'vm_' + Date.now();
+        this._form.setAttribute('data-cs-vm-id', this._id);
+      }
+      _observers[this._id] = _observers[this._id] || [];
+      _observers[this._id].push({
+        fields: Array.isArray(fields) ? fields : (fields ? [fields] : []),
+        callback: callback
+      });
+      return this;
+    },
+
     on: function (event, handler) {
+      this._checkDestroyed();
       this._root.addEventListener(event, handler);
       return this;
     },
 
     off: function (event, handler) {
+      this._checkDestroyed();
       this._root.removeEventListener(event, handler);
       return this;
     },
 
     once: function (event, handler) {
+      this._checkDestroyed();
       var self = this;
       var wrapped = function (e) {
         self.off(event, wrapped);
@@ -221,17 +565,36 @@
       return this.on(event, wrapped);
     },
 
+    destroy: function () {
+      if (this._destroyed) {
+        return;
+      }
+      this._destroyed = true;
+      if (this._id && _observers[this._id]) {
+        delete _observers[this._id];
+      }
+    },
+
     refresh: function () {
+      this._checkDestroyed();
       refresh(this._root);
       return this;
     },
 
     el: function (query) {
+      this._checkDestroyed();
       return this._form.querySelector(query);
     },
 
     all: function (query) {
+      this._checkDestroyed();
       return Array.from(this._form.querySelectorAll(query));
+    },
+
+    _checkDestroyed: function () {
+      if (this._destroyed) {
+        throw new Error('CodeSpirit.vm: chain has been destroyed');
+      }
     }
   };
 
@@ -252,6 +615,8 @@
   window.CodeSpirit = window.CodeSpirit || {};
   window.CodeSpirit.applyState = applyState;
   window.CodeSpirit.applyRegions = applyRegions;
+  window.CodeSpirit.applyErrors = applyErrors;
+  window.CodeSpirit.clearErrors = clearErrors;
   window.CodeSpirit.input = input;
   window.CodeSpirit.mount = mount;
   window.CodeSpirit.refresh = refresh;

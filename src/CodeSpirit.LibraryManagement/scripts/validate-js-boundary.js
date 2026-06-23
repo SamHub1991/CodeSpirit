@@ -12,11 +12,14 @@ class Event {
     this.detail = options.detail;
     this.defaultPrevented = false;
     this.target = null;
+    this.submitter = options.submitter || null;
   }
 
   preventDefault() {
     this.defaultPrevented = true;
   }
+
+  stopImmediatePropagation() {}
 }
 
 class EventTarget {
@@ -30,6 +33,12 @@ class EventTarget {
     this.listeners[type].push(handler);
   }
 
+  removeEventListener(type, handler) {
+    if (!this.listeners[type]) return;
+    const idx = this.listeners[type].indexOf(handler);
+    if (idx >= 0) this.listeners[type].splice(idx, 1);
+  }
+
   dispatchEvent(event) {
     event.target = event.target || this;
     (this.listeners[event.type] || []).forEach((handler) => handler.call(this, event));
@@ -41,19 +50,58 @@ class EventTarget {
 }
 
 function matchesSelector(element, selector) {
-  const attrEquals = selector.match(/^\[([^=~\]]+)="([^"]*)"\]$/);
-  if (attrEquals) {
-    return element.getAttribute(attrEquals[1]) === attrEquals[2];
+  var remaining = selector.trim();
+
+  if (remaining.charAt(0) === '.') {
+    var dotIdx = remaining.search(/[\[\s:]|$/);
+    var className = remaining.substring(1, dotIdx);
+    return element.classList.contains(className);
   }
 
-  const attrToken = selector.match(/^\[([^=~\]]+)~="([^"]*)"\]$/);
-  if (attrToken) {
-    return (element.getAttribute(attrToken[1]) || '').split(/\s+/).includes(attrToken[2]);
+  if (remaining.charAt(0) === '#') {
+    var hashIdx = remaining.search(/[\[\s:]|$/);
+    var id = remaining.substring(1, hashIdx);
+    return element.getAttribute('id') === id;
   }
 
-  const attrExists = selector.match(/^\[([^\]]+)\]$/);
-  if (attrExists) {
-    return element.getAttribute(attrExists[1]) != null;
+  var tagName = null;
+  var tagMatch = remaining.match(/^([A-Za-z][A-Za-z0-9_-]*)/);
+  if (tagMatch) {
+    tagName = tagMatch[1].toLowerCase();
+    remaining = remaining.substring(tagMatch[0].length).trim();
+  }
+
+  if (tagName && element.tagName.toLowerCase() !== tagName) {
+    return false;
+  }
+
+  while (remaining.length > 0) {
+    var attrEquals = remaining.match(/^\[([^=~\]]+)="([^"]*)"\]/);
+    if (attrEquals) {
+      if (element.getAttribute(attrEquals[1]) !== attrEquals[2]) return false;
+      remaining = remaining.substring(attrEquals[0].length).trim();
+      continue;
+    }
+
+    var attrToken = remaining.match(/^\[([^=~\]]+)~="([^"]*)"\]/);
+    if (attrToken) {
+      if (!(element.getAttribute(attrToken[1]) || '').split(/\s+/).includes(attrToken[2])) return false;
+      remaining = remaining.substring(attrToken[0].length).trim();
+      continue;
+    }
+
+    var attrExists = remaining.match(/^\[([^\]]+)\]/);
+    if (attrExists) {
+      if (element.getAttribute(attrExists[1]) == null) return false;
+      remaining = remaining.substring(attrExists[0].length).trim();
+      continue;
+    }
+
+    break;
+  }
+
+  if (remaining.length === 0) {
+    return true;
   }
 
   return element.tagName.toLowerCase() === selector.toLowerCase();
@@ -68,9 +116,12 @@ class Element extends EventTarget {
     this.style = {};
     this.textContent = '';
     this.name = attributes.name || '';
+    this.classList = new ClassListMock();
     if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(this.tagName)) {
       this.value = attributes.value || '';
     }
+    this.disabled = Object.prototype.hasOwnProperty.call(attributes, 'disabled');
+    this.closest_cache = null;
   }
 
   appendChild(child) {
@@ -117,6 +168,25 @@ class Element extends EventTarget {
     if (name === 'name') {
       this.name = String(value);
     }
+    if (name === 'disabled') {
+      this.disabled = true;
+    }
+  }
+
+  removeAttribute(name) {
+    delete this.attributes[name];
+    if (name === 'name') {
+      this.name = '';
+    }
+    if (name === 'disabled') {
+      this.disabled = false;
+    }
+  }
+
+  requestSubmit() {
+    var event = new Event('submit', { bubbles: true });
+    event.submitter = null;
+    this.dispatchEvent(event);
   }
 
   matches(selector) {
@@ -169,6 +239,39 @@ class Element extends EventTarget {
   }
 }
 
+class ClassListMock {
+  constructor() {
+    this._classes = [];
+  }
+
+  add(className) {
+    if (!this._classes.includes(className)) {
+      this._classes.push(className);
+    }
+  }
+
+  remove(className) {
+    const idx = this._classes.indexOf(className);
+    if (idx >= 0) this._classes.splice(idx, 1);
+  }
+
+  contains(className) {
+    return this._classes.includes(className);
+  }
+
+  toggle(className) {
+    if (this.contains(className)) {
+      this.remove(className);
+    } else {
+      this.add(className);
+    }
+  }
+
+  toString() {
+    return this._classes.join(' ');
+  }
+}
+
 class Document extends Element {
   constructor() {
     super('#document');
@@ -202,11 +305,12 @@ function runScript(file, context) {
 
 async function main() {
   const document = new Document();
-  const form = document.appendChild(new Element('form', { 'data-cs-vm': '', method: 'post' }));
+  const form = document.appendChild(new Element('form', { 'data-cs-vm': '', method: 'post', 'data-cs-vm-id': 'test-vm', name: 'TestVm' }));
   const city = form.appendChild(new Element('input', { name: 'City', 'data-cs-bind': 'City', value: 'Paris' }));
   const cityLabel = form.appendChild(new Element('span', { 'data-cs-bind': 'City' }));
   const token = form.appendChild(new Element('input', { name: 'Token', value: '' }));
-  const refresh = form.appendChild(new Element('button', { type: 'submit', 'data-cs-command': 'Refresh' }));
+  const refreshBtn = form.appendChild(new Element('button', { type: 'submit', 'data-cs-command': 'Refresh' }));
+  const preDisabledBtn = form.appendChild(new Element('button', { type: 'submit', disabled: true, 'data-cs-command': 'SaveDraft' }));
 
   let fetchPayload = null;
   const context = vm.createContext({
@@ -224,14 +328,15 @@ async function main() {
 
   runScript('wwwroot/js/codespirit.runtime.js', context);
 
-  // Verify chain API is exposed
+  // ---- Exposed API ----
   assert.strictEqual(typeof context.window.CodeSpirit.vm, 'function');
   assert.strictEqual(typeof context.window.CodeSpirit.VmChain, 'function');
-
-  // Verify short alias is exposed without the collision-prone CS global.
+  assert.strictEqual(typeof context.window.CodeSpirit.applyErrors, 'function');
+  assert.strictEqual(typeof context.window.CodeSpirit.clearErrors, 'function');
   assert.strictEqual(context.window.$cs, context.window.CodeSpirit);
   assert.strictEqual(context.window.CS, undefined);
 
+  // ---- Occupied alias ----
   const occupiedAlias = { existing: true };
   const occupiedDocument = new Document();
   const occupiedContext = vm.createContext({
@@ -247,12 +352,13 @@ async function main() {
   assert.strictEqual(occupiedContext.window.$cs, occupiedAlias);
   assert.strictEqual(typeof occupiedContext.window.CodeSpirit.vm, 'function');
 
-  // Verify chain initialization
+  // ---- Chain initialization ----
   var chain = context.window.CodeSpirit.vm(form);
   assert.ok(chain instanceof context.window.CodeSpirit.VmChain);
   assert.strictEqual(chain._form, form);
+  assert.strictEqual(chain._destroyed, false);
 
-  // Verify .set() / .get() / .state()
+  // ---- .set() / .get() / .state() ----
   chain.set('City', 'Oslo');
   assert.strictEqual(city.value, 'Oslo');
   assert.strictEqual(cityLabel.textContent, 'Oslo');
@@ -266,26 +372,25 @@ async function main() {
   assert.strictEqual(snap.City, 'Stockholm');
   assert.strictEqual(snap.Token, 'x');
 
-  // Verify .val() getter form
+  // ---- .val() getter form ----
   assert.strictEqual(chain.val('City'), 'Stockholm');
 
-  // Verify chaining: set returns this
+  // ---- chaining: set returns this ----
   assert.strictEqual(chain.set('City', 'Copenhagen'), chain);
 
-  // Verify .on() / .off() / .once() return this
+  // ---- .on() / .off() / .once() return this ----
   assert.strictEqual(chain.on('codespirit:updated', function () {}), chain);
   assert.strictEqual(chain.once('codespirit:loaded', function () {}), chain);
 
-  // Verify .el() / .all() scoped queries
+  // ---- .el() / .all() scoped queries ----
   assert.strictEqual(chain.el('[name="City"]'), city);
   assert.ok(chain.all('[name="City"]').length >= 1);
 
-  // Verify .invoke() returns a Promise
+  // ---- .invoke() returns a Promise ----
   var invoked = chain.invoke('Refresh');
   assert.ok(invoked && typeof invoked.then === 'function');
-  assert.ok(invoked && typeof invoked.catch === 'function');
 
-  // Reset city for existing tests after chain modifications
+  // ---- Reset city for follow-up tests ----
   city.value = 'Paris';
   cityLabel.textContent = 'Paris';
 
@@ -304,13 +409,14 @@ async function main() {
   assert.strictEqual(city.value, 'Tokyo');
   assert.strictEqual(cityLabel.textContent, 'Tokyo');
 
+  // ---- Submit with loading state ----
   const updated = new Promise((resolve) => form.addEventListener('codespirit:updated', resolve));
   const region = document.appendChild(new Element('section', { 'data-cs-region': 'forecast' }));
   region.textContent = 'Old Forecast';
   const regionWidget = region.appendChild(new Element('div', { 'data-ui': 'custom-widget' }));
   regionWidget.textContent = 'Old Widget';
   const submit = new Event('submit', { bubbles: true });
-  submit.submitter = refresh;
+  submit.submitter = refreshBtn;
 
   context.fetch = async (url, options) => {
     fetchPayload = { url, options: { ...options, body: JSON.parse(options.body) } };
@@ -323,6 +429,10 @@ async function main() {
     };
   };
   form.dispatchEvent(submit);
+  assert.ok(form.classList.contains('cs-loading'));
+  assert.ok(form.getAttribute('data-cs-busy') !== null);
+  assert.strictEqual(refreshBtn.disabled, true);
+  assert.strictEqual(preDisabledBtn.disabled, true);
   await updated;
   assert.strictEqual(submit.defaultPrevented, true);
   assert.strictEqual(fetchPayload.url, '/weather');
@@ -331,7 +441,177 @@ async function main() {
   assert.strictEqual(city.value, 'Rome');
   assert.strictEqual(cityLabel.textContent, 'Rome');
   assert.strictEqual(document.querySelector('[data-cs-region="forecast"]').textContent, 'Fresh Forecast');
+  assert.ok(!form.classList.contains('cs-loading'));
+  assert.strictEqual(form.getAttribute('data-cs-busy'), null);
+  assert.strictEqual(refreshBtn.disabled, false);
+  assert.strictEqual(preDisabledBtn.disabled, true);
 
+  // ---- .reset() ----
+  chain.set('City', 'Modified');
+  chain.set('Token', 'modified');
+  chain.reset();
+  assert.strictEqual(chain.get('City'), 'Paris');
+  assert.strictEqual(chain.get('Token'), '');
+  assert.ok(!form.classList.contains('cs-has-errors'));
+
+  let resetEvent = null;
+  form.addEventListener('codespirit:reset', (e) => { resetEvent = e; });
+  chain.set('City', 'X');
+  chain.reset(['City']);
+  assert.strictEqual(chain.get('City'), 'Paris');
+  assert.ok(resetEvent !== null);
+
+  // ---- .destroy() ----
+  chain.destroy();
+  assert.strictEqual(chain._destroyed, true);
+  try {
+    chain.get('City');
+    assert.fail('should throw after destroy');
+  } catch (e) {
+    assert.ok(e.message.indexOf('destroyed') >= 0);
+  }
+  try {
+    chain.set('City', 'test');
+    assert.fail('should throw after destroy');
+  } catch (e) {
+    assert.ok(e.message.indexOf('destroyed') >= 0);
+  }
+
+  // ---- New chain after destroy ----
+  var chain2 = context.window.CodeSpirit.vm(form);
+  assert.ok(chain2._destroyed === false);
+  assert.strictEqual(chain2.get('City'), 'Paris');
+
+  // ---- .observe() ----
+  var observedFields = [];
+  chain2.observe('City', function (value, field) {
+    observedFields.push({ value, field });
+  });
+  chain2.set('City', 'London');
+  assert.strictEqual(observedFields.length, 1);
+  assert.strictEqual(observedFields[0].field, 'City');
+  assert.strictEqual(observedFields[0].value, 'London');
+
+  var observedMulti = [];
+  chain2.observe(['City', 'Token'], function (value, field) {
+    observedMulti.push({ value, field });
+  });
+  chain2.set({ City: 'Dublin', Token: 'abc' });
+  assert.ok(observedMulti.length >= 2);
+
+  // ---- observe all fields (empty array) ----
+  var observedAll = [];
+  chain2.observe([], function (value, field) {
+    observedAll.push({ value, field });
+  });
+  chain2.set('City', 'Berlin');
+  assert.ok(observedAll.length >= 1);
+
+  // ---- applyErrors / clearErrors ----
+  context.window.CodeSpirit.applyErrors(form, { City: 'City is required', Token: 'Invalid token' });
+  assert.ok(city.classList.contains('cs-invalid'));
+  assert.ok(token.classList.contains('cs-invalid'));
+  assert.ok(form.classList.contains('cs-has-errors'));
+
+  var validationEvent = null;
+  form.addEventListener('codespirit:validation', (e) => { validationEvent = e; });
+
+  context.window.CodeSpirit.clearErrors(form);
+  assert.ok(!city.classList.contains('cs-invalid'));
+  assert.ok(!token.classList.contains('cs-invalid'));
+  assert.ok(!form.classList.contains('cs-has-errors'));
+
+  // ---- applyErrors with validation event ----
+  context.window.CodeSpirit.applyErrors(form, { City: 'Too short' });
+  assert.ok(validationEvent !== null);
+  assert.strictEqual(validationEvent.detail.errors.City, 'Too short');
+  context.window.CodeSpirit.clearErrors(form);
+
+  // ---- Submit with server-side errors ----
+  chain2.set('City', 'Test');
+  var errorSubmit = new Event('submit', { bubbles: true });
+  errorSubmit.submitter = refreshBtn;
+
+  var errorPromise = new Promise((resolve) => form.addEventListener('codespirit:error', resolve));
+  context.fetch = async (url, options) => {
+    return {
+      ok: true,
+      json: async () => ({
+        errors: { City: 'Server validation failed' }
+      })
+    };
+  };
+  form.dispatchEvent(errorSubmit);
+  var errorResult = await errorPromise;
+  assert.strictEqual(errorResult.detail.City, 'Server validation failed');
+  assert.ok(city.classList.contains('cs-invalid'));
+  assert.ok(form.classList.contains('cs-has-errors'));
+  assert.ok(!form.classList.contains('cs-loading'));
+  context.window.CodeSpirit.clearErrors(form);
+
+  // ---- Submit with HTTP error (non-ok response) ----
+  var httpErrorSubmit = new Event('submit', { bubbles: true });
+  httpErrorSubmit.submitter = refreshBtn;
+
+  var httpErrorPromise = new Promise((resolve) => form.addEventListener('codespirit:error', resolve));
+  context.fetch = async (url, options) => {
+    return {
+      ok: false,
+      status: 500,
+      text: async () => 'Internal Server Error'
+    };
+  };
+  form.dispatchEvent(httpErrorSubmit);
+  var httpError = await httpErrorPromise;
+  assert.strictEqual(httpError.detail.status, 500);
+  assert.ok(!form.classList.contains('cs-loading'));
+
+  // ---- data-cs-visible binding ----
+  const visibleDiv = form.appendChild(new Element('div', { 'data-cs-visible': 'IsActive' }));
+  const hiddenDiv = form.appendChild(new Element('div', { 'data-cs-hidden': 'IsActive' }));
+  const visibleExact = form.appendChild(new Element('div', { 'data-cs-visible': 'IsActive:true' }));
+  const isActiveInput = form.appendChild(new Element('input', { name: 'IsActive', value: 'false' }));
+
+  chain2.set('IsActive', 'true');
+  assert.strictEqual(visibleDiv.style.display, '');
+  assert.strictEqual(hiddenDiv.style.display, 'none');
+  assert.strictEqual(visibleExact.style.display, '');
+
+  chain2.set('IsActive', 'false');
+  assert.strictEqual(visibleDiv.style.display, 'none');
+  assert.strictEqual(hiddenDiv.style.display, '');
+  assert.strictEqual(visibleExact.style.display, 'none');
+
+  // ---- data-cs-class binding ----
+  const classDiv = form.appendChild(new Element('div', { 'data-cs-class': 'IsActive:active' }));
+  const classDivDefault = form.appendChild(new Element('div', { 'data-cs-class': 'IsActive' }));
+
+  chain2.set('IsActive', 'true');
+  assert.ok(classDiv.classList.contains('active'));
+  assert.ok(classDivDefault.classList.contains('isactive'));
+
+  chain2.set('IsActive', 'false');
+  assert.ok(!classDiv.classList.contains('active'));
+  assert.ok(!classDivDefault.classList.contains('isactive'));
+
+  // ---- invoke with errors in result ----
+  context.fetch = async (url, options) => {
+    return {
+      ok: true,
+      json: async () => ({
+        errors: { City: 'City too short' },
+        state: { City: 'Test' }
+      })
+    };
+  };
+
+  var invokeResult = await chain2.invoke('Refresh');
+  assert.strictEqual(invokeResult.errors.City, 'City too short');
+  assert.ok(city.classList.contains('cs-invalid'));
+
+  context.window.CodeSpirit.clearErrors(form);
+
+  // ---- ui.behaviors.js integration ----
   runScript('wwwroot/js/ui/ui.behaviors.js', context);
   assert.strictEqual(typeof context.window.CodeSpirit.mount, 'function');
   assert.strictEqual(typeof context.window.CodeSpirit.refresh, 'function');
@@ -374,6 +654,79 @@ async function main() {
   form.appendChild(autoField);
   context.window.CodeSpirit.mount(document);
   assert.ok(autoField.getAttribute('data-ui-ready').split(/\s+/).indexOf('auto-submit') >= 0);
+
+  // ---- data-cs-attr binding ----
+  var linkEl = form.appendChild(new Element('a', { 'data-cs-attr': 'DetailUrl:href' }));
+  chain2.set('DetailUrl', '/details/42');
+  assert.strictEqual(linkEl.getAttribute('href'), '/details/42');
+  chain2.set('DetailUrl', '');
+  assert.strictEqual(linkEl.getAttribute('href'), null);
+
+  var imgEl = form.appendChild(new Element('img', { 'data-cs-attr': 'AvatarUrl:src' }));
+  chain2.set('AvatarUrl', '/img/avatar.png');
+  assert.strictEqual(imgEl.getAttribute('src'), '/img/avatar.png');
+
+  // ---- data-cs-enabled / data-cs-disabled binding ----
+  var enabledInput = form.appendChild(new Element('input', { 'data-cs-enabled': 'CanEdit', disabled: true }));
+  chain2.set('CanEdit', 'true');
+  assert.strictEqual(enabledInput.disabled, false);
+  chain2.set('CanEdit', 'false');
+  assert.strictEqual(enabledInput.disabled, true);
+
+  var disabledBtn = form.appendChild(new Element('button', { 'data-cs-disabled': 'IsLocked' }));
+  chain2.set('IsLocked', 'true');
+  assert.strictEqual(disabledBtn.disabled, true);
+  chain2.set('IsLocked', 'false');
+  assert.strictEqual(disabledBtn.disabled, false);
+
+  // ---- chain.submit() ----
+  var submitCalled = false;
+  form.requestSubmit = function () {
+    submitCalled = true;
+  };
+  chain2.submit();
+  assert.strictEqual(submitCalled, true);
+
+  // ---- chain.validate() ----
+  var chain3 = context.window.CodeSpirit.vm(form);
+  chain3.set('City', '');
+  var valid = chain3.validate({
+    City: { required: true, message: 'City required' }
+  });
+  assert.strictEqual(valid, false);
+  assert.ok(city.classList.contains('cs-invalid'));
+  context.window.CodeSpirit.clearErrors(form);
+
+  chain3.set('City', 'Ab');
+  valid = chain3.validate({
+    City: { minLength: 3, message: 'Too short' }
+  });
+  assert.strictEqual(valid, false);
+  context.window.CodeSpirit.clearErrors(form);
+
+  chain3.set('City', 'Paris');
+  valid = chain3.validate({
+    City: { required: true, minLength: 3 }
+  });
+  assert.strictEqual(valid, true);
+  assert.ok(!city.classList.contains('cs-invalid'));
+
+  valid = chain3.validate({
+    City: { pattern: /^[A-Z]/, message: 'Must start with capital' }
+  });
+  assert.strictEqual(valid, true);
+
+  // Custom validator
+  valid = chain3.validate({
+    City: { custom: function (val) { return val === 'Paris' || 'Must be Paris'; } }
+  });
+  assert.strictEqual(valid, true);
+
+  valid = chain3.validate({
+    City: { custom: function (val) { return false; } }
+  });
+  assert.strictEqual(valid, false);
+  context.window.CodeSpirit.clearErrors(form);
 
   console.log('JS boundary validation passed');
 }

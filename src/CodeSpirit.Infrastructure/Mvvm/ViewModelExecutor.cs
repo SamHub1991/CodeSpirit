@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.ComponentModel.DataAnnotations;
 using CodeSpirit.Core;
 using CodeSpirit.Core.Mvvm;
 using CodeSpirit.Infrastructure.Page;
@@ -48,6 +49,18 @@ public class ViewModelExecutor
             await vm.LoadAsync();
 
             BindPostedProperties(vm, payload);
+
+            if (HttpMethods.IsPost(ctx.Request.Method) || HttpMethods.IsPut(ctx.Request.Method) || HttpMethods.IsPatch(ctx.Request.Method))
+            {
+                ValidateModel(vm, services);
+                if (!vm.IsValid)
+                {
+                    var invalidState = vm.ToResponse();
+                    await WriteJson(ctx, invalidState);
+                    return;
+                }
+            }
+
             await ExecuteCommandAsync(vm, GetCommandName(ctx, payload));
 
             await vm.RenderAsync();
@@ -59,6 +72,12 @@ public class ViewModelExecutor
                 return;
             }
 
+            if (!vm.IsValid)
+            {
+                await WriteJson(ctx, state);
+                return;
+            }
+
             state = state with { Regions = _pageRenderer.RenderRegions(ctx, vmType, state.State) };
             await WriteJson(ctx, state);
         }
@@ -66,6 +85,25 @@ public class ViewModelExecutor
         {
             _logger.LogError(ex, "VM {Name} failed", vmType.Name);
             await WriteError(ctx, 500, ex.Message);
+        }
+    }
+
+    private static void ValidateModel(ViewModel vm, IServiceProvider services)
+    {
+        var results = new List<ValidationResult>();
+        var context = new ValidationContext(vm, services, null);
+
+        if (Validator.TryValidateObject(vm, context, results, validateAllProperties: true))
+            return;
+
+        foreach (var result in results)
+        {
+            var memberNames = result.MemberNames.Any()
+                ? result.MemberNames
+                : [string.Empty];
+
+            foreach (var member in memberNames)
+                vm.AddModelError(member, result.ErrorMessage ?? "Invalid value.");
         }
     }
 
@@ -122,10 +160,10 @@ public class ViewModelExecutor
             .FirstOrDefault(x => string.Equals(x.Attribute.Name ?? x.Method.Name, commandName, StringComparison.OrdinalIgnoreCase));
 
         if (command == default)
-            throw new InvalidOperationException($"Command '{commandName}' was not found on ViewModel '{vm.GetType().Name}'.");
+            throw new InvalidOperationException($"Command '{commandName}' was not found on ViewModel '{vm.GetType().Name}'. Add [Command] to a parameterless method, or set data-cs-command to the command name.");
 
         if (command.Method.GetParameters().Length > 0)
-            throw new InvalidOperationException($"Command '{commandName}' must not declare parameters.");
+            throw new InvalidOperationException($"Command '{commandName}' must not declare parameters. Bind request data to properties, then read them inside the ViewModel method.");
 
         var result = command.Method.Invoke(vm, null);
         if (result is Task task)

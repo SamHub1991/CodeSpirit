@@ -31,6 +31,8 @@ CodeSpirit.LibraryManagement/
 - Put shared domain services and models under a capability folder, for example `Features/Library`.
 - Keep framework convention files in root folders: `Pages`, `Components`, `Reports`, and `wwwroot`.
 - Keep ASPX files focused on markup; `Route` and `Title` live on `PageDirective`, and the default layout is `Pages/Site.master`.
+- The default layout loads `wwwroot/js/vendor/jquery-lite.js`, `wwwroot/js/ui/jquery.behaviors.js`, and `wwwroot/js/ui/ui.behaviors.js`.
+- Reuse the built-in CSS utility layer in `wwwroot/css/site.css` before adding page-specific CSS.
 
 ## CSV Import and Export
 
@@ -84,6 +86,13 @@ The source generator reports these in the Error List:
 - **CSP001** (warning): Abstract `[Service]` class is not registered.
 - **CSP002** (warning): `[Service]` class has no public constructor.
 - **CSP003** (error): `[Command]` method declares parameters.
+
+### Frontend Toolkit
+
+- `jquery-lite.js` provides a local jQuery-compatible layer for selectors, events, DOM updates, AJAX helpers, and chainable APIs.
+- `jquery.behaviors.js` owns reusable `data-ui` behaviors that depend on the jQuery-compatible layer.
+- `ui.behaviors.js` owns native behaviors for progressive enhancement.
+- `site.css` includes reusable cards, grids, badges, buttons, alerts, tabs, and form primitives.
 
 ## Validation
 

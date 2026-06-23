@@ -20,7 +20,6 @@ CodeSpirit.LibraryManagement/
 ├── Components/                  # Reusable ASCX components
 ├── Reports/                     # XML report templates
 ├── wwwroot/                     # Static CSS, JavaScript, images, and fonts
-├── scripts/                     # Project-local validation scripts
 ├── Program.cs                   # CodeSpirit application entry point
 └── appsettings.json             # Application configuration
 ```
@@ -32,7 +31,8 @@ CodeSpirit.LibraryManagement/
 - Put shared domain services and models under a capability folder, for example `Features/Library`.
 - Keep framework convention files in root folders: `Pages`, `Components`, `Reports`, and `wwwroot`.
 - Keep ASPX files focused on markup; `Route` and `Title` live on `PageDirective`, and the default layout is `Pages/Site.master`.
-- Use `scripts/validate-js-boundary.js` after changing `wwwroot/js/codespirit.runtime.js` or `wwwroot/js/ui/jquery.behaviors.js`.
+- The default layout loads `wwwroot/js/vendor/jquery-lite.js`, `wwwroot/js/ui/jquery.behaviors.js`, and `wwwroot/js/ui/ui.behaviors.js`.
+- Reuse the built-in CSS utility layer in `wwwroot/css/site.css` before adding page-specific CSS.
 
 ## CSV Import and Export
 
@@ -64,36 +64,38 @@ ISBN,Title,Author,Category,Location,PublishedYear,CopyCount,Rating
 
 ## Developer Hints
 
-### Code Snippets (VS 2022+)
+### Code Snippets
 
-After installing the CodeSpirit VSIX, the following snippet shortcuts work in any C# or ASPX file:
+After installing this VSIX, the following shortcuts are available in any C# or ASPX file:
 
 | Shortcut | Output |
 |----------|--------|
-| `csvm` | ViewModel class with PageDirective, Bind, Command |
+| `csvm` | ViewModel with PageDirective, Bind, Command, LoadAsync |
 | `cssvc` | Service class with [Service] and [Autowired] |
-| `csapp` | Program.cs CodeSpirit entry point |
+| `csapp` | Program.cs entry point |
 | `csmod` | CodeSpiritModule template |
 | `csbind` | [Bind] property |
 | `csform` | `<cs:Form>` with Field and Button |
 | `cstable` | `<cs:Table>` with Columns |
 | `csregion` | `<cs:Region>` partial update block |
 
-### Compile-Time Warnings
+### Compile-Time Diagnostics
 
-The source generator detects and reports:
+The source generator reports these in the Error List:
 
-- **CSP001** (warning): Abstract class with `[Service]` -- will not be registered.
-- **CSP002** (warning): `[Service]` class missing public constructor.
-- **CSP003** (error): `[Command]` method has parameters -- must be parameterless.
+- **CSP001** (warning): Abstract `[Service]` class is not registered.
+- **CSP002** (warning): `[Service]` class has no public constructor.
+- **CSP003** (error): `[Command]` method declares parameters.
 
-### Code Style
+### Frontend Toolkit
 
-The project `.editorconfig` enforces file-scoped namespaces, 4-space C# indent, and consistent `var` usage.
+- `jquery-lite.js` provides a local jQuery-compatible layer for selectors, events, DOM updates, AJAX helpers, and chainable APIs.
+- `jquery.behaviors.js` owns reusable `data-ui` behaviors that depend on the jQuery-compatible layer.
+- `ui.behaviors.js` owns native behaviors for progressive enhancement.
+- `site.css` includes reusable cards, grids, badges, buttons, alerts, tabs, and form primitives.
 
 ## Validation
 
 ```bash
-node scripts/validate-js-boundary.js
 dotnet build CodeSpirit.LibraryManagement.csproj
 ```

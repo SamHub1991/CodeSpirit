@@ -9,7 +9,7 @@ namespace CodeSpirit.LibraryManagement.Features.Admin;
 
 [PageDirective(Route = "/admin", Title = "Library Admin")]
 [Service]
-public class AdminViewModel : ViewModel
+public class AdminViewModel : CodeSpirit.Core.ViewModel
 {
     [Bind] public List<BookItem> Books { get; set; } = [];
     [Bind] public List<ReaderItem> Readers { get; set; } = [];
@@ -70,6 +70,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void AddBook()
     {
+        if (!ValidateAddBook())
+            return;
+
         Notices = [Service.AddBook(BookIsbn, BookTitle, BookAuthor, BookCategory, BookLocation, BookPublishedYear, BookCopyCount)];
         ClearBookForm();
         Refresh();
@@ -78,6 +81,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void UpdateBook()
     {
+        if (!ValidateUpdateBook())
+            return;
+
         Notices = [Service.UpdateBook(BookId, BookIsbn, BookTitle, BookAuthor, BookCategory, BookLocation, BookPublishedYear, BookCopyCount)];
         Refresh();
     }
@@ -85,6 +91,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void ArchiveBook()
     {
+        if (!EnsurePositive(BookId, nameof(BookId), "Book Id is required."))
+            return;
+
         Notices = [Service.ArchiveBook(BookId)];
         Refresh();
     }
@@ -92,6 +101,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void RestoreBook()
     {
+        if (!EnsurePositive(BookId, nameof(BookId), "Book Id is required."))
+            return;
+
         Notices = [Service.RestoreBook(BookId)];
         Refresh();
     }
@@ -99,6 +111,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void RegisterReader()
     {
+        if (!ValidateReaderProfile(includeReaderId: false))
+            return;
+
         Notices = [Service.RegisterReader(ReaderName, ReaderEmail, ReaderPhone, ReaderLevel)];
         ClearReaderForm();
         Refresh();
@@ -107,6 +122,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void UpdateReader()
     {
+        if (!ValidateReaderProfile(includeReaderId: true))
+            return;
+
         Notices = [Service.UpdateReader(ReaderId, ReaderName, ReaderEmail, ReaderPhone, ReaderLevel)];
         Refresh();
     }
@@ -114,6 +132,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void SuspendReader()
     {
+        if (!EnsurePositive(ReaderId, nameof(ReaderId), "Reader Id is required."))
+            return;
+
         Notices = [Service.SuspendReader(ReaderId)];
         Refresh();
     }
@@ -121,6 +142,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void ActivateReader()
     {
+        if (!EnsurePositive(ReaderId, nameof(ReaderId), "Reader Id is required."))
+            return;
+
         Notices = [Service.ActivateReader(ReaderId)];
         Refresh();
     }
@@ -128,6 +152,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void BorrowBook()
     {
+        if (!ValidateLoanPair())
+            return;
+
         Notices = [Service.BorrowBook(BookId, ParseId(LoanReaderId))];
         Refresh();
     }
@@ -135,6 +162,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void ReturnBook()
     {
+        if (!EnsurePositive(LoanId, nameof(LoanId), "Loan Id is required."))
+            return;
+
         Notices = [Service.ReturnBook(LoanId)];
         Refresh();
     }
@@ -142,6 +172,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void RenewLoan()
     {
+        if (!EnsurePositive(LoanId, nameof(LoanId), "Loan Id is required."))
+            return;
+
         Notices = [Service.RenewLoan(LoanId)];
         Refresh();
     }
@@ -149,6 +182,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void ReserveBook()
     {
+        if (!ValidateLoanPair())
+            return;
+
         Notices = [Service.ReserveBook(BookId, ParseId(ReservationReaderId))];
         Refresh();
     }
@@ -156,6 +192,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void CancelReservation()
     {
+        if (!EnsurePositive(ReservationId, nameof(ReservationId), "Reservation Id is required."))
+            return;
+
         Notices = [Service.CancelReservation(ReservationId)];
         Refresh();
     }
@@ -163,6 +202,12 @@ public class AdminViewModel : ViewModel
     [Command]
     public void CollectFine()
     {
+        var valid = true;
+        valid &= EnsurePositive(ReaderId, nameof(ReaderId), "Reader Id is required.");
+        valid &= EnsurePositive(FineAmount, nameof(FineAmount), "Fine amount must be greater than zero.");
+        if (!valid)
+            return;
+
         Notices = [Service.CollectFine(ReaderId, FineAmount)];
         Refresh();
     }
@@ -170,6 +215,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void ReceiveCopies()
     {
+        if (!ValidateInventoryAction(requireLocation: false))
+            return;
+
         Notices = [Service.ReceiveCopies(InventoryBookId, InventoryQuantity, InventoryReason)];
         ClearInventoryForm();
         Refresh();
@@ -178,6 +226,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void WriteOffCopies()
     {
+        if (!ValidateInventoryAction(requireLocation: false))
+            return;
+
         Notices = [Service.WriteOffCopies(InventoryBookId, InventoryQuantity, InventoryReason)];
         ClearInventoryForm();
         Refresh();
@@ -186,6 +237,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void RelocateBook()
     {
+        if (!ValidateInventoryAction(requireLocation: true))
+            return;
+
         Notices = [Service.RelocateBook(InventoryBookId, InventoryLocation, InventoryReason)];
         ClearInventoryForm();
         Refresh();
@@ -202,6 +256,9 @@ public class AdminViewModel : ViewModel
     [Command]
     public void ImportBooks()
     {
+        if (!EnsureText(ImportExportCsv, nameof(ImportExportCsv), "Paste CSV content before importing."))
+            return;
+
         Notices = [Service.ImportBooksCsv(ImportExportCsv)];
         Refresh();
     }
@@ -215,6 +272,91 @@ public class AdminViewModel : ViewModel
     }
 
     private LibraryService Service => Ctx.Services.GetRequiredService<LibraryService>();
+
+    private bool ValidateAddBook()
+    {
+        var valid = true;
+        valid &= EnsureText(BookIsbn, nameof(BookIsbn), "ISBN is required.");
+        valid &= EnsureText(BookTitle, nameof(BookTitle), "Title is required.");
+        valid &= EnsureText(BookAuthor, nameof(BookAuthor), "Author is required.");
+        valid &= EnsureText(BookCategory, nameof(BookCategory), "Category is required.");
+        valid &= EnsureText(BookLocation, nameof(BookLocation), "Location is required.");
+        valid &= EnsurePositive(BookPublishedYear, nameof(BookPublishedYear), "Published year is required.");
+        valid &= EnsurePositive(BookCopyCount, nameof(BookCopyCount), "Copy count must be greater than zero.");
+        return valid;
+    }
+
+    private bool ValidateUpdateBook()
+    {
+        var valid = EnsurePositive(BookId, nameof(BookId), "Book Id is required.");
+        valid &= ValidateAddBook();
+        return valid;
+    }
+
+    private bool ValidateReaderProfile(bool includeReaderId)
+    {
+        var valid = true;
+        if (includeReaderId)
+            valid &= EnsurePositive(ReaderId, nameof(ReaderId), "Reader Id is required.");
+
+        valid &= EnsureText(ReaderName, nameof(ReaderName), "Reader name is required.");
+        valid &= EnsureText(ReaderEmail, nameof(ReaderEmail), "Reader email is required.");
+        valid &= EnsureText(ReaderPhone, nameof(ReaderPhone), "Reader phone is required.");
+        valid &= EnsureText(ReaderLevel, nameof(ReaderLevel), "Reader level is required.");
+        return valid;
+    }
+
+    private bool ValidateLoanPair()
+    {
+        var valid = true;
+        valid &= EnsurePositive(BookId, nameof(BookId), "Book Id is required.");
+        valid &= EnsurePositive(ParseId(LoanReaderId), nameof(LoanReaderId), "Reader Id is required.");
+        return valid;
+    }
+
+    private bool ValidateInventoryAction(bool requireLocation)
+    {
+        var valid = true;
+        valid &= EnsurePositive(InventoryBookId, nameof(InventoryBookId), "Book Id is required.");
+        valid &= EnsurePositive(InventoryQuantity, nameof(InventoryQuantity), "Quantity must be greater than zero.");
+        valid &= EnsureText(InventoryReason, nameof(InventoryReason), "Reason is required.");
+        if (requireLocation)
+            valid &= EnsureText(InventoryLocation, nameof(InventoryLocation), "Location is required.");
+
+        return valid;
+    }
+
+    private bool EnsureText(string? value, string field, string message)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+            return true;
+
+        RecordValidationError(field, message);
+        return false;
+    }
+
+    private bool EnsurePositive(int value, string field, string message)
+    {
+        if (value > 0)
+            return true;
+
+        RecordValidationError(field, message);
+        return false;
+    }
+
+    private bool EnsurePositive(decimal value, string field, string message)
+    {
+        if (value > 0)
+            return true;
+
+        RecordValidationError(field, message);
+        return false;
+    }
+
+    private void RecordValidationError(string field, string message)
+    {
+        Notices = [new AdminNotice($"{field}: {message}", "red")];
+    }
 
     private void Refresh()
     {

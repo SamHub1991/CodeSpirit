@@ -75,3 +75,19 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - 新增 snippet 放入 `src/Templates/CodeSpiritVsixTemplate/Snippets/` 目录，文件名 `codespirit-*.snippet`。
   - pkgdef 通过 `$PackageFolder$\Snippets` 路径注册；snippet 文件在 csproj 中以 `<Content Include>` + `<VSIXSubPath>Snippets</VSIXSubPath>` 包含。
   - 新增 snippet 后需同步更新根 README 和模板 README 的快捷方式表。
+
+[解决方案测试命令]
+- Date: 2026-06-23
+- Context: Agent 在继续验证当前 MVVM 与页面渲染改动时发现
+- Category: 测试方法
+- Instructions:
+  - 使用 `dotnet test src/CodeSpirit.slnx` 验证整个解决方案的测试状态。
+  - 当前仓库中的 JS 边界校验脚本可用：`node src/CodeSpirit.LibraryManagement/scripts/validate-js-boundary.js`。
+
+[模板同步约定]
+- Date: 2026-06-23
+- Context: Agent 在同步 LibraryManagement 的源码与 VSIX 模板时发现
+- Category: 工作流协作
+- Instructions:
+  - 修改 `src/CodeSpirit.LibraryManagement` 下的 MVVM、页面或运行时逻辑时，同步检查 `src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement` 下的对应模板文件。
+  - 源码和模板保持一致，避免后续新项目生成时丢失同样的校验和交互行为。

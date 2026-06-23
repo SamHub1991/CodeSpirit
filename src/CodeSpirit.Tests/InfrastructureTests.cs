@@ -3,6 +3,7 @@ using CodeSpirit.Core.Abstractions;
 using CodeSpirit.Core.Interfaces;
 using CodeSpirit.Infrastructure.AutoConfiguration;
 using CodeSpirit.Infrastructure.Aop;
+using CodeSpirit.Infrastructure.Page;
 using System.Reflection;
 
 namespace CodeSpirit.Tests;
@@ -160,3 +161,90 @@ public class SampleService : ISampleService { }
 
 [Repository]
 public class SampleRepository { }
+
+public class ShowTagTests
+{
+    [Fact]
+    public void Show_Visible_GeneratesDataCsVisible()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Show Visible=\"{Binding IsActive}\">Hello</cs:Show>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("data-cs-visible=\"IsActive\"", html);
+        Assert.Contains(">Hello<", html);
+    }
+
+    [Fact]
+    public void Show_HideWhen_GeneratesDataCsHidden()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Show HideWhen=\"{Binding IsChecked}\">Content</cs:Show>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("data-cs-hidden=\"IsChecked\"", html);
+    }
+
+    [Fact]
+    public void Show_Class_GeneratesDataCsClass()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Show Class=\"{Binding IsActive}\" ClassName=\"active\">Item</cs:Show>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("data-cs-class=\"IsActive:active\"", html);
+    }
+
+    [Fact]
+    public void Show_ClassWithoutClassName_UsesFieldName()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Show Class=\"{Binding IsActive}\">Item</cs:Show>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("data-cs-class=\"IsActive\"", html);
+    }
+
+    [Fact]
+    public void Show_TagAttribute_RespectsCustomTag()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Show Visible=\"{Binding Ready}\" Tag=\"span\">Label</cs:Show>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("<span", html);
+        Assert.Contains("</span>", html);
+    }
+
+    [Fact]
+    public void Show_DefaultTag_IsDiv()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Show Visible=\"{Binding Ready}\">Label</cs:Show>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("<div", html);
+    }
+
+    [Fact]
+    public void Show_MultipleBindings_GeneratesAllAttributes()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Show Visible=\"{Binding Active}\" Class=\"{Binding Theme}\" ClassName=\"dark\">Box</cs:Show>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("data-cs-visible=\"Active\"", html);
+        Assert.Contains("data-cs-class=\"Theme:dark\"", html);
+    }
+
+    [Fact]
+    public void Show_PassesThroughExtraAttributes()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Show Visible=\"{Binding Ready}\" Id=\"panel\" Style=\"display:block\">Body</cs:Show>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("Id=\"panel\"", html);
+        Assert.Contains("Style=\"display:block\"", html);
+    }
+}

@@ -55,6 +55,28 @@ public abstract class ViewModel
         return "/" + string.Concat(name.Select((c, i) =>
             i > 0 && char.IsUpper(c) ? "-" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString()));
     }
+
+    /// <summary>
+    /// Validation errors keyed by field name.
+    /// Use <see cref="AddModelError"/> to populate.
+    /// </summary>
+    public Dictionary<string, List<string>> ModelState { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// True when no validation errors have been recorded.
+    /// </summary>
+    public bool IsValid => ModelState.Count == 0;
+
+    /// <summary>
+    /// Adds a validation error for the specified field.
+    /// </summary>
+    public void AddModelError(string field, string message)
+    {
+        if (!ModelState.TryGetValue(field, out var messages))
+            ModelState[field] = messages = new List<string>();
+        messages.Add(message);
+    }
+
     /// <summary>
     /// HTTP context for the current request.
     /// </summary>
@@ -124,7 +146,16 @@ public abstract class ViewModel
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return new ViewModelResponse(ToState(), bindings, commands);
+        Dictionary<string, string?>? errors = null;
+        if (ModelState.Count > 0)
+        {
+            errors = ModelState.ToDictionary(
+                kvp => kvp.Key,
+                kvp => (string?)string.Join("; ", kvp.Value),
+                StringComparer.OrdinalIgnoreCase);
+        }
+
+        return new ViewModelResponse(ToState(), bindings, commands) { Errors = errors };
     }
 }
 
@@ -145,4 +176,6 @@ public record ViewModelResponse(
     string[] Commands)
 {
     public Dictionary<string, string> Regions { get; init; } = [];
+
+    public Dictionary<string, string?>? Errors { get; init; }
 }

@@ -91,7 +91,9 @@
         timer = setTimeout(function () {
           var form = el.closest('form[data-cs-vm]');
           if (form && window.CodeSpirit && typeof window.CodeSpirit.vm === 'function') {
-            window.CodeSpirit.vm(form).invoke();
+            var chain = window.CodeSpirit.vm(form);
+            chain.invoke();
+            chain.destroy();
           }
         }, delay);
       });
@@ -100,7 +102,9 @@
         clearTimeout(timer);
         var form = el.closest('form[data-cs-vm]');
         if (form && window.CodeSpirit && typeof window.CodeSpirit.vm === 'function') {
-          window.CodeSpirit.vm(form).invoke();
+          var chain = window.CodeSpirit.vm(form);
+          chain.invoke();
+          chain.destroy();
         }
       });
     });
