@@ -32,13 +32,13 @@
       <cs:Button Command="Search">Apply Filter</cs:Button>
     </cs:Form>
 
-    <cs:Conditional Visible="{Binding Notices}">
-      <cs:Region Name="admin-notices" Tag="section" class="notice-row">
+    <cs:Region Name="admin-notices" Tag="section" class="notice-row">
+      <cs:Conditional Visible="{Binding Notices}">
         <cs:Repeater Items="{Binding Notices}">
           <div class="notice notice-{Binding Tone}">{Binding Text}</div>
         </cs:Repeater>
-      </cs:Region>
-    </cs:Conditional>
+      </cs:Conditional>
+    </cs:Region>
 
     <section class="admin-grid admin-grid-wide">
       <cs:Form class="admin-card">

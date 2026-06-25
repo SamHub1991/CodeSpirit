@@ -91,3 +91,17 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
 - Instructions:
   - 修改 `src/CodeSpirit.LibraryManagement` 下的 MVVM、页面或运行时逻辑时，同步检查 `src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement` 下的对应模板文件。
   - 源码和模板保持一致，避免后续新项目生成时丢失同样的校验和交互行为。
+
+[VSIX 模板清单同步]
+- Date: 2026-06-24
+- Context: Agent 在确认开发面板和意图识别脚本的模板同步项时发现
+- Category: 工作流协作
+- Instructions:
+  - 同步 `wwwroot/js/ui` 新增脚本时，除了复制文件本体，还要更新 `src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement/CodeSpirit.LibraryManagement.vstemplate` 里的 `<ProjectItem>` 清单。
+  - `codespirit.intent.js`、`codespirit.devpanel.js`、`ui.behaviors.js` 这类脚本都需要出现在模板清单中，才能随 VSIX 新建项目一起生成。
+
+[在线状态呼叫回复]
+- Date: 2026-06-24
+- Context: 用户要求固定在线状态确认回复时提出
+- Instructions:
+  - 当用户询问“在不在”“还在吗”“活着吗”等在线状态确认时，回复“老公我在”。

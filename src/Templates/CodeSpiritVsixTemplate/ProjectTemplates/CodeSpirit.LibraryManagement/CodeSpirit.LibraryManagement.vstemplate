@@ -46,6 +46,7 @@
         <Folder Name="Library" TargetFolderName="Library">
           <Folder Name="Models" TargetFolderName="Models">
             <ProjectItem ReplaceParameters="true" TargetFileName="BookItem.cs">BookItem.cs</ProjectItem>
+            <ProjectItem ReplaceParameters="true" TargetFileName="ToneConstants.cs">ToneConstants.cs</ProjectItem>
           </Folder>
           <Folder Name="Services" TargetFolderName="Services">
             <ProjectItem ReplaceParameters="true" TargetFileName="LibraryService.cs">LibraryService.cs</ProjectItem>
@@ -86,6 +87,9 @@
           <ProjectItem ReplaceParameters="false" TargetFileName="site.js">site.js</ProjectItem>
           <Folder Name="ui" TargetFolderName="ui">
             <ProjectItem ReplaceParameters="false" TargetFileName="jquery.behaviors.js">jquery.behaviors.js</ProjectItem>
+            <ProjectItem ReplaceParameters="false" TargetFileName="ui.behaviors.js">ui.behaviors.js</ProjectItem>
+            <ProjectItem ReplaceParameters="false" TargetFileName="codespirit.intent.js">codespirit.intent.js</ProjectItem>
+            <ProjectItem ReplaceParameters="false" TargetFileName="codespirit.devpanel.js">codespirit.devpanel.js</ProjectItem>
           </Folder>
           <Folder Name="pages" TargetFolderName="pages">
             <ProjectItem ReplaceParameters="false" TargetFileName="home.js">home.js</ProjectItem>

@@ -10,8 +10,8 @@ public record PageDescriptor(string? Route, Type ViewModelType, string? Layout, 
 
 public class PageParser
 {
-    private static readonly Regex DirectiveRegex = new(
-        @"@Page\s+([^*]*?)\*",
+    private static readonly Regex DirectiveAttributeRegex = new(
+        @"(?<name>[A-Za-z][A-Za-z0-9_-]*)\s*=\s*[""'](?<value>[^""']*)[""']",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     public PageDescriptor? ParseFromViewModelType(Type viewModelType)
@@ -33,11 +33,18 @@ public class PageParser
             return null;
 
         var content = File.ReadAllText(filePath);
-        var match = DirectiveRegex.Match(content);
-        if (!match.Success)
+        var start = content.IndexOf("<%@", StringComparison.OrdinalIgnoreCase);
+        if (start < 0)
             return null;
 
-        var directiveText = match.Groups[1].Value.Trim();
+        var end = content.IndexOf("%>", start, StringComparison.OrdinalIgnoreCase);
+        if (end < 0)
+            return null;
+
+        var directiveText = content[(start + 3)..end].Trim();
+        if (directiveText.StartsWith("Page", StringComparison.OrdinalIgnoreCase))
+            directiveText = directiveText[4..].Trim();
+
         var properties = ParseDirectiveProperties(directiveText);
 
         var route = properties.GetValueOrDefault("Route");
@@ -72,18 +79,8 @@ public class PageParser
     private static Dictionary<string, string> ParseDirectiveProperties(string directiveText)
     {
         var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var pairs = directiveText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-        foreach (var pair in pairs)
-        {
-            var eq = pair.IndexOf('=');
-            if (eq <= 0 || eq >= pair.Length - 1)
-                continue;
-
-            var key = pair[..eq].Trim();
-            var value = pair[(eq + 1)..].Trim('"', '\'');
-            result[key] = value;
-        }
+        foreach (Match match in DirectiveAttributeRegex.Matches(directiveText))
+            result[match.Groups["name"].Value] = match.Groups["value"].Value;
 
         return result;
     }

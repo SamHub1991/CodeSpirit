@@ -1,6 +1,7 @@
 <%@ Page %>
 
 <cs:Content PlaceHolder="Head">
+  <script>document.documentElement.classList.add('showroom-dashboard')</script>
   <link rel="stylesheet" href="/css/pages/home.css" />
 </cs:Content>
 
@@ -17,9 +18,9 @@
 
     <section class="metric-grid">
       <cs:Repeater Items="{Binding Metrics}">
-        <article class="metric-card metric-{Binding Tone}">
+        <article class="metric-card metric-{Binding Tone}" data-cs-tone="Tone:metric">
           <span>{Binding Label}</span>
-          <strong>{Binding Value}</strong>
+           <strong data-cs-intent="numeric">{Binding Value}</strong>
           <small>{Binding Hint}</small>
         </article>
       </cs:Repeater>
@@ -38,7 +39,7 @@
                 <strong>{Binding Title}</strong>
                 <span>{Binding Author} . {Binding Category}</span>
               </div>
-              <b>{Binding MonthlyBorrows}</b>
+               <b data-cs-intent="numeric">{Binding MonthlyBorrows}</b>
             </div>
           </cs:Repeater>
         </article>
@@ -68,7 +69,7 @@
           <span>Recent circulation</span>
         </div>
         <cs:Repeater Items="{Binding Activities}">
-          <div class="activity activity-{Binding Tone}">
+          <div class="activity activity-{Binding Tone}" data-cs-tone="Tone:activity">
             <time>{Binding Time}</time>
             <span>{Binding Text}</span>
           </div>
@@ -84,12 +85,12 @@
             <span>Borrowing and due dates</span>
           </div>
           <cs:Repeater Items="{Binding ActiveLoans}">
-            <div class="loan-row status-{Binding Status}">
+            <div class="loan-row status-{Binding Status}" data-cs-tone="Status:status">
               <div>
                 <strong>{Binding BookTitle}</strong>
                 <span>{Binding ReaderName} . due {Binding DueAt}</span>
               </div>
-              <em>{Binding Status}</em>
+              <em data-cs-intent="status">{Binding Status}</em>
             </div>
           </cs:Repeater>
         </article>
@@ -105,7 +106,7 @@
                 <strong>{Binding BookTitle}</strong>
                 <span>{Binding ReaderName} . {Binding CreatedAt}</span>
               </div>
-              <em>{Binding Status}</em>
+              <em data-cs-intent="status">{Binding Status}</em>
             </div>
           </cs:Repeater>
         </article>

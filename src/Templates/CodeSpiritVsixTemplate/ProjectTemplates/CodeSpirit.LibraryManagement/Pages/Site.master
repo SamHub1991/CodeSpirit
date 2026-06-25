@@ -37,6 +37,8 @@
   <script src="/js/vendor/jquery-lite.js"></script>
   <script src="/js/ui/jquery.behaviors.js"></script>
   <script src="/js/ui/ui.behaviors.js"></script>
+  <script src="/js/ui/codespirit.intent.js"></script>
+  <script src="/js/ui/codespirit.devpanel.js"></script>
   <script src="/js/site.js"></script>
   <cs:PlaceHolder Name="Scripts" />
 </body>

@@ -4,7 +4,10 @@
   var NULL_VALUE = '';
 
   function selector(name, value) {
-    return '[' + name + '="' + String(value).replace(/"/g, '\\"') + '"]';
+    var escaped = window.CSS && typeof window.CSS.escape === 'function'
+      ? window.CSS.escape(String(value))
+      : String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    return '[' + name + '="' + escaped + '"]';
   }
 
   function getViewModelRoot(element) {
@@ -71,6 +74,7 @@
     applyAttr(root, name, value);
     applyVisibility(root, name, value);
     applyCssClass(root, name, value);
+    applyTone(root, name, value);
     applyEnabled(root, name, value);
   }
 
@@ -117,6 +121,35 @@
       } else {
         el.classList.remove(className);
       }
+    });
+  }
+
+  function applyTone(root, name, value) {
+    queryAttr(root, 'data-cs-tone', name).forEach(function (el) {
+      var expr = el.getAttribute('data-cs-tone');
+      var parts = expr.split(':');
+      var prefix;
+      if (parts.length > 1 && parts[1].trim()) {
+        prefix = parts[1].trim();
+      } else {
+        prefix = el.classList[0] || '';
+      }
+      if (!prefix) {
+        return;
+      }
+
+      var prefixDash = prefix + '-';
+      Array.from(el.classList).forEach(function (c) {
+        if (c !== prefix && c.startsWith(prefixDash)) {
+          el.classList.remove(c);
+        }
+      });
+
+      var next = value;
+      if (next == null || next === NULL_VALUE || String(next).trim() === '') {
+        return;
+      }
+      el.classList.add(prefix + '-' + String(next));
     });
   }
 
@@ -245,7 +278,7 @@
     });
   }
 
-  function setLoading(form, isLoading) {
+  function setLoading(form, isLoading, submitter) {
     var controls = form.querySelectorAll('button[type="submit"], input[type="submit"]');
     if (isLoading) {
       form.classList.add('cs-loading');
@@ -256,6 +289,9 @@
         }
         btn.disabled = true;
       });
+      if (submitter) {
+        submitter.setAttribute('data-cs-submitting', '');
+      }
     } else {
       form.classList.remove('cs-loading');
       form.removeAttribute('data-cs-busy');
@@ -266,7 +302,22 @@
           btn.removeAttribute('data-cs-prev-disabled');
         }
       });
+      form.querySelectorAll('[data-cs-submitting]').forEach(function (btn) {
+        btn.removeAttribute('data-cs-submitting');
+      });
     }
+  }
+
+  function showRequestError(root, error) {
+    var message = 'Request failed. Please try again.';
+    if (error && error.body && typeof error.body === 'object' && error.body.message) {
+      message = error.body.message;
+    } else if (error && typeof error.body === 'string' && error.body.trim()) {
+      message = error.body.trim();
+    } else if (error && error.message) {
+      message = error.message;
+    }
+    applyErrors(root, { __request: message });
   }
 
   function mount(root) {
@@ -295,10 +346,10 @@
     }
 
     event.preventDefault();
-    setLoading(form, true);
-    clearErrors(form);
     var payload = serializeForm(form);
     var submitter = event.submitter;
+    setLoading(form, true, submitter);
+    clearErrors(form);
     var command = readCommand(submitter);
     if (command) {
       payload.__command = command;
@@ -318,6 +369,7 @@
       emit(form, 'codespirit:updated', result);
     }).catch(function (error) {
       setLoading(form, false);
+      showRequestError(form, error);
       emit(form, 'codespirit:error', error);
     });
   }
@@ -462,6 +514,7 @@
         return result;
       }).catch(function (error) {
         setLoading(form, false);
+        showRequestError(form, error);
         emit(form, 'codespirit:error', error);
         throw error;
       });

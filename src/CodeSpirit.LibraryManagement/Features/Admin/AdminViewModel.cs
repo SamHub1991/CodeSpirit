@@ -182,7 +182,7 @@ public class AdminViewModel : CodeSpirit.Core.ViewModel
     [Command]
     public void ReserveBook()
     {
-        if (!ValidateLoanPair())
+        if (!ValidateReservationPair())
             return;
 
         Notices = [Service.ReserveBook(BookId, ParseId(ReservationReaderId))];
@@ -311,6 +311,14 @@ public class AdminViewModel : CodeSpirit.Core.ViewModel
         var valid = true;
         valid &= EnsurePositive(BookId, nameof(BookId), "Book Id is required.");
         valid &= EnsurePositive(ParseId(LoanReaderId), nameof(LoanReaderId), "Reader Id is required.");
+        return valid;
+    }
+
+    private bool ValidateReservationPair()
+    {
+        var valid = true;
+        valid &= EnsurePositive(BookId, nameof(BookId), "Book Id is required.");
+        valid &= EnsurePositive(ParseId(ReservationReaderId), nameof(ReservationReaderId), "Reader Id is required.");
         return valid;
     }
 

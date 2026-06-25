@@ -123,6 +123,7 @@ public class PageRenderer
     {
         var json = JsonSerializer.Serialize(state, CodeSpiritDefaults.JsonOptions);
         var propsHtml = BuildPropsHtml(state);
+        var safeTitle = Html(title);
 
         return $$"""
 <!DOCTYPE html>
@@ -130,7 +131,7 @@ public class PageRenderer
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{title}}</title>
+    <title>{{safeTitle}}</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 2rem; background: #f5f5f5; }
         .cs-vm-data { background: #fff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto; }
@@ -142,7 +143,7 @@ public class PageRenderer
 </head>
 <body>
     <div class="cs-vm-data" id="cs-app">
-        <h1>{{title}}</h1>
+        <h1>{{safeTitle}}</h1>
         {{propsHtml}}
     </div>
     <script>
@@ -161,7 +162,7 @@ public class PageRenderer
         var sb = new StringBuilder();
         foreach (var kvp in state)
         {
-            sb.AppendLine($"        <div class=\"cs-prop\"><span class=\"cs-key\">{kvp.Key}:</span><span class=\"cs-val\">{System.Net.WebUtility.HtmlEncode(kvp.Value?.ToString() ?? "null")}</span></div>");
+            sb.AppendLine($"        <div class=\"cs-prop\"><span class=\"cs-key\">{Html(kvp.Key)}:</span><span class=\"cs-val\">{Html(kvp.Value?.ToString() ?? "null")}</span></div>");
         }
         return sb.ToString();
     }
@@ -188,14 +189,22 @@ public class PageRenderer
 
         html = LinkRegex.Replace(html, match =>
         {
-            var href = RenderBindings(match.Groups["href"].Value, state);
+            var href = SafeUrl(RenderBindings(match.Groups["href"].Value, state));
             return $"<a href=\"{Html(href)}\">{match.Groups["content"].Value}</a>";
         });
 
         html = ButtonRegex.Replace(html, match =>
         {
             var command = Html(RenderBindings(match.Groups["command"].Value, state));
-            var attrs = RenderHtmlAttributes(match.Groups["attrs"].Value, state, "Command");
+            var rawAttrs = match.Groups["attrs"].Value;
+            var attrs = RenderHtmlAttributes(rawAttrs, state, "Command");
+
+            if (string.IsNullOrWhiteSpace(GetAttribute(rawAttrs, "class")))
+            {
+                var btnClass = InferButtonClass(match.Groups["command"].Value);
+                attrs = $" class=\"{btnClass}\"{attrs}";
+            }
+
             return $"<button type=\"submit\" data-cs-command=\"{command}\"{attrs}>{match.Groups["content"].Value}</button>";
         });
 
@@ -210,7 +219,7 @@ public class PageRenderer
         html = FormRegex.Replace(html, match =>
         {
             var attrs = RenderHtmlAttributes(match.Groups["attrs"].Value, state, "Method");
-            var method = GetAttribute(match.Groups["attrs"].Value, "Method") ?? "post";
+            var method = SafeFormMethod(GetAttribute(match.Groups["attrs"].Value, "Method"));
             return $"<form method=\"{Html(method)}\" data-cs-vm{attrs}>{match.Groups["content"].Value}</form>";
         });
 
@@ -225,7 +234,7 @@ public class PageRenderer
         if (string.IsNullOrWhiteSpace(name))
             return RenderBindings(content, state);
 
-        var tag = GetAttribute(rawAttributes, "Tag") ?? "div";
+        var tag = SafeTagName(GetAttribute(rawAttributes, "Tag"));
         var attrs = RenderHtmlAttributes(rawAttributes, state, "Name", "Tag");
         return $"<{tag} data-cs-region=\"{Html(name)}\"{attrs}>{content}</{tag}>";
     }
@@ -236,7 +245,7 @@ public class PageRenderer
         var hideBinding = GetAttribute(rawAttributes, "HideWhen");
         var classBinding = GetAttribute(rawAttributes, "Class");
         var className = GetAttribute(rawAttributes, "ClassName");
-        var tag = GetAttribute(rawAttributes, "Tag") ?? "div";
+        var tag = SafeTagName(GetAttribute(rawAttributes, "Tag"));
         var attrs = RenderHtmlAttributes(rawAttributes, state, "Visible", "HideWhen", "Class", "ClassName", "Tag");
         var dataAttrs = new StringBuilder();
 
@@ -278,7 +287,13 @@ public class PageRenderer
             if (excluded.Contains(name, StringComparer.OrdinalIgnoreCase))
                 continue;
 
+            if (!IsSafeHtmlAttributeName(name))
+                continue;
+
             var value = RenderBindings(match.Groups["value"].Value, state);
+            if (IsUrlAttribute(name))
+                value = SafeUrl(value);
+
             attributes.Append(' ').Append(name).Append("=\"").Append(Html(value)).Append('"');
         }
 
@@ -336,6 +351,16 @@ public class PageRenderer
                 var cell = column.Template is null
                     ? Html(FormatValue(GetValue(item, column.Name), column.Format))
                     : RenderBindings(column.Template, item);
+
+                if (column.Template is null)
+                {
+                    var intent = InferColumnIntent(column.Name);
+                    if (intent is not null)
+                    {
+                        cell = $"<span data-cs-intent=\"{intent}\">{cell}</span>";
+                    }
+                }
+
                 body.Append("<td>").Append(cell).Append("</td>");
             }
             body.Append("</tr>");
@@ -439,6 +464,87 @@ public class PageRenderer
     };
 
     private static string Html(string value) => System.Net.WebUtility.HtmlEncode(value);
+
+    private static string SafeTagName(string? tag)
+    {
+        var value = (tag ?? string.Empty).Trim().ToLowerInvariant();
+        return Regex.IsMatch(value, @"^[a-z][a-z0-9-]*$") ? value : "div";
+    }
+
+    private static bool IsSafeHtmlAttributeName(string name)
+    {
+        return !name.StartsWith("on", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(name, "srcdoc", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsUrlAttribute(string name)
+    {
+        return string.Equals(name, "href", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(name, "src", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(name, "action", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(name, "formaction", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string SafeUrl(string? value)
+    {
+        var url = (value ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(url))
+            return string.Empty;
+
+        if (url.StartsWith("/", StringComparison.Ordinal) || url.StartsWith("#", StringComparison.Ordinal))
+            return url;
+
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+            (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeMailto || uri.Scheme == "tel"))
+            return url;
+
+        return "#";
+    }
+
+    private static string SafeFormMethod(string? method)
+    {
+        return string.Equals(method, "get", StringComparison.OrdinalIgnoreCase) ? "get" : "post";
+    }
+
+    private static string InferButtonClass(string rawCommand)
+    {
+        var command = (rawCommand ?? string.Empty).ToLowerInvariant();
+
+        if (command.Contains("delete") || command.Contains("archive") || command.Contains("remove") ||
+            command.Contains("suspend") || command.Contains("writeoff") || command.Contains("cancel") ||
+            command.Contains("reject"))
+            return "cs-btn cs-btn-danger";
+
+        if (command.Contains("add") || command.Contains("create") || command.Contains("register") ||
+            command.Contains("import") || command.Contains("collect") || command.Contains("borrow") ||
+            command.Contains("reserve") || command.Contains("save") || command.Contains("submit"))
+            return "cs-btn";
+
+        if (command.Contains("clear") || command.Contains("dismiss") || command.Contains("back"))
+            return "cs-btn cs-btn-ghost";
+
+        return "cs-btn cs-btn-secondary";
+    }
+
+    private static string? InferColumnIntent(string columnName)
+    {
+        var name = (columnName ?? string.Empty).ToLowerInvariant();
+
+        if (name is "status" or "state" || name.Contains("level"))
+            return "status";
+
+        if (name.Contains("due") || name.Contains("date") || name.EndsWith("at") ||
+            name.Contains("borrowed") || name.Contains("returned") || name.Contains("created"))
+            return "due";
+
+        if (name.Contains("count") || name.Contains("total") || name.EndsWith("qty") ||
+            name.Contains("copies") || name.Contains("fine") || name.Contains("balance") ||
+            name.Contains("rating") || name.Contains("renew") || name.Contains("loans") ||
+            name.Contains("reservations") || name.Contains("amount"))
+            return "numeric";
+
+        return null;
+    }
 
     private sealed record TableColumn(string Name, string Header, string? Format, string? Template);
 

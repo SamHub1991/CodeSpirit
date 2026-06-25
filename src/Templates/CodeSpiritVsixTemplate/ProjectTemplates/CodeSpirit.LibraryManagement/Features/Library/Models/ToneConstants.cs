@@ -1,4 +1,4 @@
-namespace CodeSpirit.LibraryManagement.Features.Library.Models;
+namespace $safeprojectname$.Features.Library.Models;
 
 public static class ToneConstants
 {

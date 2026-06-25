@@ -314,7 +314,7 @@ async function main() {
 
   let fetchPayload = null;
   const context = vm.createContext({
-    window: { location: { pathname: '/weather' } },
+    window: { location: { pathname: '/weather' }, CSS: { escape: (value) => String(value) } },
     document,
     FormData: FormDataStub,
     Event,
@@ -367,6 +367,10 @@ async function main() {
   chain.set({ City: 'Stockholm', Token: 'x' });
   assert.strictEqual(city.value, 'Stockholm');
   assert.strictEqual(chain.get('City'), 'Stockholm');
+
+  const specialName = form.appendChild(new Element('input', { name: 'Field]Name', 'data-cs-bind': 'Field]Name', value: '' }));
+  chain.set('Field]Name', 'escaped');
+  assert.strictEqual(specialName.value, 'escaped');
 
   var snap = chain.state();
   assert.strictEqual(snap.City, 'Stockholm');

@@ -6,10 +6,13 @@ public static class ValueConverter
 {
     public static object? ConvertValue(object? value, Type target)
     {
+        var underlying = Nullable.GetUnderlyingType(target) ?? target;
         if (value is null)
+            return target.IsValueType && Nullable.GetUnderlyingType(target) is null ? Activator.CreateInstance(target) : null;
+
+        if (value is string { Length: 0 } && Nullable.GetUnderlyingType(target) is not null)
             return null;
 
-        var underlying = Nullable.GetUnderlyingType(target) ?? target;
         if (underlying.IsInstanceOfType(value))
             return value;
 
