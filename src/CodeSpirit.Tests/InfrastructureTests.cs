@@ -367,6 +367,111 @@ public class PageRendererTagTests
     }
 
     [Fact]
+    public void Scripts_RendersDefaultBuiltInAssets()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Scripts />",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("/js/codespirit.runtime.js", html);
+        Assert.Contains("/js/vendor/jquery-lite.js", html);
+        Assert.Contains("/js/ui/ui.behaviors.js", html);
+        Assert.Contains("/js/ui/codespirit.intent.js", html);
+        Assert.Contains("/js/ui/codespirit.devpanel.js", html);
+        Assert.Contains("/js/site.js", html);
+    }
+
+    [Fact]
+    public void Scripts_AllowsAssetReplacementAndDisable()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Scripts Runtime=\"/custom/runtime.js\" DevPanel=\"none\" />",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("/custom/runtime.js", html);
+        Assert.DoesNotContain("/js/codespirit.runtime.js", html);
+        Assert.DoesNotContain("/js/ui/codespirit.devpanel.js", html);
+    }
+
+    [Fact]
+    public void Scripts_AppendsExtraScriptsAfterBuiltInsAndAppliesAttributes()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Scripts Defer=\"true\" Type=\"module\" Extra=\"/js/pages/home.js,/js/custom.js\" />",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("<script src=\"/js/codespirit.runtime.js\" type=\"module\" defer></script>", html);
+        Assert.Contains("<script src=\"/js/pages/home.js\" type=\"module\" defer></script>", html);
+        Assert.Contains("<script src=\"/js/custom.js\" type=\"module\" defer></script>", html);
+        Assert.True(html.IndexOf("/js/site.js", StringComparison.Ordinal) < html.IndexOf("/js/pages/home.js", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Scripts_BlockAppendsNestedPageScriptsAfterBuiltIns()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Scripts Defer=\"true\"><cs:Script Src=\"/js/pages/{Binding Page}.js\" /></cs:Scripts>",
+            new Dictionary<string, object?> { ["Page"] = "home" });
+
+        Assert.Contains("<script src=\"/js/codespirit.runtime.js\" defer></script>", html);
+        Assert.Contains("<script src=\"/js/pages/home.js\" defer></script>", html);
+        Assert.True(html.IndexOf("/js/site.js", StringComparison.Ordinal) < html.IndexOf("/js/pages/home.js", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Scripts_NestedScriptCanOverrideInheritedAttributes()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Scripts Type=\"module\" Defer=\"true\"><cs:Script Src=\"/js/pages/home.js\" Type=\"text/javascript\" Defer=\"false\" /></cs:Scripts>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("<script src=\"/js/codespirit.runtime.js\" type=\"module\" defer></script>", html);
+        Assert.Contains("<script src=\"/js/pages/home.js\" type=\"text/javascript\"></script>", html);
+    }
+
+    [Fact]
+    public void Scripts_BlockPreservesRenderedRawPageScriptsAfterBuiltIns()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Scripts><script src=\"/js/pages/{Binding Page}.js\"></script></cs:Scripts>",
+            new Dictionary<string, object?> { ["Page"] = "home" });
+
+        Assert.Contains("<script src=\"/js/pages/home.js\"></script>", html);
+        Assert.True(html.IndexOf("/js/site.js", StringComparison.Ordinal) < html.IndexOf("/js/pages/home.js", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Scripts_DropsUnsafeExtraScriptUrls()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Scripts Extra=\"javascript:alert(1),/js/safe.js\" />",
+            new Dictionary<string, object?>());
+
+        Assert.DoesNotContain("javascript:", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("/js/safe.js", html);
+    }
+
+    [Fact]
+    public void Script_RendersSafePageScriptWithAttributes()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Script Src=\"/js/pages/home.js\" Defer=\"true\" />",
+            new Dictionary<string, object?>());
+
+        Assert.Equal("<script src=\"/js/pages/home.js\" defer></script>", html);
+    }
+
+    [Fact]
+    public void Script_DropsUnsafeSrc()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Script Src=\"javascript:alert(1)\" />",
+            new Dictionary<string, object?>());
+
+        Assert.Equal(string.Empty, html);
+    }
+
+    [Fact]
     public void Table_ColumnListInfersIntentForRuntimeStyling()
     {
         var html = PageRenderer.RenderTemplateForTests(
@@ -393,6 +498,58 @@ public class PageRendererTagTests
 
         Assert.Contains("<th>Status</th>", html);
         Assert.Contains("<span class=\"status-Active\">Active</span>", html);
+    }
+
+    [Fact]
+    public void Toolbar_RendersTitleSubtitleAndActions()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Toolbar Title=\"{Binding Title}\" Subtitle=\"Manage records\"><button>Add</button></cs:Toolbar>",
+            new Dictionary<string, object?> { ["Title"] = "Books" });
+
+        Assert.Contains("class=\"cs-toolbar\"", html);
+        Assert.Contains("<h2>Books</h2>", html);
+        Assert.Contains("<p>Manage records</p>", html);
+        Assert.Contains("<div class=\"cs-toolbar-actions\"><button>Add</button></div>", html);
+    }
+
+    [Fact]
+    public void Tabs_RendersActiveTabAndPanels()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Tabs Active=\"loans\"><cs:Tab Key=\"overview\" Title=\"Overview\">One</cs:Tab><cs:Tab Key=\"loans\" Title=\"Loans\">Two</cs:Tab></cs:Tabs>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("role=\"tablist\"", html);
+        Assert.Contains("href=\"#loans\" class=\"cs-tab active\"", html);
+        Assert.Contains("id=\"loans\" class=\"cs-tab-panel active\"", html);
+        Assert.Contains("id=\"overview\" class=\"cs-tab-panel\"", html);
+    }
+
+    [Fact]
+    public void Modal_RendersDialogAndHiddenState()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Modal Id=\"edit-book\" Title=\"Edit Book\">Body</cs:Modal>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("id=\"edit-book\"", html);
+        Assert.Contains("role=\"dialog\"", html);
+        Assert.Contains(" hidden", html);
+        Assert.Contains("<h2>Edit Book</h2>", html);
+    }
+
+    [Fact]
+    public void Pager_RendersLinksAndCurrentPage()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Pager Page=\"2\" TotalPages=\"3\" Url=\"/admin?page={page}\" />",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("aria-label=\"Pagination\"", html);
+        Assert.Contains("href=\"/admin?page=1\"", html);
+        Assert.Contains("href=\"/admin?page=3\"", html);
+        Assert.Contains("class=\"cs-pager-link active\" href=\"/admin?page=2\" aria-current=\"page\"", html);
     }
 
     private sealed record TableRow(string Name, string Status, decimal FineBalance);

@@ -206,13 +206,24 @@
 
       var host = document.createElement('div');
       host.innerHTML = regions[name];
-      var next = host.firstElementChild;
-      if (!next) {
+      var nodes = Array.from(host.children || []);
+      if (!nodes.length) {
         return;
       }
 
-      current.replaceWith(next);
-      mount(next);
+      if (nodes.length === 1) {
+        current.replaceWith(nodes[0]);
+        mount(nodes[0]);
+        return;
+      }
+
+      if (typeof current.replaceChildren === 'function') {
+        current.replaceChildren.apply(current, nodes);
+      } else {
+        current.innerHTML = '';
+        nodes.forEach(function (node) { current.appendChild(node); });
+      }
+      mount(current);
     });
   }
 

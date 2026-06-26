@@ -126,5 +126,5 @@
 </cs:Content>
 
 <cs:Content PlaceHolder="Scripts">
-  <script src="/js/pages/home.js"></script>
+  <cs:Script Src="/js/pages/home.js" />
 </cs:Content>

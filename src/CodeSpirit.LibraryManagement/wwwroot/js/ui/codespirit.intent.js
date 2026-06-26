@@ -3,6 +3,207 @@
 
   var analyzers = {};
 
+  var SCENE_DEFINITIONS = [
+    {
+      name: 'dashboard',
+      threshold: 7,
+      keywords: [
+        ['大屏', 8], ['看板', 7], ['驾驶舱', 7], ['dashboard', 7], ['screen', 4],
+        ['kpi', 4], ['metric', 4], ['metrics', 4], ['chart', 4], ['trend', 3],
+        ['forecast', 3], ['overview', 2], ['realtime', 4], ['real-time', 4]
+      ]
+    },
+    {
+      name: 'library',
+      threshold: 7,
+      keywords: [
+        ['图书', 8], ['图书馆', 8], ['library', 8], ['book', 5], ['books', 5],
+        ['catalog', 5], ['reader', 4], ['readers', 4], ['borrow', 4], ['loan', 4],
+        ['loans', 4], ['isbn', 5], ['reservation', 4], ['reservations', 4], ['fine', 3]
+      ]
+    },
+    {
+      name: 'admin',
+      threshold: 7,
+      keywords: [
+        ['管理', 7], ['后台', 7], ['admin', 7], ['management', 5], ['manage', 4],
+        ['crud', 4], ['filter', 3], ['search', 3], ['status', 3], ['table', 3],
+        ['create', 2], ['update', 2], ['archive', 3], ['restore', 3]
+      ]
+    },
+    {
+      name: 'commerce',
+      threshold: 7,
+      keywords: [
+        ['电商', 8], ['商城', 8], ['订单', 7], ['商品', 7], ['commerce', 7],
+        ['shop', 5], ['order', 5], ['orders', 5], ['product', 4], ['products', 4],
+        ['cart', 4], ['payment', 4], ['price', 3], ['inventory', 3]
+      ]
+    },
+    {
+      name: 'content',
+      threshold: 7,
+      keywords: [
+        ['内容', 7], ['文章', 7], ['博客', 7], ['cms', 7], ['content', 6],
+        ['article', 5], ['articles', 5], ['post', 4], ['posts', 4], ['author', 3],
+        ['category', 3], ['publish', 4], ['draft', 3]
+      ]
+    },
+    {
+      name: 'analytics',
+      threshold: 7,
+      keywords: [
+        ['报表', 8], ['分析', 7], ['统计', 7], ['analytics', 7], ['report', 5],
+        ['reports', 5], ['analysis', 5], ['statistics', 5], ['conversion', 4], ['rate', 3],
+        ['growth', 3], ['segment', 3]
+      ]
+    },
+    {
+      name: 'crm',
+      threshold: 7,
+      keywords: [
+        ['客户', 8], ['线索', 7], ['商机', 7], ['crm', 8], ['customer', 5],
+        ['customers', 5], ['lead', 5], ['leads', 5], ['opportunity', 5], ['pipeline', 4],
+        ['deal', 4], ['deals', 4], ['contact', 4], ['contacts', 4]
+      ]
+    },
+    {
+      name: 'finance',
+      threshold: 7,
+      keywords: [
+        ['财务', 8], ['账单', 7], ['发票', 7], ['支付', 6], ['finance', 7],
+        ['invoice', 5], ['invoices', 5], ['billing', 5], ['revenue', 5], ['expense', 4],
+        ['expenses', 4], ['budget', 4], ['balance', 4], ['amount', 3]
+      ]
+    },
+    {
+      name: 'education',
+      threshold: 7,
+      keywords: [
+        ['教育', 8], ['课程', 7], ['学生', 7], ['考试', 6], ['education', 7],
+        ['course', 5], ['courses', 5], ['student', 5], ['students', 5], ['class', 4],
+        ['lesson', 4], ['lessons', 4], ['grade', 4], ['exam', 4]
+      ]
+    },
+    {
+      name: 'healthcare',
+      threshold: 7,
+      keywords: [
+        ['医疗', 8], ['医院', 8], ['患者', 7], ['医生', 6], ['healthcare', 7],
+        ['medical', 6], ['patient', 5], ['patients', 5], ['doctor', 5], ['doctors', 5],
+        ['appointment', 4], ['clinic', 4], ['diagnosis', 4], ['prescription', 4]
+      ]
+    },
+    {
+      name: 'logistics',
+      threshold: 7,
+      keywords: [
+        ['物流', 8], ['仓储', 7], ['配送', 7], ['运单', 7], ['logistics', 7],
+        ['shipment', 5], ['shipments', 5], ['delivery', 5], ['warehouse', 5], ['tracking', 4],
+        ['fleet', 4], ['route', 4], ['routes', 4], ['package', 4]
+      ]
+    },
+    {
+      name: 'developer',
+      threshold: 7,
+      keywords: [
+        ['开发者', 8], ['接口', 6], ['日志', 5], ['developer', 7], ['api', 5],
+        ['token', 4], ['webhook', 5], ['sdk', 5], ['deploy', 4], ['deployment', 4],
+        ['build', 4], ['log', 4], ['logs', 4], ['repository', 4]
+      ]
+    },
+    {
+      name: 'hr',
+      threshold: 7,
+      keywords: [
+        ['人事', 8], ['招聘', 7], ['员工', 7], ['考勤', 6], ['hr', 7],
+        ['employee', 5], ['employees', 5], ['recruit', 5], ['recruiting', 5], ['candidate', 5],
+        ['payroll', 5], ['attendance', 4], ['leave', 4], ['onboarding', 4]
+      ]
+    },
+    {
+      name: 'manufacturing',
+      threshold: 7,
+      keywords: [
+        ['制造', 8], ['生产', 7], ['工单', 6], ['产线', 6], ['manufacturing', 7],
+        ['production', 5], ['workorder', 5], ['work order', 5], ['factory', 5], ['machine', 4],
+        ['assembly', 4], ['quality', 4], ['defect', 4], ['oee', 5]
+      ]
+    },
+    {
+      name: 'hospitality',
+      threshold: 7,
+      keywords: [
+        ['酒店', 8], ['房间', 6], ['入住', 6], ['预订', 5], ['hospitality', 7],
+        ['hotel', 6], ['room', 5], ['rooms', 5], ['guest', 5], ['guests', 5],
+        ['booking', 5], ['reservation', 4], ['check-in', 4], ['checkout', 4]
+      ]
+    },
+    {
+      name: 'real-estate',
+      threshold: 7,
+      keywords: [
+        ['房产', 8], ['楼盘', 7], ['租赁', 6], ['物业', 6], ['real estate', 7],
+        ['property', 5], ['properties', 5], ['listing', 5], ['lease', 5], ['tenant', 5],
+        ['rent', 4], ['mortgage', 4], ['apartment', 4], ['building', 4]
+      ]
+    },
+    {
+      name: 'legal',
+      threshold: 7,
+      keywords: [
+        ['法务', 8], ['合同', 7], ['案件', 7], ['合规', 6], ['legal', 7],
+        ['contract', 5], ['contracts', 5], ['case', 5], ['cases', 5], ['compliance', 5],
+        ['clause', 4], ['review', 3], ['risk', 4], ['policy', 4]
+      ]
+    },
+    {
+      name: 'support',
+      threshold: 7,
+      keywords: [
+        ['客服', 8], ['工单', 6], ['服务台', 7], ['支持', 5], ['support', 7],
+        ['ticket', 5], ['tickets', 5], ['helpdesk', 6], ['agent', 4], ['sla', 5],
+        ['incident', 5], ['request', 3], ['priority', 4], ['queue', 4]
+      ]
+    }
+  ];
+
+  var THEME_TOKEN_NAMES = [
+    '--cs-primary', '--cs-primary-dark', '--cs-accent', '--cs-accent-2', '--cs-bg',
+    '--cs-surface', '--cs-surface-strong', '--cs-text', '--cs-text-muted', '--cs-text-soft',
+    '--cs-text-on-primary', '--cs-border', '--cs-border-soft', '--cs-header-bg', '--cs-radius',
+    '--cs-radius-lg', '--cs-shadow', '--cs-shadow-soft', '--cs-ring', '--cs-font',
+    '--cs-tone-green', '--cs-tone-red', '--cs-tone-amber', '--cs-tone-blue', '--cs-tone-purple'
+  ];
+
+  var DEFAULT_THEME_TOKENS = {
+    '--cs-primary': '#6d5dfc',
+    '--cs-primary-dark': '#4f46e5',
+    '--cs-accent': '#00d4ff',
+    '--cs-accent-2': '#a7f3d0',
+    '--cs-bg': '#f4f7fb',
+    '--cs-surface': 'rgba(255, 255, 255, 0.86)',
+    '--cs-surface-strong': '#ffffff',
+    '--cs-text': '#111827',
+    '--cs-text-muted': '#5b677a',
+    '--cs-text-soft': '#93a0b3',
+    '--cs-text-on-primary': '#ffffff',
+    '--cs-border': 'rgba(119, 134, 159, 0.22)',
+    '--cs-border-soft': 'rgba(119, 134, 159, 0.12)',
+    '--cs-header-bg': 'rgba(255, 255, 255, 0.72)',
+    '--cs-radius': '18px',
+    '--cs-radius-lg': '28px',
+    '--cs-shadow': '0 20px 60px rgba(17, 24, 39, 0.10)',
+    '--cs-shadow-soft': '0 12px 36px rgba(17, 24, 39, 0.07)',
+    '--cs-ring': '0 0 0 4px rgba(109, 93, 252, 0.16)',
+    '--cs-font': "Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif",
+    '--cs-tone-green': '#22c55e',
+    '--cs-tone-red': '#ef4444',
+    '--cs-tone-amber': '#f59e0b',
+    '--cs-tone-blue': '#3b82f6',
+    '--cs-tone-purple': '#a855f7'
+  };
+
   function getTextValue(el) {
     if (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
       return el.value;
@@ -48,6 +249,98 @@
     });
 
     el.classList.add(baseClass + '-' + tone);
+  }
+
+  function normalizeSceneName(value) {
+    var scene = String(value || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
+    return scene.replace(/^-+|-+$/g, '');
+  }
+
+  function clearSceneClasses(el) {
+    var toRemove = [];
+    Array.from(el.classList || []).forEach(function (className) {
+      if (className.indexOf('cs-scene-') === 0) toRemove.push(className);
+    });
+    toRemove.forEach(function (className) { el.classList.remove(className); });
+  }
+
+  function getSceneTarget(root) {
+    if (root && root.nodeType === 1) return root;
+    return document.body || document.documentElement || (root && root.querySelector && root.querySelector('[data-cs-vm]')) || (root && root.firstElementChild) || root;
+  }
+
+  function collectSceneText(root) {
+    var parts = [];
+    var source = root || document;
+    var title = document.title || '';
+    var path = (window.location && window.location.pathname) || '';
+    if (title) parts.push(title);
+    if (path) parts.push(path);
+
+    if (source.querySelectorAll) {
+      Array.from(source.querySelectorAll('h1,h2,h3,th,label,button,a,input,textarea,select,[class],[data-cs-scene]')).forEach(function (el) {
+        parts.push(el.textContent || '');
+        parts.push(el.getAttribute('class') || '');
+        parts.push(el.getAttribute('name') || '');
+        parts.push(el.getAttribute('placeholder') || '');
+        parts.push(el.getAttribute('data-cs-scene') || '');
+        parts.push(el.getAttribute('data-cs-command') || '');
+      });
+    }
+
+    return parts.join(' ').toLowerCase();
+  }
+
+  function scoreScene(text, definition) {
+    return definition.keywords.reduce(function (score, item) {
+      return text.indexOf(item[0]) >= 0 ? score + item[1] : score;
+    }, 0);
+  }
+
+  function inferScene(root) {
+    var target = getSceneTarget(root);
+    if (!target || !target.classList) return null;
+
+    var explicit = target.getAttribute && target.getAttribute('data-cs-scene');
+    if (!explicit && root && root.querySelector) {
+      var explicitEl = root.querySelector('[data-cs-scene]');
+      explicit = explicitEl && explicitEl.getAttribute('data-cs-scene');
+    }
+
+    if (explicit) {
+      return normalizeSceneName(explicit.split(/\s+/)[0]);
+    }
+
+    var text = collectSceneText(root);
+    var best = { name: 'app', score: 0, threshold: 1 };
+    SCENE_DEFINITIONS.forEach(function (definition) {
+      var score = scoreScene(text, definition);
+      if (score > best.score) best = { name: definition.name, score: score, threshold: definition.threshold };
+    });
+
+    if (best.score > 0 && best.score < best.threshold && target.setAttribute) {
+      target.setAttribute('data-cs-scene-confidence', 'low');
+      target.setAttribute('data-cs-scene-candidate', best.name);
+      target.setAttribute('data-cs-scene-score', String(best.score));
+    } else if (target.removeAttribute) {
+      target.removeAttribute('data-cs-scene-confidence');
+      target.removeAttribute('data-cs-scene-candidate');
+      target.removeAttribute('data-cs-scene-score');
+    }
+
+    return best.score >= best.threshold ? best.name : 'app';
+  }
+
+  function applyScene(root) {
+    var target = getSceneTarget(root);
+    if (!target || !target.classList) return;
+
+    var scene = inferScene(root);
+    if (!scene) return;
+
+    clearSceneClasses(target);
+    target.classList.add('cs-scene-' + scene);
+    if (target.setAttribute) target.setAttribute('data-cs-scene-current', scene);
   }
 
   // ============================
@@ -166,6 +459,7 @@
 
   function analyze(root) {
     root = root || document;
+    applyScene(root);
     Object.keys(analyzers).forEach(function (name) {
       var selector = '[data-cs-intent~="' + name + '"]';
       var elements = Array.from(root.querySelectorAll(selector));
@@ -175,10 +469,26 @@
     });
   }
 
+  function exportThemeTokens(root) {
+    var target = getSceneTarget(root) || document.documentElement;
+    var styles = typeof window.getComputedStyle === 'function' ? window.getComputedStyle(target) : null;
+    var tokens = {};
+    THEME_TOKEN_NAMES.forEach(function (name) {
+      var value = styles && typeof styles.getPropertyValue === 'function'
+        ? styles.getPropertyValue(name).trim()
+        : '';
+      tokens[name] = value || DEFAULT_THEME_TOKENS[name] || '';
+    });
+    return tokens;
+  }
+
   window.CodeSpirit = window.CodeSpirit || {};
   window.CodeSpirit.intent = window.CodeSpirit.intent || {};
   window.CodeSpirit.intent.analyze = analyze;
   window.CodeSpirit.intent.register = register;
+  window.CodeSpirit.theme = window.CodeSpirit.theme || {};
+  window.CodeSpirit.theme.tokens = exportThemeTokens;
+  window.CodeSpirit.theme.exportTokens = exportThemeTokens;
 
   document.addEventListener('DOMContentLoaded', function () {
     analyze(document);

@@ -1,101 +1,131 @@
 # CodeSpirit Library Management
 
-Enterprise library management sample application built with CodeSpirit.
+这是 CodeSpirit 项目模板生成的企业图书管理应用，也是框架默认前端、MVVM 页面和无人值守开发流程的参考实现。
 
-## Directory Layout
+## 运行
+
+```bash
+dotnet run
+```
+
+## 目录结构
 
 ```text
 CodeSpirit.LibraryManagement/
-├── Features/                    # Business modules grouped by capability
-│   ├── Admin/                   # Admin MVVM page model
-│   ├── Home/                    # Dashboard MVVM page model
-│   ├── Library/                 # Library domain models and services
-│   │   ├── Models/
-│   │   └── Services/
-│   └── Weather/                 # Example API + MVVM module
-│       ├── Controllers/
-│       ├── Models/
-│       └── Services/
-├── Pages/                       # ASPX pages and Site.master layout
-├── Components/                  # Reusable ASCX components
-├── Reports/                     # XML report templates
-├── wwwroot/                     # Static CSS, JavaScript, images, and fonts
-├── Program.cs                   # CodeSpirit application entry point
-└── appsettings.json             # Application configuration
+├── Features/
+├── Pages/
+├── Components/
+├── Reports/
+├── wwwroot/
+├── scripts/
+├── Program.cs
+└── appsettings.json
 ```
 
-## Module Guidelines
+## 模块约定
 
-- Put business code under `Features/{ModuleName}`.
-- Put page ViewModels beside their module, for example `Features/Admin/AdminViewModel.cs`.
-- Put shared domain services and models under a capability folder, for example `Features/Library`.
-- Keep framework convention files in root folders: `Pages`, `Components`, `Reports`, and `wwwroot`.
-- Keep ASPX files focused on markup; `Route` and `Title` live on `PageDirective`, and the default layout is `Pages/Site.master`.
-- The default layout loads `wwwroot/js/vendor/jquery-lite.js`, `wwwroot/js/ui/jquery.behaviors.js`, and `wwwroot/js/ui/ui.behaviors.js`.
-- Reuse the built-in CSS utility layer in `wwwroot/css/site.css` before adding page-specific CSS.
+- 业务代码放在 `Features/{ModuleName}`。
+- 页面 ViewModel 放在对应模块目录，例如 `Features/Admin/AdminViewModel.cs`。
+- 领域模型和服务放在能力目录，例如 `Features/Library`。
+- 框架约定文件保留在根目录：`Pages`、`Components`、`Reports`、`wwwroot`。
+- ASPX 只描述标记结构，路由和标题放在 ViewModel 的 `PageDirective`。
+- 默认布局 `Pages/Site.master` 使用 `<cs:Scripts />` 加载内置前端工具链。
 
-## CSV Import and Export
+## 内置页面标签
 
-The admin page supports catalog import and export through the existing MVVM command flow. Use the CSV workspace on `/admin` to export the current catalog filter or import edited rows.
+| 标签 | 作用 |
+|------|------|
+| `cs:Content` | 填充布局占位符 |
+| `cs:PlaceHolder` | 声明布局插槽 |
+| `cs:Repeater` | 渲染集合 |
+| `cs:Conditional` | 条件渲染 |
+| `cs:Link` | 安全渲染链接 |
+| `cs:Form` | 渲染 MVVM 表单 |
+| `cs:Button` | 渲染命令按钮 |
+| `cs:Field` | 渲染绑定字段 |
+| `cs:Table` | 渲染表格 |
+| `cs:Column` | 自定义表格单元格模板 |
+| `cs:Toolbar` | 渲染工具栏 |
+| `cs:Tabs` | 渲染标签页 |
+| `cs:Modal` | 渲染弹窗 |
+| `cs:Pager` | 渲染分页 |
+| `cs:Region` | 渲染局部刷新区域 |
+| `cs:Scripts` | 渲染内置脚本资源 |
+| `cs:Script` | 渲染页面级脚本 |
 
-Expected CSV columns:
+## 前端工具链
+
+- `Pages/Site.master` 通过 `<cs:Scripts>` 加载 runtime、UI behaviors、intent analysis、dev panel、site scripts 和页面脚本。
+- 使用 `<cs:Scripts Runtime="/js/custom-runtime.js" />` 替换内置脚本。
+- 使用 `<cs:Scripts DevPanel="none" />` 禁用指定内置脚本。
+- 使用 `<cs:Scripts><cs:Script Src="/js/pages/home.js" /></cs:Scripts>` 追加页面脚本。
+- `jquery-lite.js` 提供本地 jQuery 兼容层。
+- `jquery.behaviors.js` 管理依赖 jQuery 兼容层的 `data-ui` 行为。
+- `ui.behaviors.js` 管理原生渐进增强行为。
+- `codespirit.runtime.js` 管理 `data-cs-*` MVVM 绑定、命令、局部刷新和错误回显。
+- `codespirit.intent.js` 管理 `data-cs-intent` 和 `data-cs-scene` 识别。
+
+## 默认样式与场景
+
+`wwwroot/css/site.css` 是内置默认视觉系统。普通 HTML 和 CodeSpirit 标签无需页面 CSS 即具备现代化外观。
+
+内置场景：`dashboard`、`library`、`admin`、`commerce`、`content`、`analytics`、`crm`、`finance`、`education`、`healthcare`、`logistics`、`developer`、`hr`、`manufacturing`、`hospitality`、`real-estate`、`legal`、`support`。
+
+显式指定场景：
+
+```html
+<main data-cs-scene="library">
+  <h1>Library Admin</h1>
+</main>
+```
+
+低置信度识别会写入 `data-cs-scene-confidence="low"`、`data-cs-scene-candidate` 和 `data-cs-scene-score`。使用 `CodeSpirit.theme.exportTokens(root)` 可导出当前场景下的 `--cs-*` 主题 token。
+
+## CSV 导入导出
+
+`/admin` 页面支持馆藏 CSV 导入导出。
 
 ```text
 ISBN,Title,Author,Category,Location,PublishedYear,CopyCount,Rating
 ```
 
-- Existing ISBN values update catalog records.
-- New ISBN values add catalog records.
-- Rows without title or author are skipped and reported in the notice area.
+- 已存在的 ISBN 会更新馆藏记录。
+- 新 ISBN 会新增馆藏记录。
+- 缺少 title 或 author 的行会跳过并显示 notice。
 
-## Built-in Page Tags
+## VSIX 代码片段
 
-- `cs:Content` fills layout placeholders such as `Head`, `Body`, and `Scripts`.
-- `cs:PlaceHolder` marks layout regions in `Pages/Site.master`.
-- `cs:Repeater` renders a collection with item-level bindings.
-- `cs:Conditional` renders content when the bound value is truthy.
-- `cs:Link` renders an encoded anchor with binding support in `NavigateTo`.
-- `cs:Form` renders a standard MVVM form with `method="post"` and `data-cs-vm`.
-- `cs:Button` renders a submit button with `data-cs-command`.
-- `cs:Field` renders a bound input or textarea from `Name`, `Label`, `Placeholder`, `Type`, and `Rows`.
-- `cs:Table` renders a table from `Items`, `Columns`, and optional `EmptyText`.
-- `cs:Table` also supports nested `cs:Column` blocks for custom cell templates.
-- `cs:Region` renders a named `data-cs-region` element for command response HTML patches.
+| 快捷方式 | 输出 |
+|----------|------|
+| `csvm` | ViewModel 模板 |
+| `cssvc` | Service 模板 |
+| `csapp` | Program.cs 入口 |
+| `csmod` | CodeSpiritModule 模板 |
+| `csbind` | `[Bind]` 属性 |
+| `csform` | `<cs:Form>` 表单 |
+| `cstable` | `<cs:Table>` 表格 |
+| `csregion` | `<cs:Region>` 局部刷新区域 |
+| `cstoolbar` | `<cs:Toolbar>` 工具栏 |
+| `cstabs` | `<cs:Tabs>` 标签页 |
+| `csmodal` | `<cs:Modal>` 弹窗 |
+| `cspager` | `<cs:Pager>` 分页 |
+| `csscripts` | `<cs:Scripts>` 内置脚本资源 |
+| `csscript` | `<cs:Script>` 页面脚本 |
 
-## Developer Hints
+## 无人值守开发
 
-### Code Snippets
+执行任务前阅读 `.monkeycode/docs/unattended-development.md`。
 
-After installing this VSIX, the following shortcuts are available in any C# or ASPX file:
+关键规则：
 
-| Shortcut | Output |
-|----------|--------|
-| `csvm` | ViewModel with PageDirective, Bind, Command, LoadAsync |
-| `cssvc` | Service class with [Service] and [Autowired] |
-| `csapp` | Program.cs entry point |
-| `csmod` | CodeSpiritModule template |
-| `csbind` | [Bind] property |
-| `csform` | `<cs:Form>` with Field and Button |
-| `cstable` | `<cs:Table>` with Columns |
-| `csregion` | `<cs:Region>` partial update block |
+- 修改本项目运行时、页面、样式或脚本时，同步 VSIX 模板目录。
+- 修改前端行为后更新 `scripts/validate-js-boundary.js`。
+- 运行 JS 边界验证和解决方案测试。
+- 只有用户明确要求时才提交或推送。
 
-### Compile-Time Diagnostics
-
-The source generator reports these in the Error List:
-
-- **CSP001** (warning): Abstract `[Service]` class is not registered.
-- **CSP002** (warning): `[Service]` class has no public constructor.
-- **CSP003** (error): `[Command]` method declares parameters.
-
-### Frontend Toolkit
-
-- `jquery-lite.js` provides a local jQuery-compatible layer for selectors, events, DOM updates, AJAX helpers, and chainable APIs.
-- `jquery.behaviors.js` owns reusable `data-ui` behaviors that depend on the jQuery-compatible layer.
-- `ui.behaviors.js` owns native behaviors for progressive enhancement.
-- `site.css` includes reusable cards, grids, badges, buttons, alerts, tabs, and form primitives.
-
-## Validation
+## 验证
 
 ```bash
+node scripts/validate-js-boundary.js
 dotnet build CodeSpirit.LibraryManagement.csproj
 ```

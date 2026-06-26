@@ -19,10 +19,10 @@ public class PageRenderer
     private static readonly ConcurrentDictionary<(Type Type, string Name), PropertyInfo?> _propCache = new();
 
     private static Regex TagBlock(string tag) => new(
-        $@"<cs:{tag}(?<attrs>[^>]*)>(?<content>.*?)</cs:{tag}>", DefaultOptions);
+        $@"<cs:{tag}\b(?<attrs>[^>]*)>(?<content>.*?)</cs:{tag}>", DefaultOptions);
 
     private static Regex SelfClosing(string tag) => new(
-        $@"<cs:{tag}(?<attrs>[^>]*)\s*/>", DefaultOptions);
+        $@"<cs:{tag}\b(?<attrs>[^>]*)\s*/>", DefaultOptions);
 
     private static readonly Regex ContentRegex = new(
         @"<cs:Content\s+PlaceHolder=\""(?<name>[^\"" ]+)\""\s*>(?<content>.*?)</cs:Content>",
@@ -44,10 +44,18 @@ public class PageRenderer
     private static readonly Regex ShowRegex = new(
         @"<cs:Show(?<attrs>[^>]*)\s*>(?<content>.*?)</cs:Show>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly Regex ScriptsBlockRegex = TagBlock("Scripts");
+    private static readonly Regex ScriptsRegex = SelfClosing("Scripts");
+    private static readonly Regex ScriptRegex = SelfClosing("Script");
     private static readonly Regex FieldRegex = SelfClosing("Field");
     private static readonly Regex TableRegex = SelfClosing("Table");
     private static readonly Regex TableBlockRegex = TagBlock("Table");
     private static readonly Regex ColumnRegex = TagBlock("Column");
+    private static readonly Regex ToolbarRegex = TagBlock("Toolbar");
+    private static readonly Regex TabsRegex = TagBlock("Tabs");
+    private static readonly Regex TabRegex = TagBlock("Tab");
+    private static readonly Regex ModalRegex = TagBlock("Modal");
+    private static readonly Regex PagerRegex = SelfClosing("Pager");
     private static readonly Regex AttributeRegex = new(
         @"(?<name>[A-Za-z][A-Za-z0-9_-]*)=\""(?<value>[^\""]*)\""",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -57,6 +65,16 @@ public class PageRenderer
     private static readonly Regex DirectiveRegex = new(
         @"<%@\s*(Page|Master)\b.*?%>",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+    private static readonly IReadOnlyList<ScriptAsset> BuiltInScripts =
+    [
+        new("Runtime", "/js/codespirit.runtime.js"),
+        new("JQueryLite", "/js/vendor/jquery-lite.js"),
+        new("JQueryBehaviors", "/js/ui/jquery.behaviors.js"),
+        new("UiBehaviors", "/js/ui/ui.behaviors.js"),
+        new("Intent", "/js/ui/codespirit.intent.js"),
+        new("DevPanel", "/js/ui/codespirit.devpanel.js"),
+        new("Site", "/js/site.js")
+    ];
 
     public PageRenderer(PageParser parser, ILogger<PageRenderer> logger)
     {
@@ -214,7 +232,21 @@ public class PageRenderer
 
         html = TableRegex.Replace(html, match => RenderTable(match.Groups["attrs"].Value, string.Empty, state));
 
+        html = ToolbarRegex.Replace(html, match => RenderToolbar(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
+
+        html = TabsRegex.Replace(html, match => RenderTabs(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
+
+        html = ModalRegex.Replace(html, match => RenderModal(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
+
+        html = PagerRegex.Replace(html, match => RenderPager(match.Groups["attrs"].Value, state));
+
         html = ShowRegex.Replace(html, match => RenderShow(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
+
+        html = ScriptsBlockRegex.Replace(html, match => RenderScripts(match.Groups["attrs"].Value, state, match.Groups["content"].Value));
+
+        html = ScriptsRegex.Replace(html, match => RenderScripts(match.Groups["attrs"].Value, state));
+
+        html = ScriptRegex.Replace(html, match => RenderScript(match.Groups["attrs"].Value, state));
 
         html = FormRegex.Replace(html, match =>
         {
@@ -276,6 +308,98 @@ public class PageRenderer
         }
 
         return $"<{tag}{dataAttrs}{attrs}>{content}</{tag}>";
+    }
+
+    private static string RenderScripts(string rawAttributes, IReadOnlyDictionary<string, object?> state, string? content = null)
+    {
+        var attrs = AttributeRegex.Matches(rawAttributes)
+            .ToDictionary(match => match.Groups["name"].Value, match => RenderBindings(match.Groups["value"].Value, state), StringComparer.OrdinalIgnoreCase);
+        var scriptAttrs = RenderScriptAttributes(attrs);
+
+        var lines = new List<string>();
+        foreach (var script in BuiltInScripts)
+        {
+            var path = attrs.TryGetValue(script.Name, out var overridePath) ? overridePath : script.Path;
+            if (IsDisabledAsset(path))
+                continue;
+
+            path = SafeUrl(path);
+            if (path == "#" || string.IsNullOrWhiteSpace(path))
+                continue;
+
+            lines.Add($"<script src=\"{Html(path)}\"{scriptAttrs}></script>");
+        }
+
+        foreach (var path in ParseExtraScripts(attrs.GetValueOrDefault("Extra")))
+        {
+            var safePath = SafeUrl(path);
+            if (safePath == "#" || string.IsNullOrWhiteSpace(safePath))
+                continue;
+
+            lines.Add($"<script src=\"{Html(safePath)}\"{scriptAttrs}></script>");
+        }
+
+        if (!string.IsNullOrWhiteSpace(content))
+        {
+            var renderedContent = ScriptRegex.Replace(content, match => RenderScript(match.Groups["attrs"].Value, state, attrs));
+            renderedContent = RenderBindings(renderedContent, state).Trim();
+            if (!string.IsNullOrWhiteSpace(renderedContent))
+                lines.Add(renderedContent);
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string RenderScript(string rawAttributes, IReadOnlyDictionary<string, object?> state, IReadOnlyDictionary<string, string>? inheritedAttributes = null)
+    {
+        var attrs = inheritedAttributes is null
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, string>(inheritedAttributes, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var match in AttributeRegex.Matches(rawAttributes).Cast<Match>())
+        {
+            attrs[match.Groups["name"].Value] = RenderBindings(match.Groups["value"].Value, state);
+        }
+
+        attrs.Remove("Extra");
+        foreach (var script in BuiltInScripts)
+        {
+            attrs.Remove(script.Name);
+        }
+
+        if (!attrs.TryGetValue("Src", out var src) || string.IsNullOrWhiteSpace(src))
+            return string.Empty;
+
+        var safeSrc = SafeUrl(src);
+        if (safeSrc == "#" || string.IsNullOrWhiteSpace(safeSrc))
+            return string.Empty;
+
+        return $"<script src=\"{Html(safeSrc)}\"{RenderScriptAttributes(attrs)}></script>";
+    }
+
+    private static string RenderScriptAttributes(IReadOnlyDictionary<string, string> attrs)
+    {
+        var output = new StringBuilder();
+        foreach (var name in new[] { "Type", "Nonce", "Integrity", "Crossorigin", "Referrerpolicy" })
+        {
+            if (attrs.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value))
+                output.Append(' ').Append(name.ToLowerInvariant()).Append("=\"").Append(Html(value)).Append('"');
+        }
+
+        foreach (var name in new[] { "Async", "Defer" })
+        {
+            if (attrs.TryGetValue(name, out var value) && IsTruthyAttribute(value))
+                output.Append(' ').Append(name.ToLowerInvariant());
+        }
+
+        return output.ToString();
+    }
+
+    private static IEnumerable<string> ParseExtraScripts(string? raw)
+    {
+        return string.IsNullOrWhiteSpace(raw)
+            ? []
+            : raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
     private static string RenderHtmlAttributes(string rawAttributes, IReadOnlyDictionary<string, object?> state, params string[] excluded)
@@ -401,6 +525,78 @@ public class PageRenderer
             .ToList();
     }
 
+    private static string RenderToolbar(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
+    {
+        var title = GetAttribute(rawAttributes, "Title");
+        var subtitle = GetAttribute(rawAttributes, "Subtitle");
+        var attrs = RenderHtmlAttributes(rawAttributes, state, "Title", "Subtitle");
+        var heading = new StringBuilder();
+
+        if (!string.IsNullOrWhiteSpace(title) || !string.IsNullOrWhiteSpace(subtitle))
+        {
+            heading.Append("<div class=\"cs-toolbar-title\">");
+            if (!string.IsNullOrWhiteSpace(title))
+                heading.Append("<h2>").Append(Html(RenderBindings(title, state))).Append("</h2>");
+            if (!string.IsNullOrWhiteSpace(subtitle))
+                heading.Append("<p>").Append(Html(RenderBindings(subtitle, state))).Append("</p>");
+            heading.Append("</div>");
+        }
+
+        return $"<div class=\"cs-toolbar\"{attrs}>{heading}<div class=\"cs-toolbar-actions\">{content}</div></div>";
+    }
+
+    private static string RenderTabs(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
+    {
+        var active = RenderBindings(GetAttribute(rawAttributes, "Active") ?? string.Empty, state);
+        var attrs = RenderHtmlAttributes(rawAttributes, state, "Active");
+        var tabs = TabRegex.Matches(content)
+            .Select((match, index) =>
+            {
+                var raw = match.Groups["attrs"].Value;
+                var key = RenderBindings(GetAttribute(raw, "Key") ?? $"tab-{index + 1}", state);
+                var title = RenderBindings(GetAttribute(raw, "Title") ?? key, state);
+                var selected = string.IsNullOrWhiteSpace(active) ? index == 0 : string.Equals(active, key, StringComparison.OrdinalIgnoreCase);
+                return new TabItem(key, title, selected, match.Groups["content"].Value);
+            })
+            .ToList();
+
+        if (tabs.Count == 0)
+            return string.Empty;
+
+        var nav = string.Concat(tabs.Select(tab => $"<a href=\"#{Html(tab.Key)}\" class=\"cs-tab{(tab.Selected ? " active" : string.Empty)}\" role=\"tab\" aria-selected=\"{tab.Selected.ToString().ToLowerInvariant()}\">{Html(tab.Title)}</a>"));
+        var panels = string.Concat(tabs.Select(tab => $"<section id=\"{Html(tab.Key)}\" class=\"cs-tab-panel{(tab.Selected ? " active" : string.Empty)}\" role=\"tabpanel\">{tab.Content}</section>"));
+        return $"<div class=\"cs-tabs\" data-ui=\"tabs\"{attrs}><nav class=\"cs-tab-list\" role=\"tablist\">{nav}</nav>{panels}</div>";
+    }
+
+    private static string RenderModal(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
+    {
+        var id = RenderBindings(GetAttribute(rawAttributes, "Id") ?? "cs-modal", state);
+        var title = RenderBindings(GetAttribute(rawAttributes, "Title") ?? string.Empty, state);
+        var open = IsTruthyAttribute(RenderBindings(GetAttribute(rawAttributes, "Open") ?? string.Empty, state));
+        var attrs = RenderHtmlAttributes(rawAttributes, state, "Id", "Title", "Open");
+        var hidden = open ? string.Empty : " hidden";
+        var titleHtml = string.IsNullOrWhiteSpace(title) ? string.Empty : $"<header class=\"cs-modal-header\"><h2>{Html(title)}</h2></header>";
+        return $"<div id=\"{Html(id)}\" class=\"cs-modal\" data-ui=\"modal\" role=\"dialog\" aria-modal=\"true\"{hidden}{attrs}><div class=\"cs-modal-panel\">{titleHtml}<div class=\"cs-modal-body\">{content}</div></div></div>";
+    }
+
+    private static string RenderPager(string rawAttributes, IReadOnlyDictionary<string, object?> state)
+    {
+        var page = Math.Max(1, ParsePositiveInt(RenderBindings(GetAttribute(rawAttributes, "Page") ?? "1", state), 1));
+        var totalPages = Math.Max(1, ParsePositiveInt(RenderBindings(GetAttribute(rawAttributes, "TotalPages") ?? "1", state), 1));
+        var url = RenderBindings(GetAttribute(rawAttributes, "Url") ?? "?page={page}", state);
+        var attrs = RenderHtmlAttributes(rawAttributes, state, "Page", "TotalPages", "Url");
+        var links = new StringBuilder();
+
+        links.Append(RenderPagerLink(url, Math.Max(1, page - 1), "Previous", page <= 1));
+        for (var index = 1; index <= totalPages; index++)
+        {
+            links.Append(RenderPagerLink(url, index, index.ToString(), false, index == page));
+        }
+        links.Append(RenderPagerLink(url, Math.Min(totalPages, page + 1), "Next", page >= totalPages));
+
+        return $"<nav class=\"cs-pager\" aria-label=\"Pagination\"{attrs}>{links}</nav>";
+    }
+
     private static string? ExtractBindingName(string binding)
     {
         var match = BindingRegex.Match(binding);
@@ -463,6 +659,27 @@ public class PageRenderer
         _ => true
     };
 
+    private static int ParsePositiveInt(string value, int fallback)
+    {
+        return int.TryParse(value, out var result) && result > 0 ? result : fallback;
+    }
+
+    private static string RenderPagerLink(string template, int page, string label, bool disabled, bool active = false)
+    {
+        var href = SafeUrl(template.Replace("{page}", page.ToString(), StringComparison.OrdinalIgnoreCase));
+        var classes = new List<string> { "cs-pager-link" };
+        if (active)
+            classes.Add("active");
+        if (disabled)
+            classes.Add("disabled");
+
+        var ariaCurrent = active ? " aria-current=\"page\"" : string.Empty;
+        var ariaDisabled = disabled ? " aria-disabled=\"true\"" : string.Empty;
+        return disabled
+            ? $"<span class=\"{string.Join(' ', classes)}\"{ariaDisabled}>{Html(label)}</span>"
+            : $"<a class=\"{string.Join(' ', classes)}\" href=\"{Html(href)}\"{ariaCurrent}>{Html(label)}</a>";
+    }
+
     private static string Html(string value) => System.Net.WebUtility.HtmlEncode(value);
 
     private static string SafeTagName(string? tag)
@@ -506,6 +723,21 @@ public class PageRenderer
         return string.Equals(method, "get", StringComparison.OrdinalIgnoreCase) ? "get" : "post";
     }
 
+    private static bool IsDisabledAsset(string? value)
+    {
+        return string.Equals(value, "none", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "false", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(value, "off", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsTruthyAttribute(string? value)
+    {
+        return !string.IsNullOrWhiteSpace(value)
+            && !string.Equals(value, "false", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(value, "off", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(value, "0", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static string InferButtonClass(string rawCommand)
     {
         var command = (rawCommand ?? string.Empty).ToLowerInvariant();
@@ -547,6 +779,10 @@ public class PageRenderer
     }
 
     private sealed record TableColumn(string Name, string Header, string? Format, string? Template);
+
+    private sealed record TabItem(string Key, string Title, bool Selected, string Content);
+
+    private sealed record ScriptAsset(string Name, string Path);
 
     private static string? ResolvePagePath(HttpContext context, Type viewModelType)
     {

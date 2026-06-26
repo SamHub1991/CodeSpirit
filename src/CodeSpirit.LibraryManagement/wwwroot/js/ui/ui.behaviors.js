@@ -110,6 +110,98 @@
     });
   });
 
+  register('tabs', function (elements) {
+    elements.forEach(function (tabs) {
+      markReady([tabs], 'tabs');
+
+      function activate(key) {
+        var links = Array.from(tabs.querySelectorAll('.cs-tab[href]'));
+        var panels = Array.from(tabs.querySelectorAll('.cs-tab-panel'));
+        links.forEach(function (link) {
+          var selected = link.getAttribute('href') === '#' + key;
+          link.classList.toggle('active', selected);
+          link.setAttribute('aria-selected', selected ? 'true' : 'false');
+        });
+        panels.forEach(function (panel) {
+          var selected = panel.getAttribute('id') === key;
+          panel.classList.toggle('active', selected);
+        });
+      }
+
+      tabs.addEventListener('click', function (event) {
+        var link = event.target.closest('.cs-tab[href]');
+        if (!link || !tabs.contains(link)) {
+          return;
+        }
+
+        var href = link.getAttribute('href');
+        if (!href || href.charAt(0) !== '#') {
+          return;
+        }
+
+        var key = href.substring(1);
+        if (!key) {
+          return;
+        }
+
+        event.preventDefault();
+        activate(key);
+        if (window.history && typeof window.history.replaceState === 'function') {
+          window.history.replaceState(null, '', '#' + key);
+        }
+      });
+
+      if (window.location && window.location.hash) {
+        var hashKey = window.location.hash.substring(1);
+        if (tabs.querySelector('#' + hashKey)) {
+          activate(hashKey);
+        }
+      }
+    });
+  });
+
+  register('modal', function (elements) {
+    elements.forEach(function (modal) {
+      markReady([modal], 'modal');
+
+      function close() {
+        modal.setAttribute('hidden', '');
+      }
+
+      modal.addEventListener('click', function (event) {
+        if (event.target === modal || event.target.closest('[data-modal-close]')) {
+          close();
+        }
+      });
+    });
+  });
+
+  document.addEventListener('click', function (event) {
+    var trigger = event.target.closest('[data-modal-target]');
+    if (!trigger) {
+      return;
+    }
+
+    var selector = trigger.getAttribute('data-modal-target');
+    var modal = selector ? document.querySelector(selector) : null;
+    if (modal) {
+      event.preventDefault();
+      modal.removeAttribute('hidden');
+    }
+  });
+
+  document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape') {
+      return;
+    }
+
+    document.querySelectorAll('.cs-modal').forEach(function (modal) {
+      if (!modal.hasAttribute('hidden')) {
+        modal.setAttribute('hidden', '');
+      }
+    });
+  });
+
   function init(root) {
     root = root || document;
     Object.keys(behaviors).forEach(function (name) {

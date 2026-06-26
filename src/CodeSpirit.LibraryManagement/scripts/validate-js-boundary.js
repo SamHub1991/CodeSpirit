@@ -10,6 +10,7 @@ class Event {
     this.type = type;
     this.bubbles = Boolean(options.bubbles);
     this.detail = options.detail;
+    this.key = options.key;
     this.defaultPrevented = false;
     this.target = null;
     this.submitter = options.submitter || null;
@@ -110,6 +111,7 @@ function matchesSelector(element, selector) {
 class Element extends EventTarget {
   constructor(tagName, attributes = {}) {
     super();
+    this.nodeType = 1;
     this.tagName = tagName.toUpperCase();
     this.attributes = { ...attributes };
     this.children = [];
@@ -117,6 +119,7 @@ class Element extends EventTarget {
     this.textContent = '';
     this.name = attributes.name || '';
     this.classList = new ClassListMock();
+    String(attributes.class || '').split(/\s+/).filter(Boolean).forEach((className) => this.classList.add(className));
     if (['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA'].includes(this.tagName)) {
       this.value = attributes.value || '';
     }
@@ -140,22 +143,29 @@ class Element extends EventTarget {
 
   set innerHTML(value) {
     this.children = [];
-    const elementMatch = String(value).match(/^<([A-Za-z][A-Za-z0-9-]*)([^>]*)>([\s\S]*)<\/\1>$/);
-    if (!elementMatch) {
-      return;
+    const source = String(value).trim();
+    const elementRegex = /<([A-Za-z][A-Za-z0-9-]*)([^>]*)>([\s\S]*?)<\/\1>/g;
+    let matched = false;
+    let elementMatch;
+
+    while ((elementMatch = elementRegex.exec(source)) !== null) {
+      matched = true;
+      const [, tagName, rawAttributes, content] = elementMatch;
+      const attributes = {};
+      rawAttributes.replace(/([A-Za-z][A-Za-z0-9_-]*)="([^"]*)"/g, (_, name, attrValue) => {
+        attributes[name] = attrValue;
+        return '';
+      });
+
+      const element = this.appendChild(new Element(tagName, attributes));
+      element.textContent = content.replace(/<[^>]+>/g, '');
+      if (/^\s*<[A-Za-z][A-Za-z0-9-]*[\s>]/.test(content)) {
+        element.innerHTML = content.trim();
+      }
     }
 
-    const [, tagName, rawAttributes, content] = elementMatch;
-    const attributes = {};
-    rawAttributes.replace(/([A-Za-z][A-Za-z0-9_-]*)="([^"]*)"/g, (_, name, attrValue) => {
-      attributes[name] = attrValue;
-      return '';
-    });
-
-    const element = this.appendChild(new Element(tagName, attributes));
-    element.textContent = content.replace(/<[^>]+>/g, '');
-    if (/^\s*<[A-Za-z][A-Za-z0-9-]*[\s>]/.test(content)) {
-      element.innerHTML = content.trim();
+    if (matched) {
+      return;
     }
   }
 
@@ -165,6 +175,10 @@ class Element extends EventTarget {
 
   setAttribute(name, value) {
     this.attributes[name] = String(value);
+    if (name === 'class') {
+      this.classList = new ClassListMock();
+      String(value).split(/\s+/).filter(Boolean).forEach((className) => this.classList.add(className));
+    }
     if (name === 'name') {
       this.name = String(value);
     }
@@ -181,6 +195,21 @@ class Element extends EventTarget {
     if (name === 'disabled') {
       this.disabled = false;
     }
+  }
+
+  hasAttribute(name) {
+    return Object.prototype.hasOwnProperty.call(this.attributes, name);
+  }
+
+  contains(node) {
+    let current = node;
+    while (current) {
+      if (current === this) {
+        return true;
+      }
+      current = current.parentNode;
+    }
+    return false;
   }
 
   requestSubmit() {
@@ -237,6 +266,12 @@ class Element extends EventTarget {
       this.parentNode = null;
     }
   }
+
+  replaceChildren(...nodes) {
+    this.children.forEach((child) => { child.parentNode = null; });
+    this.children = [];
+    nodes.forEach((node) => this.appendChild(node));
+  }
 }
 
 class ClassListMock {
@@ -259,11 +294,22 @@ class ClassListMock {
     return this._classes.includes(className);
   }
 
-  toggle(className) {
+  toggle(className, force) {
+    if (force === true) {
+      this.add(className);
+      return true;
+    }
+    if (force === false) {
+      this.remove(className);
+      return false;
+    }
+
     if (this.contains(className)) {
       this.remove(className);
+      return false;
     } else {
       this.add(className);
+      return true;
     }
   }
 
@@ -275,6 +321,8 @@ class ClassListMock {
 class Document extends Element {
   constructor() {
     super('#document');
+    this.nodeType = 9;
+    this.title = '';
   }
 
   matches() {
@@ -314,7 +362,11 @@ async function main() {
 
   let fetchPayload = null;
   const context = vm.createContext({
-    window: { location: { pathname: '/weather' }, CSS: { escape: (value) => String(value) } },
+    window: {
+      location: { pathname: '/weather', hash: '' },
+      history: { replaceState: function (_state, _title, url) { this.lastUrl = url; } },
+      CSS: { escape: (value) => String(value) }
+    },
     document,
     FormData: FormDataStub,
     Event,
@@ -449,6 +501,15 @@ async function main() {
   assert.strictEqual(form.getAttribute('data-cs-busy'), null);
   assert.strictEqual(refreshBtn.disabled, false);
   assert.strictEqual(preDisabledBtn.disabled, true);
+
+  form.appendChild(new Element('section', { 'data-cs-region': 'multi' }));
+  context.window.CodeSpirit.applyRegions(form, {
+    multi: '<div data-region-item="first">First</div><div data-region-item="second">Second</div>'
+  });
+  var multiRegion = document.querySelector('[data-cs-region="multi"]');
+  assert.strictEqual(multiRegion.children.length, 2);
+  assert.strictEqual(multiRegion.children[0].textContent, 'First');
+  assert.strictEqual(multiRegion.children[1].textContent, 'Second');
 
   // ---- .reset() ----
   chain.set('City', 'Modified');
@@ -620,6 +681,94 @@ async function main() {
   assert.strictEqual(typeof context.window.CodeSpirit.mount, 'function');
   assert.strictEqual(typeof context.window.CodeSpirit.refresh, 'function');
 
+  runScript('wwwroot/js/ui/codespirit.intent.js', context);
+  assert.strictEqual(typeof context.window.CodeSpirit.intent.analyze, 'function');
+
+  document.title = 'Library Admin Dashboard';
+  const sceneRoot = document.appendChild(new Element('main', { class: 'library-screen' }));
+  sceneRoot.appendChild(new Element('h1')).textContent = 'Library Admin Dashboard';
+  sceneRoot.appendChild(new Element('button', { 'data-cs-command': 'BorrowBook' })).textContent = 'Borrow Book';
+  sceneRoot.appendChild(new Element('th')).textContent = 'ISBN';
+  context.window.CodeSpirit.intent.analyze(sceneRoot);
+  assert.ok(sceneRoot.classList.contains('cs-scene-library'));
+  assert.strictEqual(sceneRoot.getAttribute('data-cs-scene-current'), 'library');
+
+  const explicitSceneRoot = document.appendChild(new Element('section', { 'data-cs-scene': 'dashboard' }));
+  explicitSceneRoot.appendChild(new Element('h1')).textContent = 'Realtime 大屏';
+  context.window.CodeSpirit.intent.analyze(explicitSceneRoot);
+  assert.ok(explicitSceneRoot.classList.contains('cs-scene-dashboard'));
+  assert.strictEqual(explicitSceneRoot.getAttribute('data-cs-scene-current'), 'dashboard');
+
+  document.title = 'Finance Billing Report';
+  const financeRoot = document.appendChild(new Element('main'));
+  financeRoot.appendChild(new Element('h1')).textContent = 'Finance Billing Report';
+  financeRoot.appendChild(new Element('label')).textContent = 'Invoice Amount';
+  financeRoot.appendChild(new Element('button')).textContent = 'Collect Payment';
+  context.window.CodeSpirit.intent.analyze(financeRoot);
+  assert.ok(financeRoot.classList.contains('cs-scene-finance'));
+
+  document.title = 'Patient Appointment Clinic';
+  const healthcareRoot = document.appendChild(new Element('main'));
+  healthcareRoot.appendChild(new Element('h1')).textContent = 'Patient Appointment Clinic';
+  healthcareRoot.appendChild(new Element('label')).textContent = 'Doctor Diagnosis';
+  context.window.CodeSpirit.intent.analyze(healthcareRoot);
+  assert.ok(healthcareRoot.classList.contains('cs-scene-healthcare'));
+
+  document.title = 'HR Employee Recruiting';
+  const hrRoot = document.appendChild(new Element('main'));
+  hrRoot.appendChild(new Element('h1')).textContent = 'HR Employee Recruiting';
+  hrRoot.appendChild(new Element('label')).textContent = 'Candidate Payroll Attendance';
+  context.window.CodeSpirit.intent.analyze(hrRoot);
+  assert.ok(hrRoot.classList.contains('cs-scene-hr'));
+
+  document.title = 'Factory Production Work Order';
+  const manufacturingRoot = document.appendChild(new Element('main'));
+  manufacturingRoot.appendChild(new Element('h1')).textContent = 'Manufacturing Production';
+  manufacturingRoot.appendChild(new Element('label')).textContent = 'Work Order Quality OEE';
+  context.window.CodeSpirit.intent.analyze(manufacturingRoot);
+  assert.ok(manufacturingRoot.classList.contains('cs-scene-manufacturing'));
+
+  document.title = 'Support Ticket Helpdesk';
+  const supportRoot = document.appendChild(new Element('main'));
+  supportRoot.appendChild(new Element('h1')).textContent = 'Support Ticket Helpdesk';
+  supportRoot.appendChild(new Element('label')).textContent = 'SLA Incident Queue';
+  context.window.CodeSpirit.intent.analyze(supportRoot);
+  assert.ok(supportRoot.classList.contains('cs-scene-support'));
+
+  const additionalScenes = [
+    ['Commerce Orders', 'Product Cart Payment', 'commerce'],
+    ['Content CMS Publish', 'Article Draft Author', 'content'],
+    ['Analytics Report Growth', 'Conversion Statistics Segment', 'analytics'],
+    ['CRM Customer Pipeline', 'Lead Opportunity Deal', 'crm'],
+    ['Education Course Exam', 'Student Lesson Grade', 'education'],
+    ['Logistics Shipment Delivery', 'Warehouse Fleet Route', 'logistics'],
+    ['Developer API Webhook', 'SDK Deployment Logs', 'developer'],
+    ['Hotel Guest Booking', 'Room Check-in Reservation', 'hospitality'],
+    ['Real Estate Property', 'Listing Lease Tenant', 'real-estate'],
+    ['Legal Contract Case', 'Compliance Clause Risk', 'legal']
+  ];
+  additionalScenes.forEach(([title, label, expected]) => {
+    document.title = title;
+    const root = document.appendChild(new Element('main'));
+    root.appendChild(new Element('h1')).textContent = title;
+    root.appendChild(new Element('label')).textContent = label;
+    context.window.CodeSpirit.intent.analyze(root);
+    assert.ok(root.classList.contains(`cs-scene-${expected}`), `${expected} scene should be detected`);
+  });
+
+  document.title = 'Candidate';
+  const lowConfidenceRoot = document.appendChild(new Element('main'));
+  lowConfidenceRoot.appendChild(new Element('h1')).textContent = 'Candidate';
+  context.window.CodeSpirit.intent.analyze(lowConfidenceRoot);
+  assert.ok(lowConfidenceRoot.classList.contains('cs-scene-app'));
+  assert.strictEqual(lowConfidenceRoot.getAttribute('data-cs-scene-confidence'), 'low');
+  assert.strictEqual(lowConfidenceRoot.getAttribute('data-cs-scene-candidate'), 'hr');
+
+  assert.strictEqual(typeof context.window.CodeSpirit.theme.exportTokens, 'function');
+  const tokens = context.window.CodeSpirit.theme.exportTokens(sceneRoot);
+  assert.strictEqual(tokens['--cs-primary'], '#6d5dfc');
+  assert.ok(tokens['--cs-font'].indexOf('Inter') >= 0);
+
   context.window.CodeSpirit.mount(document);
 
   let customBehaviorCount = 0;
@@ -658,6 +807,33 @@ async function main() {
   form.appendChild(autoField);
   context.window.CodeSpirit.mount(document);
   assert.ok(autoField.getAttribute('data-ui-ready').split(/\s+/).indexOf('auto-submit') >= 0);
+
+  // Verify tabs behavior
+  const tabs = form.appendChild(new Element('div', { class: 'cs-tabs', 'data-ui': 'tabs' }));
+  const overviewTab = tabs.appendChild(new Element('a', { class: 'cs-tab active', href: '#overview', role: 'tab' }));
+  const detailsTab = tabs.appendChild(new Element('a', { class: 'cs-tab', href: '#details', role: 'tab' }));
+  const overviewPanel = tabs.appendChild(new Element('section', { id: 'overview', class: 'cs-tab-panel active' }));
+  const detailsPanel = tabs.appendChild(new Element('section', { id: 'details', class: 'cs-tab-panel' }));
+  context.window.CodeSpirit.mount(document);
+  detailsTab.dispatchEvent(new Event('click', { bubbles: true }));
+  assert.ok(!overviewTab.classList.contains('active'));
+  assert.ok(detailsTab.classList.contains('active'));
+  assert.ok(!overviewPanel.classList.contains('active'));
+  assert.ok(detailsPanel.classList.contains('active'));
+  assert.strictEqual(detailsTab.getAttribute('aria-selected'), 'true');
+
+  // Verify modal behavior
+  const openModal = form.appendChild(new Element('button', { 'data-modal-target': '#edit-modal' }));
+  const modal = form.appendChild(new Element('div', { id: 'edit-modal', class: 'cs-modal', 'data-ui': 'modal', hidden: '' }));
+  const closeModal = modal.appendChild(new Element('button', { 'data-modal-close': '' }));
+  context.window.CodeSpirit.mount(document);
+  openModal.dispatchEvent(new Event('click', { bubbles: true }));
+  assert.strictEqual(modal.hasAttribute('hidden'), false);
+  closeModal.dispatchEvent(new Event('click', { bubbles: true }));
+  assert.strictEqual(modal.hasAttribute('hidden'), true);
+  modal.removeAttribute('hidden');
+  document.dispatchEvent(new Event('keydown', { key: 'Escape' }));
+  assert.strictEqual(modal.hasAttribute('hidden'), true);
 
   // ---- data-cs-attr binding ----
   var linkEl = form.appendChild(new Element('a', { 'data-cs-attr': 'DetailUrl:href' }));
