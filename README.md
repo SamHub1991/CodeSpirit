@@ -46,6 +46,11 @@ dotnet run
 | AOP | `[Transactional]`、`[Cacheable]` | Castle DynamicProxy 拦截器 |
 | 监控端点 | `/actuator/*` | Health、metrics、info |
 | 默认前端 | `site.css`、`codespirit.runtime.js`、`codespirit.intent.js` | 页面无需写 CSS 即具备基础视觉和交互 |
+| 表达式引擎 | `data-cs-show`、`data-cs-enable`、`data-cs-refresh` | 内置微型表达式引擎，无额外依赖 |
+| 语义布局 | `<cs:Grid>`、`<cs:Card>`、`<cs:Stack>` | 消灭页面级布局 CSS |
+| 复合组件 | `<cs:Crud>`、`<cs:Dashboard>`、`<cs:MetricCard>`、`<cs:ActivityFeed>`、`<cs:QuickLinks>` | 自动生成 CRUD 和大屏 |
+| 场景识别 | `data-cs-scene`、`data-cs-intent` | 24 类通用业务场景自动识别与主题切换 |
+| 内置交互 | `data-cs-confirm`、`data-cs-source` | 确认对话框、选项数据源协议 |
 
 ## 最小应用
 
@@ -123,11 +128,25 @@ public class CustomerViewModel : ViewModel
 | `CodeSpirit.refresh(root)` | 动态更新后重新初始化 DOM root |
 | `CodeSpirit.ui.register(name, initializer)` | 注册可复用 `data-ui` 行为 |
 
+## 表达式引擎
+
+内置微型表达式引擎在 `codespirit.runtime.js` 中，体积不超过 3KB，无需额外依赖。
+
+| 属性 | 作用 |
+|------|------|
+| `data-cs-show="Expr"` | 根据表达式求值结果显示/隐藏元素 |
+| `data-cs-enable="Expr"` | 根据表达式求值结果启用/禁用控件 |
+| `data-cs-refresh="Region"` | 值变更后自动触发 `cs:Region` 命令刷新 |
+| `data-cs-confirm="消息"` | 内置确认对话框，无需 jQuery 行为扩展 |
+| `data-cs-source="Command"` | 自动通过命令获取选项数据 |
+
+支持运算符：`> < >= <= == != && \|\| ! contains empty ? :`
+
 ## 默认视觉系统
 
 `wwwroot/css/site.css` 是框架内置默认样式。普通 HTML 和 CodeSpirit 标签在没有页面 CSS 的情况下也会获得现代化外观。
 
-默认覆盖元素：`h1`、`h2`、`h3`、`p`、`a`、`form`、`label`、`input`、`select`、`textarea`、`button`、`section`、`article`、`table`。
+默认覆盖元素：`h1`、`h2`、`h3`、`p`、`a`、`form`、`label`、`input`、`select`、`textarea`、`button`、`section`、`article`、`table`、`ul`、`ol`、`blockquote`、`code`、`kbd`、`pre`、`hr`、`fieldset`、`legend`、`figure`、`figcaption`、`img`、`details`、`summary`、`nav`、`aside`、`header`、`footer`、`small`、`strong`、`em`、`address`、`progress`、`meter`。
 
 内置 UI 原语：`.cs-card`、`.cs-panel`、`.cs-grid`、`.cs-stack`、`.cs-btn`、`.cs-badge`、`.cs-alert`、`.cs-toolbar`、`.cs-tabs`、`.cs-modal`、`.cs-pager`。
 
@@ -155,6 +174,12 @@ public class CustomerViewModel : ViewModel
 | `cs-scene-real-estate` | 房产、楼盘、租赁、物业、租户 |
 | `cs-scene-legal` | 法务、合同、案件、合规、风险 |
 | `cs-scene-support` | 客服、工单、服务台、SLA、队列 |
+| `cs-scene-supply-chain` | 供应链、采购、供应商、库存、补货 |
+| `cs-scene-research` | 研发、实验、论文、专利、项目管理 |
+| `cs-scene-security` | 安全、审计、日志、告警、合规 |
+| `cs-scene-retail` | 零售、门店、POS、收银、会员 |
+| `cs-scene-insurance` | 保险、保单、理赔、核保、精算 |
+| `cs-scene-ngo` | 公益、项目、捐赠、志愿者、受益人 |
 
 显式指定场景：
 

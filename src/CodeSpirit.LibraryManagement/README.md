@@ -64,14 +64,15 @@ CodeSpirit.LibraryManagement/
 - `jquery-lite.js` 提供本地 jQuery 兼容层。
 - `jquery.behaviors.js` 管理依赖 jQuery 兼容层的 `data-ui` 行为。
 - `ui.behaviors.js` 管理原生渐进增强行为。
-- `codespirit.runtime.js` 管理 `data-cs-*` MVVM 绑定、命令、局部刷新和错误回显。
+- `codespirit.runtime.js` 管理 `data-cs-*` MVVM 绑定、命令、局部刷新、表达式求值和错误回显。
+- `codespirit.expression.js` 管理 `data-cs-show`、`data-cs-enable`、`data-cs-refresh`、`data-cs-confirm`、`data-cs-source` 表达式引擎。
 - `codespirit.intent.js` 管理 `data-cs-intent` 和 `data-cs-scene` 识别。
 
 ## 默认样式与场景
 
 `wwwroot/css/site.css` 是内置默认视觉系统。普通 HTML 和 CodeSpirit 标签无需页面 CSS 即具备现代化外观。
 
-内置场景：`dashboard`、`library`、`admin`、`commerce`、`content`、`analytics`、`crm`、`finance`、`education`、`healthcare`、`logistics`、`developer`、`hr`、`manufacturing`、`hospitality`、`real-estate`、`legal`、`support`。
+内置场景：`dashboard`、`library`、`admin`、`commerce`、`content`、`analytics`、`crm`、`finance`、`education`、`healthcare`、`logistics`、`developer`、`hr`、`manufacturing`、`hospitality`、`real-estate`、`legal`、`support`、`supply-chain`、`research`、`security`、`retail`、`insurance`、`ngo`。
 
 显式指定场景：
 

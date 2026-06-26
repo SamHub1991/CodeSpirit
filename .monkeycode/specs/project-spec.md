@@ -104,7 +104,7 @@ CodeSpirit 是一个面向 .NET 10 的约定式应用框架，提供 Spring Boot
 - ✓ VS Code 和 VSIX IntelliSense snippets 已验证与实际代码模式一致。
 - ✓ 表达式引擎 `data-cs-show/enable/refresh` 已内置到前端运行时链路（P0）。
 - ✓ `<cs:Grid>`、`<cs:Card>`、`<cs:Stack>` 布局标签已可用（P0）。
-- [ ] `data-cs-confirm` 和 `data-cs-source` 已内置，替代 jQuery 行为依赖（P1）。
+- [✓] `data-cs-confirm` 和 `data-cs-source` 已内置，替代 jQuery 行为依赖（P1）。
 - ✓ `<cs:Crud>` 复合组件已可用（P1）。
 - ✓ `<cs:Dashboard>` 自动仪表盘布局已可用（P2）。
 - ✓ `data-cs-source` 选项数据源协议已可用（P1）。
