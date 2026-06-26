@@ -4,7 +4,7 @@
   var CodeSpirit = window.CodeSpirit;
   if (!CodeSpirit) return;
 
-  var TOKEN_ID = 1, TOKEN_NUM = 2, TOKEN_STR = 3, TOKEN_OP = 4, TOKEN_LPAREN = 5, TOKEN_RPAREN = 6, TOKEN_QMARK = 7, TOKEN_COLON = 8, TOKEN_EOF = 9;
+  var TOKEN_ID = 1, TOKEN_NUM = 2, TOKEN_STR = 3, TOKEN_OP = 4, TOKEN_LPAREN = 5, TOKEN_RPAREN = 6, TOKEN_QMARK = 7, TOKEN_COLON = 8, TOKEN_COMMA = 9, TOKEN_EOF = 10;
 
   function Lexer(input) {
     this.input = input;
@@ -31,6 +31,7 @@
     if (c === ')') { this.pos = p + 1; return { type: TOKEN_RPAREN }; }
     if (c === '?') { this.pos = p + 1; return { type: TOKEN_QMARK }; }
     if (c === ':') { this.pos = p + 1; return { type: TOKEN_COLON }; }
+    if (c === ',') { this.pos = p + 1; return { type: TOKEN_COMMA }; }
 
     if (c === "'") {
       var end = p + 1;
@@ -54,7 +55,12 @@
       var word = s.substring(p, end3);
       this.pos = end3;
 
-      if (word === 'contains' || word === 'empty' || word === 'true' || word === 'false' || word === 'null') {
+      if (word === 'contains' || word === 'empty' || word === 'true' || word === 'false' || word === 'null' ||
+        word === 'length' || word === 'trim' || word === 'lower' || word === 'upper' ||
+        word === 'substring' || word === 'startsWith' || word === 'endsWith' || word === 'indexOf' ||
+        word === 'abs' || word === 'min' || word === 'max' || word === 'round' || word === 'floor' || word === 'ceil' ||
+        word === 'now' || word === 'today' || word === 'year' || word === 'month' || word === 'day' ||
+        word === 'isNull' || word === 'default' || word === 'coalesce') {
         return { type: TOKEN_ID, value: word };
       }
 
@@ -183,6 +189,12 @@
       if (tok.value === 'true') return { type: 'literal', value: true };
       if (tok.value === 'false') return { type: 'literal', value: false };
       if (tok.value === 'null') return { type: 'literal', value: null };
+
+      // Check for function call
+      if (this.current.type === TOKEN_LPAREN) {
+        return this.parseFunctionCall(tok.value);
+      }
+
       return { type: 'field', name: tok.value };
     }
 
@@ -190,6 +202,25 @@
     if (tok.type === TOKEN_STR) { this.advance(); return { type: 'literal', value: tok.value }; }
 
     throw new Error('unexpected token: ' + JSON.stringify(tok));
+  };
+
+  Parser.prototype.parseFunctionCall = function (name) {
+    this.expect(TOKEN_LPAREN, "expected '(' after function name");
+    this.advance();
+
+    var args = [];
+    if (this.current.type !== TOKEN_RPAREN) {
+      args.push(this.parseTernary());
+      while (this.current.type === TOKEN_OP && this.current.value === ',') {
+        this.advance();
+        args.push(this.parseTernary());
+      }
+    }
+
+    this.expect(TOKEN_RPAREN, "expected ')' after function arguments");
+    this.advance();
+
+    return { type: 'call', name: name, args: args };
   };
 
   function evaluate(ast, lookup) {
@@ -229,6 +260,73 @@
       case 'ternary': {
         var cond = evaluate(ast.cond, lookup);
         return toBool(cond) ? evaluate(ast.thenExpr, lookup) : evaluate(ast.elseExpr, lookup);
+      }
+
+      case 'call': {
+        var args = ast.args.map(function (arg) { return evaluate(arg, lookup); });
+        return evaluateFunction(ast.name, args);
+      }
+    }
+
+    return null;
+  }
+
+  function evaluateFunction(name, args) {
+    var val = args[0];
+    var str = val != null ? String(val) : '';
+    var n = num(val);
+
+    switch (name) {
+      // String functions
+      case 'length': return str.length;
+      case 'trim': return str.trim();
+      case 'lower': return str.toLowerCase();
+      case 'upper': return str.toUpperCase();
+      case 'substring': {
+        var start = num(args[1]);
+        var end = args[2] != null ? num(args[2]) : str.length;
+        return str.substring(start, end);
+      }
+      case 'startsWith': return str.startsWith(args[1] != null ? String(args[1]) : '');
+      case 'endsWith': return str.endsWith(args[1] != null ? String(args[1]) : '');
+      case 'indexOf': return str.indexOf(args[1] != null ? String(args[1]) : '');
+
+      // Math functions
+      case 'abs': return Math.abs(n);
+      case 'min': return Math.min.apply(Math, args.map(num));
+      case 'max': return Math.max.apply(Math, args.map(num));
+      case 'round': return Math.round(n);
+      case 'floor': return Math.floor(n);
+      case 'ceil': return Math.ceil(n);
+
+      // Date functions
+      case 'now': return Date.now();
+      case 'today': {
+        var d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d.getTime();
+      }
+      case 'year': {
+        var date = val ? new Date(val) : new Date();
+        return date.getFullYear();
+      }
+      case 'month': {
+        var date2 = val ? new Date(val) : new Date();
+        return date2.getMonth() + 1;
+      }
+      case 'day': {
+        var date3 = val ? new Date(val) : new Date();
+        return date3.getDate();
+      }
+
+      // Utility functions
+      case 'isNull': return val == null;
+      case 'default': return val != null ? val : (args[1] != null ? args[1] : '');
+      case 'coalesce': {
+        for (var i = 0; i < args.length; i++) {
+          if (args[i] != null) return args[i];
+        }
+        return null;
       }
     }
 

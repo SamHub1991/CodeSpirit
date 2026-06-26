@@ -85,6 +85,46 @@ public class CodeSpiritServiceGenerator : IIncrementalGenerator
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
+    private static readonly DiagnosticDescriptor DuplicateCommandNameWarning = new(
+        "CSP009",
+        "Duplicate command name in ViewModel",
+        "Command name '{0}' is already defined in ViewModel '{1}'. Command names must be unique within a ViewModel.",
+        "CodeSpirit",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor DuplicateBindingNameWarning = new(
+        "CSP010",
+        "Duplicate binding name in ViewModel",
+        "Binding name '{0}' is already defined in ViewModel '{1}'. Binding names must be unique within a ViewModel.",
+        "CodeSpirit",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor CommandNameReservedWarning = new(
+        "CSP011",
+        "Command name uses reserved prefix",
+        "Command name '{0}' uses reserved prefix '__'. Avoid using double underscore prefix for command names.",
+        "CodeSpirit",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor AsyncVoidCommandWarning = new(
+        "CSP012",
+        "Async void command method",
+        "Command method '{0}' returns void but uses async operations. Consider returning Task instead.",
+        "CodeSpirit",
+        DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor MissingPageDirectiveWarning = new(
+        "CSP013",
+        "ViewModel missing [PageDirective]",
+        "ViewModel '{0}' does not have [PageDirective] attribute. It will not be exposed as a page endpoint.",
+        "CodeSpirit",
+        DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var classDeclarations = context.SyntaxProvider
@@ -136,6 +176,15 @@ public class CodeSpiritServiceGenerator : IIncrementalGenerator
             .Where(static info => info is not null);
 
         context.RegisterSourceOutput(commandMethods.Collect(), GenerateCommandAccessibilityDiagnostics);
+
+        // Additional diagnostics for ViewModel validation
+        var viewModelClasses = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: static (node, _) => node is ClassDeclarationSyntax c && c.BaseList?.Types.Count > 0,
+                transform: static (ctx, _) => GetViewModelValidationInfo(ctx))
+            .Where(static info => info is not null);
+
+        context.RegisterSourceOutput(viewModelClasses.Collect(), GenerateViewModelValidationDiagnostics);
     }
 
     private static ServiceRegistrationInfo? GetServiceRegistrationInfo(GeneratorSyntaxContext ctx)
@@ -482,6 +531,132 @@ public class CodeSpiritServiceGenerator : IIncrementalGenerator
                     NonPublicCommandWarning, info.Location, info.MemberName, info.AttributeName));
         }
     }
+
+    private static ViewModelValidationInfo? GetViewModelValidationInfo(GeneratorSyntaxContext ctx)
+    {
+        var classDecl = (ClassDeclarationSyntax)ctx.Node;
+        var model = ctx.SemanticModel;
+        var symbol = model.GetDeclaredSymbol(classDecl);
+
+        if (symbol is not INamedTypeSymbol typeSymbol)
+            return null;
+
+        // Check if it inherits from ViewModel
+        var baseType = typeSymbol.BaseType;
+        var isViewModel = false;
+        while (baseType != null)
+        {
+            if (baseType.Name == "ViewModel" && baseType.ContainingNamespace?.ToDisplayString().Contains("CodeSpirit") == true)
+            {
+                isViewModel = true;
+                break;
+            }
+            baseType = baseType.BaseType;
+        }
+
+        if (!isViewModel)
+            return null;
+
+        var commands = new List<string>();
+        var bindings = new List<string>();
+        var hasPageDirective = false;
+
+        // Check for PageDirective
+        foreach (var attr in typeSymbol.GetAttributes())
+        {
+            if (attr.AttributeClass?.Name == "PageDirectiveAttribute")
+            {
+                hasPageDirective = true;
+                break;
+            }
+        }
+
+        // Collect commands and bindings from members
+        foreach (var member in typeSymbol.GetMembers())
+        {
+            if (member is IMethodSymbol method)
+            {
+                foreach (var attr in method.GetAttributes())
+                {
+                    if (attr.AttributeClass?.ToDisplayString() == CommandAttributeName)
+                    {
+                        var commandName = attr.ConstructorArguments.FirstOrDefault().Value?.ToString() ?? method.Name;
+                        commands.Add(commandName);
+                    }
+                }
+            }
+            else if (member is IPropertySymbol prop)
+            {
+                foreach (var attr in prop.GetAttributes())
+                {
+                    if (attr.AttributeClass?.ToDisplayString() == BindAttributeName)
+                    {
+                        var bindName = attr.ConstructorArguments.FirstOrDefault().Value?.ToString() ?? prop.Name;
+                        bindings.Add(bindName);
+                    }
+                }
+            }
+        }
+
+        return new ViewModelValidationInfo
+        {
+            ClassName = typeSymbol.Name,
+            Commands = commands,
+            Bindings = bindings,
+            HasPageDirective = hasPageDirective,
+            Location = typeSymbol.Locations.FirstOrDefault()
+        };
+    }
+
+    private static void GenerateViewModelValidationDiagnostics(
+        SourceProductionContext context,
+        ImmutableArray<ViewModelValidationInfo?> infos)
+    {
+        var allCommands = new HashSet<string>();
+        var allBindings = new HashSet<string>();
+
+        foreach (var info in infos)
+        {
+            if (info?.Location is null)
+                continue;
+
+            // Check for missing PageDirective
+            if (!info.HasPageDirective)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    MissingPageDirectiveWarning, info.Location, info.ClassName));
+            }
+
+            // Check for duplicate commands
+            allCommands.Clear();
+            foreach (var cmd in info.Commands)
+            {
+                if (!allCommands.Add(cmd))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        DuplicateCommandNameWarning, info.Location, cmd, info.ClassName));
+                }
+
+                // Check for reserved prefix
+                if (cmd.StartsWith("__"))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        CommandNameReservedWarning, info.Location, cmd));
+                }
+            }
+
+            // Check for duplicate bindings
+            allBindings.Clear();
+            foreach (var bind in info.Bindings)
+            {
+                if (!allBindings.Add(bind))
+                {
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        DuplicateBindingNameWarning, info.Location, bind, info.ClassName));
+                }
+            }
+        }
+    }
 }
 
 internal sealed class ServiceRegistrationInfo
@@ -517,6 +692,15 @@ internal sealed class PropertyDiagnosticInfo
 {
     public string MemberName { get; set; } = string.Empty;
     public string AttributeName { get; set; } = string.Empty;
+    public Location? Location { get; set; }
+}
+
+internal sealed class ViewModelValidationInfo
+{
+    public string ClassName { get; set; } = string.Empty;
+    public List<string> Commands { get; set; } = new();
+    public List<string> Bindings { get; set; } = new();
+    public bool HasPageDirective { get; set; }
     public Location? Location { get; set; }
 }
 
