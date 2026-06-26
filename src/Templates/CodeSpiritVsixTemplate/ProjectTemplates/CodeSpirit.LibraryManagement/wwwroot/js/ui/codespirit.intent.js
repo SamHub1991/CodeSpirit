@@ -225,6 +225,114 @@
         ['grant', 5], ['grants', 5], ['volunteer', 5], ['fundraiser', 4],
         ['community', 3], ['outreach', 3]
       ]
+    },
+    {
+      name: 'telecom',
+      threshold: 7,
+      keywords: [
+        ['电信', 8], ['通信', 7], ['网络', 6], ['基站', 6], ['telecom', 7],
+        ['network', 5], ['signal', 5], ['tower', 5], ['bts', 5],
+        ['subscriber', 4], ['sim', 4], ['plan', 3], ['roaming', 4]
+      ]
+    },
+    {
+      name: 'energy',
+      threshold: 7,
+      keywords: [
+        ['能源', 8], ['电力', 7], ['电网', 7], ['发电', 6], ['energy', 7],
+        ['power', 5], ['grid', 5], ['electricity', 5], ['renewable', 4],
+        ['solar', 4], ['wind', 4], ['consumption', 4], ['utility', 4]
+      ]
+    },
+    {
+      name: 'transportation',
+      threshold: 7,
+      keywords: [
+        ['交通', 8], ['运输', 7], ['公交', 7], ['地铁', 7], ['transportation', 7],
+        ['transit', 5], ['metro', 5], ['bus', 5], ['train', 5],
+        ['route', 4], ['schedule', 4], ['ticket', 4], ['fare', 3]
+      ]
+    },
+    {
+      name: 'agriculture',
+      threshold: 7,
+      keywords: [
+        ['农业', 8], ['农场', 7], ['种植', 7], ['农田', 6], ['agriculture', 7],
+        ['farm', 5], ['crop', 5], ['harvest', 5], ['irrigation', 4],
+        ['soil', 4], ['fertilizer', 4], ['pesticide', 4], ['yield', 4]
+      ]
+    },
+    {
+      name: 'media',
+      threshold: 7,
+      keywords: [
+        ['媒体', 8], ['新闻', 7], ['广播', 7], ['视频', 6], ['media', 7],
+        ['news', 5], ['broadcast', 5], ['video', 5], ['streaming', 5],
+        ['channel', 4], ['program', 4], ['episode', 4], ['viewer', 3]
+      ]
+    },
+    {
+      name: 'gaming',
+      threshold: 7,
+      keywords: [
+        ['游戏', 8], ['玩家', 7], ['电竞', 7], ['服务器', 6], ['gaming', 7],
+        ['game', 5], ['player', 5], ['esports', 5], ['server', 5],
+        ['match', 4], ['rank', 4], ['level', 4], ['score', 3]
+      ]
+    },
+    {
+      name: 'automotive',
+      threshold: 7,
+      keywords: [
+        ['汽车', 8], ['车辆', 7], ['4s 店', 7], ['维修', 6], ['automotive', 7],
+        ['vehicle', 5], ['car', 5], ['dealer', 5], ['service', 5],
+        ['maintenance', 4], ['repair', 4], ['warranty', 4], ['parts', 4]
+      ]
+    },
+    {
+      name: 'pharmaceutical',
+      threshold: 7,
+      keywords: [
+        ['医药', 8], ['药品', 7], ['制药', 7], ['药房', 6], ['pharmaceutical', 7],
+        ['drug', 5], ['medicine', 5], ['medication', 5], ['pharmacy', 5],
+        ['prescription', 4], ['dosage', 4], ['tablet', 4], ['capsule', 4]
+      ]
+    },
+    {
+      name: 'construction',
+      threshold: 7,
+      keywords: [
+        ['建筑', 8], ['工程', 7], ['施工', 7], ['工地', 6], ['construction', 7],
+        ['building', 5], ['project', 5], ['site', 5], ['contractor', 5],
+        ['blueprint', 4], ['material', 4], ['concrete', 4], ['steel', 4]
+      ]
+    },
+    {
+      name: 'aviation',
+      threshold: 7,
+      keywords: [
+        ['航空', 8], ['航班', 7], ['机场', 7], ['飞机', 6], ['aviation', 7],
+        ['flight', 5], ['airport', 5], ['airline', 5], ['aircraft', 5],
+        ['boarding', 4], ['gate', 4], ['terminal', 4], ['pilot', 4]
+      ]
+    },
+    {
+      name: 'maritime',
+      threshold: 7,
+      keywords: [
+        ['海运', 8], ['港口', 7], ['船舶', 7], ['码头', 6], ['maritime', 7],
+        ['shipping', 5], ['port', 5], ['vessel', 5], ['cargo', 5],
+        ['container', 4], ['dock', 4], ['harbor', 4], ['freight', 4]
+      ]
+    },
+    {
+      name: 'government',
+      threshold: 7,
+      keywords: [
+        ['政府', 8], ['政务', 7], ['行政', 7], ['公务', 6], ['government', 7],
+        ['agency', 5], ['department', 5], ['bureau', 5], ['civil', 5],
+        ['public', 4], ['service', 4], ['permit', 4], ['license', 4]
+      ]
     }
   ];
 
@@ -262,6 +370,49 @@
     '--cs-tone-amber': '#f59e0b',
     '--cs-tone-blue': '#3b82f6',
     '--cs-tone-purple': '#a855f7'
+  };
+
+  var SCENE_THEME_VARIANTS = {
+    dashboard: {
+      '--cs-primary': '#7c3aed',
+      '--cs-accent': '#f59e0b',
+      '--cs-bg': '#0f172a'
+    },
+    finance: {
+      '--cs-primary': '#059669',
+      '--cs-accent': '#10b981',
+      '--cs-text': '#064e3b'
+    },
+    healthcare: {
+      '--cs-primary': '#0891b2',
+      '--cs-accent': '#06b6d4',
+      '--cs-bg': '#ecfeff'
+    },
+    education: {
+      '--cs-primary': '#ea580c',
+      '--cs-accent': '#f97316',
+      '--cs-bg': '#fff7ed'
+    },
+    gaming: {
+      '--cs-primary': '#dc2626',
+      '--cs-accent': '#ef4444',
+      '--cs-bg': '#18181b'
+    },
+    energy: {
+      '--cs-primary': '#84cc16',
+      '--cs-accent': '#a3e635',
+      '--cs-bg': '#f7fee7'
+    },
+    telecom: {
+      '--cs-primary': '#2563eb',
+      '--cs-accent': '#3b82f6',
+      '--cs-bg': '#eff6ff'
+    },
+    government: {
+      '--cs-primary': '#1e40af',
+      '--cs-accent': '#3730a3',
+      '--cs-text': '#1e3a8a'
+    }
   };
 
   function getTextValue(el) {
@@ -542,12 +693,31 @@
     var target = getSceneTarget(root) || document.documentElement;
     var styles = typeof window.getComputedStyle === 'function' ? window.getComputedStyle(target) : null;
     var tokens = {};
+
+    // Get current scene
+    var currentScene = target.getAttribute('data-cs-scene-current');
+    if (!currentScene && target.classList) {
+      for (var i = 0; i < target.classList.length; i++) {
+        var cls = target.classList[i];
+        if (cls.startsWith('cs-scene-')) {
+          currentScene = cls.replace('cs-scene-', '');
+          break;
+        }
+      }
+    }
+
+    // Apply scene-specific theme variants
+    var sceneVariant = currentScene && SCENE_THEME_VARIANTS[currentScene] ? SCENE_THEME_VARIANTS[currentScene] : {};
+
     THEME_TOKEN_NAMES.forEach(function (name) {
       var value = styles && typeof styles.getPropertyValue === 'function'
         ? styles.getPropertyValue(name).trim()
         : '';
-      tokens[name] = value || DEFAULT_THEME_TOKENS[name] || '';
+
+      // Priority: computed style > scene variant > default
+      tokens[name] = value || sceneVariant[name] || DEFAULT_THEME_TOKENS[name] || '';
     });
+
     return tokens;
   }
 
