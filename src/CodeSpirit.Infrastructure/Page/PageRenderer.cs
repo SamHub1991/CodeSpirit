@@ -64,6 +64,10 @@ public class PageRenderer
     private static readonly Regex MetricCardRegex = SelfClosing("MetricCard");
     private static readonly Regex ActivityFeedRegex = SelfClosing("ActivityFeed");
     private static readonly Regex QuickLinksRegex = SelfClosing("QuickLinks");
+    private static readonly Regex ChartRegex = SelfClosing("Chart");
+    private static readonly Regex TreeRegex = SelfClosing("Tree");
+    private static readonly Regex WizardRegex = TagBlock("Wizard");
+    private static readonly Regex StepRegex = TagBlock("Step");
     private static readonly Regex AttributeRegex = new(
         @"(?<name>[A-Za-z][A-Za-z0-9_-]*)=\""(?<value>[^\""]*)\""",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -266,6 +270,12 @@ public class PageRenderer
         html = QuickLinksRegex.Replace(html, match => RenderQuickLinks(match.Groups["attrs"].Value, state));
 
         html = DashboardRegex.Replace(html, match => RenderDashboard(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
+
+        html = ChartRegex.Replace(html, match => RenderChart(match.Groups["attrs"].Value, state));
+
+        html = TreeRegex.Replace(html, match => RenderTree(match.Groups["attrs"].Value, state));
+
+        html = WizardRegex.Replace(html, match => RenderWizard(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
 
         html = ScriptsBlockRegex.Replace(html, match => RenderScripts(match.Groups["attrs"].Value, state, match.Groups["content"].Value));
 
@@ -516,6 +526,136 @@ public class PageRenderer
                 .Append("</a>");
         }
         sb.Append("</section>");
+        return sb.ToString();
+    }
+
+    private static string RenderChart(string rawAttributes, IReadOnlyDictionary<string, object?> state)
+    {
+        var type = RenderBindings(GetAttribute(rawAttributes, "Type") ?? "bar", state);
+        var width = RenderBindings(GetAttribute(rawAttributes, "Width") ?? "400", state);
+        var height = RenderBindings(GetAttribute(rawAttributes, "Height") ?? "300", state);
+        var dataBinding = GetAttribute(rawAttributes, "Data");
+        var labelsBinding = GetAttribute(rawAttributes, "Labels");
+        var title = RenderBindings(GetAttribute(rawAttributes, "Title") ?? string.Empty, state);
+
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-card cs-chart", string.Empty, "Type", "Width", "Height", "Data", "Labels", "Title");
+        var sb = new StringBuilder();
+        sb.Append("<section").Append(attrs).Append('>');
+
+        if (!string.IsNullOrWhiteSpace(title))
+            sb.Append("<h3>").Append(Html(title)).Append("</h3>");
+
+        sb.Append("<canvas data-cs-chart=\"").Append(Html(type)).Append("\"");
+        sb.Append(" data-cs-chart-width=\"").Append(Html(width)).Append("\"");
+        sb.Append(" data-cs-chart-height=\"").Append(Html(height)).Append("\"");
+
+        if (!string.IsNullOrWhiteSpace(dataBinding))
+            sb.Append(" data-cs-chart-data=\"{Binding ").Append(Html(dataBinding)).Append("}\"");
+
+        if (!string.IsNullOrWhiteSpace(labelsBinding))
+            sb.Append(" data-cs-chart-labels=\"{Binding ").Append(Html(labelsBinding)).Append("}\"");
+
+        sb.Append("></canvas>");
+        sb.Append("</section>");
+        return sb.ToString();
+    }
+
+    private static string RenderTree(string rawAttributes, IReadOnlyDictionary<string, object?> state)
+    {
+        var items = GetEnumerableFromBinding(rawAttributes, "Items", state);
+        if (items is null)
+            return string.Empty;
+
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-card cs-tree", string.Empty, "Items", "ChildrenField", "LabelField", "ValueField");
+        var childrenField = RenderBindings(GetAttribute(rawAttributes, "ChildrenField") ?? "Children", state);
+        var labelField = RenderBindings(GetAttribute(rawAttributes, "LabelField") ?? "Label", state);
+        var valueField = RenderBindings(GetAttribute(rawAttributes, "ValueField") ?? "Value", state);
+
+        var sb = new StringBuilder();
+        sb.Append("<section").Append(attrs).Append('>');
+        sb.Append("<ul class=\"cs-tree-root\" data-cs-tree");
+        sb.Append(" data-cs-tree-children=\"").Append(Html(childrenField)).Append("\"");
+        sb.Append(" data-cs-tree-label=\"").Append(Html(labelField)).Append("\"");
+        sb.Append(" data-cs-tree-value=\"").Append(Html(valueField)).Append("\"");
+        sb.Append(">");
+
+        foreach (var item in items)
+        {
+            RenderTreeNode(sb, item, childrenField, labelField, valueField, state);
+        }
+
+        sb.Append("</ul></section>");
+        return sb.ToString();
+    }
+
+    private static void RenderTreeNode(StringBuilder sb, object item, string childrenField, string labelField, string valueField, IReadOnlyDictionary<string, object?> state)
+    {
+        var label = FormatValue(GetValue(item, labelField), null);
+        var value = FormatValue(GetValue(item, valueField), null);
+        var children = GetValue(item, childrenField) as System.Collections.IEnumerable;
+        var hasChildren = children != null && !(children is string);
+
+        sb.Append("<li class=\"cs-tree-node");
+        if (hasChildren) sb.Append(" cs-tree-node-has-children");
+        sb.Append("\" data-cs-tree-value=\"").Append(Html(value)).Append("\">");
+        sb.Append("<span class=\"cs-tree-label\">").Append(Html(label)).Append("</span>");
+
+        if (hasChildren)
+        {
+            sb.Append("<ul class=\"cs-tree-children\">");
+            foreach (var child in children)
+            {
+                RenderTreeNode(sb, child, childrenField, labelField, valueField, state);
+            }
+            sb.Append("</ul>");
+        }
+
+        sb.Append("</li>");
+    }
+
+    private static string RenderWizard(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
+    {
+        var activeStep = RenderBindings(GetAttribute(rawAttributes, "ActiveStep") ?? "0", state);
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-wizard", string.Empty, "ActiveStep");
+        var steps = StepRegex.Matches(content)
+            .Select((match, index) => new
+            {
+                Key = RenderBindings(GetAttribute(match.Groups["attrs"].Value, "Key") ?? $"step-{index + 1}", state),
+                Title = RenderBindings(GetAttribute(match.Groups["attrs"].Value, "Title") ?? $"Step {index + 1}", state),
+                Content = match.Groups["content"].Value,
+                Index = index
+            })
+            .ToList();
+
+        var sb = new StringBuilder();
+        sb.Append("<div class=\"cs-wizard\" data-cs-wizard").Append(attrs).Append('>');
+
+        sb.Append("<div class=\"cs-wizard-steps\">");
+        foreach (var step in steps)
+        {
+            var isActive = string.Equals(activeStep, step.Index.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                          string.Equals(activeStep, step.Key, StringComparison.OrdinalIgnoreCase);
+            sb.Append("<div class=\"cs-wizard-step").Append(isActive ? " active" : "").Append("\" data-cs-wizard-step=\"").Append(Html(step.Key)).Append("\">");
+            sb.Append("<span class=\"cs-wizard-step-number\">").Append(step.Index + 1).Append("</span>");
+            sb.Append("<span class=\"cs-wizard-step-title\">").Append(Html(step.Title)).Append("</span>");
+            sb.Append("</div>");
+        }
+        sb.Append("</div>");
+
+        sb.Append("<div class=\"cs-wizard-content\">");
+        foreach (var step in steps)
+        {
+            var isVisible = string.Equals(activeStep, step.Index.ToString(), StringComparison.OrdinalIgnoreCase) ||
+                           string.Equals(activeStep, step.Key, StringComparison.OrdinalIgnoreCase);
+            sb.Append("<div class=\"cs-wizard-panel").Append(isVisible ? " active" : "").Append("\" data-cs-wizard-panel=\"").Append(Html(step.Key)).Append("\"");
+            if (!isVisible) sb.Append(" style=\"display:none\"");
+            sb.Append(">");
+            sb.Append(RenderTemplate(step.Content, state));
+            sb.Append("</div>");
+        }
+        sb.Append("</div>");
+
+        sb.Append("</div>");
         return sb.ToString();
     }
 

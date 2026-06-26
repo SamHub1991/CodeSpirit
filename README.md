@@ -287,6 +287,9 @@ dotnet build src/CodeSpirit.slnx
 | `cstablex` | `<cs:Table>` 含 `<cs:Column>` 子标签显式列定义 |
 | `cstabs` | `<cs:Tabs>` 标签页 |
 | `cstoolbar` | `<cs:Toolbar>` 工具栏 |
+| `cschart` | `<cs:Chart>` 图表组件（支持 bar/line/pie 等类型） |
+| `cstree` | `<cs:Tree>` 树形结构组件 |
+| `cswizard` | `<cs:Wizard>` 分步向导组件 |
 
 ### VS Code 支持
 
