@@ -365,7 +365,8 @@ async function main() {
     window: {
       location: { pathname: '/weather', hash: '' },
       history: { replaceState: function (_state, _title, url) { this.lastUrl = url; } },
-      CSS: { escape: (value) => String(value) }
+      CSS: { escape: (value) => String(value) },
+      confirm: () => false
     },
     document,
     FormData: FormDataStub,
@@ -379,12 +380,14 @@ async function main() {
   context.window.document = document;
 
   runScript('wwwroot/js/codespirit.runtime.js', context);
+  runScript('wwwroot/js/codespirit.expression.js', context);
 
   // ---- Exposed API ----
   assert.strictEqual(typeof context.window.CodeSpirit.vm, 'function');
   assert.strictEqual(typeof context.window.CodeSpirit.VmChain, 'function');
   assert.strictEqual(typeof context.window.CodeSpirit.applyErrors, 'function');
   assert.strictEqual(typeof context.window.CodeSpirit.clearErrors, 'function');
+  assert.strictEqual(typeof context.window.CodeSpirit.expression.evaluate, 'function');
   assert.strictEqual(context.window.$cs, context.window.CodeSpirit);
   assert.strictEqual(context.window.CS, undefined);
 
@@ -403,6 +406,40 @@ async function main() {
   runScript('wwwroot/js/codespirit.runtime.js', occupiedContext);
   assert.strictEqual(occupiedContext.window.$cs, occupiedAlias);
   assert.strictEqual(typeof occupiedContext.window.CodeSpirit.vm, 'function');
+
+  // ---- Expression engine ----
+  const bookCount = form.appendChild(new Element('input', { name: 'BookCount', 'data-cs-bind': 'BookCount', value: '0' }));
+  const hasBooksPanel = form.appendChild(new Element('section', { 'data-cs-show': 'BookCount > 0' }));
+  const actionButton = form.appendChild(new Element('button', { 'data-cs-enable': "BookCount > 0 && City contains 'Paris'" }));
+
+  context.window.CodeSpirit.expression.apply(form);
+  assert.strictEqual(hasBooksPanel.style.display, 'none');
+  assert.strictEqual(actionButton.disabled, true);
+
+  bookCount.value = '2';
+  context.window.CodeSpirit.input(bookCount, 'BookCount', '2');
+  assert.strictEqual(hasBooksPanel.style.display, '');
+  assert.strictEqual(actionButton.disabled, false);
+  assert.strictEqual(context.window.CodeSpirit.expression.evaluate("BookCount > 1 ? 'many' : 'few'", form), 'many');
+
+  const dangerButton = form.appendChild(new Element('button', { 'data-cs-confirm': 'Delete this book?' }));
+  const confirmClick = new Event('click', { bubbles: true });
+  dangerButton.dispatchEvent(confirmClick);
+  assert.strictEqual(confirmClick.defaultPrevented, true);
+
+  const category = form.appendChild(new Element('select', { name: 'Category', 'data-cs-source': 'LoadCategories', 'data-cs-source-field': 'CategoryOptions' }));
+  context.fetch = async (url, options) => {
+    fetchPayload = { url, options: { ...options, body: JSON.parse(options.body) } };
+    return {
+      ok: true,
+      json: async () => ({ state: { CategoryOptions: [{ Value: 'Sci', Text: 'Science' }, { Value: 'Art', Text: 'Art' }] } })
+    };
+  };
+  context.window.CodeSpirit.expression.apply(form);
+  for (var i = 0; i < 10; i++) { await Promise.resolve(); }
+  assert.strictEqual(category.children.length, 2);
+  assert.strictEqual(category.children[0].value, 'Sci');
+  assert.strictEqual(category.children[0].textContent, 'Science');
 
   // ---- Chain initialization ----
   var chain = context.window.CodeSpirit.vm(form);
@@ -754,6 +791,23 @@ async function main() {
     root.appendChild(new Element('label')).textContent = label;
     context.window.CodeSpirit.intent.analyze(root);
     assert.ok(root.classList.contains(`cs-scene-${expected}`), `${expected} scene should be detected`);
+  });
+
+  const extendedScenes = [
+    ['Supply Chain Procurement', 'Vendor Supplier Inventory', 'supply-chain'],
+    ['Research Lab Study', 'Experiment Sample Publication', 'research'],
+    ['Security Audit Threat', 'Vulnerability Intrusion Firewall', 'security'],
+    ['Retail Store POS', 'Checkout Customer Loyalty', 'retail'],
+    ['Insurance Policy Claim', 'Premium Underwriting Coverage', 'insurance'],
+    ['NGO Charity Donation', 'Volunteer Grant Community', 'ngo']
+  ];
+  extendedScenes.forEach(([title, label, expected]) => {
+    document.title = title;
+    const root = document.appendChild(new Element('main'));
+    root.appendChild(new Element('h1')).textContent = title;
+    root.appendChild(new Element('label')).textContent = label;
+    context.window.CodeSpirit.intent.analyze(root);
+    assert.ok(root.classList.contains(`cs-scene-${expected}`), `${expected} extended scene should be detected`);
   });
 
   document.title = 'Candidate';

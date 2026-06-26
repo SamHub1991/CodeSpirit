@@ -84,6 +84,8 @@
         </Folder>
         <Folder Name="js" TargetFolderName="js">
           <ProjectItem ReplaceParameters="false" TargetFileName="codespirit.runtime.js">codespirit.runtime.js</ProjectItem>
+          <ProjectItem ReplaceParameters="false" TargetFileName="codespirit.expression.js">codespirit.expression.js</ProjectItem>
+          <ProjectItem ReplaceParameters="false" TargetFileName="codespirit.d.ts">codespirit.d.ts</ProjectItem>
           <ProjectItem ReplaceParameters="false" TargetFileName="site.js">site.js</ProjectItem>
           <Folder Name="ui" TargetFolderName="ui">
             <ProjectItem ReplaceParameters="false" TargetFileName="jquery.behaviors.js">jquery.behaviors.js</ProjectItem>
@@ -102,6 +104,11 @@
       <Folder Name="Reports" TargetFolderName="Reports">
         <ProjectItem ReplaceParameters="true" TargetFileName="SampleReport.rpt.xml">SampleReport.rpt.xml</ProjectItem>
         <ProjectItem ReplaceParameters="false" TargetFileName="UserActivity.rpt.xml">UserActivity.rpt.xml</ProjectItem>
+      </Folder>
+
+      <Folder Name=".vscode" TargetFolderName=".vscode">
+        <ProjectItem ReplaceParameters="false" TargetFileName="codespirit.code-snippets">codespirit.code-snippets</ProjectItem>
+        <ProjectItem ReplaceParameters="false" TargetFileName="settings.json">settings.json</ProjectItem>
       </Folder>
     </Project>
   </TemplateContent>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>cs:Dashboard Composite Layout</Title>
+      <Shortcut>csdash</Shortcut>
+      <Description>cs:Dashboard composite dashboard with metrics, activity, and quick links</Description>
+      <Author>CodeSpirit</Author>
+      <SnippetTypes><SnippetType>Expansion</SnippetType></SnippetTypes>
+    </Header>
+    <Snippet>
+      <Code Language="html"><![CDATA[<cs:Dashboard Title="$title$" Subtitle="$subtitle$">
+  <cs:MetricCard Items="{Binding $metrics$}" />
+  <cs:ActivityFeed Items="{Binding $activities$}" Title="$activityTitle$" />
+  <cs:QuickLinks Items="{Binding $cards$}" />
+</cs:Dashboard>$end$]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

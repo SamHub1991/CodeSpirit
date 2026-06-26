@@ -166,6 +166,7 @@
 
       function close() {
         modal.setAttribute('hidden', '');
+        modal.dispatchEvent(new CustomEvent('codespirit:modal-closed', { bubbles: true, detail: { modal: modal } }));
       }
 
       modal.addEventListener('click', function (event) {
@@ -198,6 +199,7 @@
     document.querySelectorAll('.cs-modal').forEach(function (modal) {
       if (!modal.hasAttribute('hidden')) {
         modal.setAttribute('hidden', '');
+        modal.dispatchEvent(new CustomEvent('codespirit:modal-closed', { bubbles: true, detail: { modal: modal } }));
       }
     });
   });

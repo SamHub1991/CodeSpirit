@@ -15,6 +15,7 @@ public class AboutViewModel : ViewModel
     [Value("CodeSpirit:Version")]
     [Bind] public string Version { get; set; } = string.Empty;
 
+    [Value("CodeSpirit:Description")]
     [Bind] public string Description { get; set; } = "A .NET 10 application built with CodeSpirit framework.";
 
     public override Task LoadAsync()

@@ -95,22 +95,47 @@ ISBN,Title,Author,Category,Location,PublishedYear,CopyCount,Rating
 
 ## VSIX 代码片段
 
+### C# 快捷方式
+
 | 快捷方式 | 输出 |
 |----------|------|
-| `csvm` | ViewModel 模板 |
-| `cssvc` | Service 模板 |
+| `csaop` | `[Transactional]` / `[Cacheable]` AOP 拦截器 |
 | `csapp` | Program.cs 入口 |
+| `csbind` | `[Bind]` 属性（支持单向/双向） |
+| `cshttp` | `[Endpoint]` / `[HttpGet]` / `[HttpPost]` 声明式 HTTP |
+| `cslife` | `[BeforeLoad]` / `[AfterLoad]` 页面生命周期钩子 |
 | `csmod` | CodeSpiritModule 模板 |
-| `csbind` | `[Bind]` 属性 |
+| `csrepo` | `[Repository]` 仓储模板 |
+| `cssched` | `[Scheduled]` / `[Every]` / `[OnStartup]` 定时任务 |
+| `cssvc` | Service 模板（含 [Value] 和 AOP） |
+| `csvm` | ViewModel 模板（含生命周期钩子） |
+| `csval` | `[Value("key")]` 配置注入 |
+
+### HTML 快捷方式
+
+| 快捷方式 | 输出 |
+|----------|------|
+| `cscard` | `<cs:Card>` 默认卡片容器 |
+| `csconditional` | `<cs:Conditional Visible="{Binding ...}">` 条件渲染 |
+| `cscrud` | `<cs:Crud>` 复合 CRUD 表单 |
+| `csdash` | `<cs:Dashboard>` 复合仪表盘布局 |
 | `csform` | `<cs:Form>` 表单 |
-| `cstable` | `<cs:Table>` 表格 |
-| `csregion` | `<cs:Region>` 局部刷新区域 |
-| `cstoolbar` | `<cs:Toolbar>` 工具栏 |
-| `cstabs` | `<cs:Tabs>` 标签页 |
+| `csgrid` | `<cs:Grid>` 响应式网格布局 |
+| `cslink` | `<cs:Link NavigateTo="{Binding ...}">` 安全链接 |
+| `csmetric` | `<cs:MetricCard>` 指标卡片组 |
 | `csmodal` | `<cs:Modal>` 弹窗 |
 | `cspager` | `<cs:Pager>` 分页 |
-| `csscripts` | `<cs:Scripts>` 内置脚本资源 |
+| `csqlinks` | `<cs:QuickLinks>` 快捷入口卡片 |
+| `csregion` | `<cs:Region>` 局部刷新区域 |
+| `csrepeater` | `<cs:Repeater>` 列表迭代 |
 | `csscript` | `<cs:Script>` 页面脚本 |
+| `csscripts` | `<cs:Scripts>` 脚本资源容器 |
+| `csstack` | `<cs:Stack>` Flex 堆叠布局 |
+| `csactivity` | `<cs:ActivityFeed>` 活动流 |
+| `cstable` | `<cs:Table Columns="Property:Header[:Format]">` 表格简写 |
+| `cstablex` | `<cs:Table>` 含 `<cs:Column>` 子标签显式列定义 |
+| `cstabs` | `<cs:Tabs>` 标签页 |
+| `cstoolbar` | `<cs:Toolbar>` 工具栏 |
 
 ## 无人值守开发
 

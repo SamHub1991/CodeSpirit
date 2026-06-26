@@ -2,9 +2,9 @@
 <CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
   <CodeSnippet Format="1.0.0">
     <Header>
-      <Title>cs:Table with Columns</Title>
-      <Shortcut>cstable</Shortcut>
-      <Description>CodeSpirit cs:Table with shorthand Columns attribute (Property:Header[:Format])</Description>
+      <Title>CodeSpirit Repeater</Title>
+      <Shortcut>csrepeater</Shortcut>
+      <Description>cs:Repeater tag for iterating collection items</Description>
       <Author>CodeSpirit</Author>
       <SnippetTypes>
         <SnippetType>Expansion</SnippetType>
@@ -13,12 +13,18 @@
     <Snippet>
       <Declarations>
         <Literal>
-          <ID>Items</ID>
+          <ID>Source</ID>
           <ToolTip>Binding source collection</ToolTip>
           <Default>Items</Default>
         </Literal>
       </Declarations>
-      <Code Language="html"><![CDATA[<cs:Table Items="{Binding $$Items$}" Columns="$columns$" />$end$]]></Code>
+      <Code Language="html"><![CDATA[<cs:Repeater Items="{Binding $$Source$}">
+  <section class="cs-card">
+    <h3>{Binding Title}</h3>
+    <p>{Binding Description}</p>
+    $end$
+  </section>
+</cs:Repeater>]]></Code>
     </Snippet>
   </CodeSnippet>
 </CodeSnippets>

@@ -374,6 +374,7 @@ public class PageRendererTagTests
             new Dictionary<string, object?>());
 
         Assert.Contains("/js/codespirit.runtime.js", html);
+        Assert.Contains("/js/codespirit.expression.js", html);
         Assert.Contains("/js/vendor/jquery-lite.js", html);
         Assert.Contains("/js/ui/ui.behaviors.js", html);
         Assert.Contains("/js/ui/codespirit.intent.js", html);
@@ -498,6 +499,65 @@ public class PageRendererTagTests
 
         Assert.Contains("<th>Status</th>", html);
         Assert.Contains("<span class=\"status-Active\">Active</span>", html);
+    }
+
+    [Fact]
+    public void LayoutTags_RenderSemanticClassesAndStyles()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Grid Columns=\"2\" Gap=\"lg\"><cs:Card Tone=\"blue\"><cs:Stack Direction=\"Row\" Align=\"Center\" Gap=\"sm\">Body</cs:Stack></cs:Card></cs:Grid>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("class=\"cs-grid cs-grid-2\"", html);
+        Assert.Contains("style=\"gap: 1.5rem;\"", html);
+        Assert.Contains("class=\"cs-card cs-card-blue\"", html);
+        Assert.Contains("class=\"cs-stack cs-row\"", html);
+        Assert.Contains("gap: 0.5rem; align-items: center;", html);
+    }
+
+    [Fact]
+    public void Crud_RendersFormFieldsAndCommands()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Crud Entity=\"Book\" Title=\"Book Catalog\" Subtitle=\"Manage books\" Fields=\"BookId:Book Id:number,BookTitle:Title,ImportExportCsv:CSV:textarea:9\" Commands=\"AddBook:Add,ArchiveBook:Archive:Archive this book?\" />",
+            new Dictionary<string, object?>
+            {
+                ["BookId"] = 7,
+                ["BookTitle"] = "Clean Code",
+                ["ImportExportCsv"] = "ISBN,Title"
+            });
+
+        Assert.Contains("class=\"cs-card cs-crud\"", html);
+        Assert.Contains("<h2>Book Catalog</h2>", html);
+        Assert.Contains("<p>Manage books</p>", html);
+        Assert.Contains("name=\"BookId\" value=\"7\"", html);
+        Assert.Contains("name=\"BookTitle\" value=\"Clean Code\"", html);
+        Assert.Contains("<textarea id=\"ImportExportCsv\" name=\"ImportExportCsv\" data-cs-bind=\"ImportExportCsv\" rows=\"9\">ISBN,Title</textarea>", html);
+        Assert.Contains("data-cs-command=\"AddBook\"", html);
+        Assert.Contains("data-cs-command=\"ArchiveBook\"", html);
+        Assert.Contains("data-cs-confirm=\"Archive this book?\"", html);
+        Assert.Contains("cs-btn-danger", html);
+    }
+
+    [Fact]
+    public void DashboardComponents_RenderCompositeSections()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Dashboard Title=\"Library Command Center\" Subtitle=\"Live insights\"><cs:MetricCard Items=\"{Binding Metrics}\" /><cs:ActivityFeed Items=\"{Binding Activities}\" Title=\"Live Activity\" /><cs:QuickLinks Items=\"{Binding Cards}\" /></cs:Dashboard>",
+            new Dictionary<string, object?>
+            {
+                ["Metrics"] = new[] { new { Label = "Books", Value = 42, Hint = "Available", Tone = "green" } },
+                ["Activities"] = new[] { new { Time = "09:00", Text = "Borrowed Clean Code", Tone = "blue" } },
+                ["Cards"] = new[] { new { Title = "Admin", Description = "Manage books", Url = "/admin" } }
+            });
+
+        Assert.Contains("class=\"cs-dashboard\"", html);
+        Assert.Contains("<h1>Library Command Center</h1>", html);
+        Assert.Contains("class=\"cs-grid cs-grid-3 cs-metrics\"", html);
+        Assert.Contains("<strong data-cs-intent=\"numeric\">42</strong>", html);
+        Assert.Contains("class=\"cs-card cs-activity-feed\"", html);
+        Assert.Contains("Borrowed Clean Code", html);
+        Assert.Contains("class=\"cs-card cs-quick-link\" href=\"/admin\"", html);
     }
 
     [Fact]

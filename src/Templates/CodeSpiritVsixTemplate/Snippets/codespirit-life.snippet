@@ -2,9 +2,9 @@
 <CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
   <CodeSnippet Format="1.0.0">
     <Header>
-      <Title>CodeSpirit ViewModel</Title>
-      <Shortcut>csvm</Shortcut>
-      <Description>CodeSpirit MVVM ViewModel with PageDirective, lifecycle hooks, Bind, and Command</Description>
+      <Title>CodeSpirit Page Lifecycle</Title>
+      <Shortcut>cslife</Shortcut>
+      <Description>CodeSpirit [BeforeLoad] and [AfterLoad] page lifecycle hooks</Description>
       <Author>CodeSpirit</Author>
       <SnippetTypes>
         <SnippetType>Expansion</SnippetType>
@@ -38,25 +38,16 @@ public class $ViewModelName$ : ViewModel
     [Value("CodeSpirit:Setting")]
     [Bind] public string Setting { get; set; } = string.Empty;
 
-    [FromQuery]
-    [Bind(BindDirection.TwoWay)]
-    public string? Search { get; set; }
-
-    [FromRoute]
-    [Bind] public string? Id { get; set; }
-
-    [Bind]
-    public List<object> Items { get; set; } = [];
-
     [BeforeLoad]
     public async Task BeforeLoadAsync()
     {
         _logger.LogDebug("{ViewModel} before load", nameof($ViewModelName$));
+        $end$
     }
 
     public override async Task LoadAsync()
     {
-        $end$
+        await Task.CompletedTask;
     }
 
     [AfterLoad]

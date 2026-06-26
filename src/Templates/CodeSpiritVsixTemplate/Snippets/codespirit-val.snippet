@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>CodeSpirit Value Config</Title>
+      <Shortcut>csval</Shortcut>
+      <Description>CodeSpirit [Value] attribute for configuration binding</Description>
+      <Author>CodeSpirit</Author>
+      <SnippetTypes>
+        <SnippetType>Expansion</SnippetType>
+      </SnippetTypes>
+    </Header>
+    <Snippet>
+      <Declarations>
+        <Literal>
+          <ID>Key</ID>
+          <ToolTip>Configuration key</ToolTip>
+          <Default>CodeSpirit:Setting</Default>
+        </Literal>
+        <Literal>
+          <ID>Type</ID>
+          <ToolTip>Property type</ToolTip>
+          <Default>string</Default>
+        </Literal>
+        <Literal>
+          <ID>Name</ID>
+          <ToolTip>Property name</ToolTip>
+          <Default>Setting</Default>
+        </Literal>
+      </Declarations>
+      <Code Language="csharp"><![CDATA[[Value("$Key$")]
+public $Type$ $Name$ { get; set; }$end$]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

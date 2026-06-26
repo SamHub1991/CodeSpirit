@@ -19,9 +19,10 @@ public class WeatherService
         "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
     ];
 
-    public WeatherForecast[] GetForecast()
+    public WeatherForecast[] GetForecast(string? city = null)
     {
-        _logger.LogInformation("[{App}] Generating weather forecast", AppName);
+        var location = string.IsNullOrWhiteSpace(city) ? "default" : city;
+        _logger.LogInformation("[{App}] Generating weather forecast for {Location}", AppName, location);
         return Enumerable.Range(1, 5).Select(index => new WeatherForecast
         {
             Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),

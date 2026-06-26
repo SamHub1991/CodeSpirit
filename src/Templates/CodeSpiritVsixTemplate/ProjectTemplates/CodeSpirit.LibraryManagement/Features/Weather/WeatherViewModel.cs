@@ -28,6 +28,6 @@ public class WeatherViewModel : ViewModel
     public void Refresh()
     {
         var service = Ctx!.Services.GetRequiredService<WeatherService>();
-        Forecast = service.GetForecast();
+        Forecast = service.GetForecast(City);
     }
 }

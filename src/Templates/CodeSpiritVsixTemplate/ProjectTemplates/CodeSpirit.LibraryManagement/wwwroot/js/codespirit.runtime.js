@@ -23,20 +23,38 @@
     return data;
   }
 
+  function hasFileInput(form) {
+    return form.querySelector('input[type="file"]') !== null;
+  }
+
   function postViewModel(form, payload, options) {
     var targetUrl = form.getAttribute('action') || (window.location && window.location.pathname) || '/';
     var method = form.getAttribute('method') || 'POST';
     var opts = options || {};
-    var headers = { 'Content-Type': 'application/json' };
-    if (opts.headers) {
-      Object.keys(opts.headers).forEach(function (k) { headers[k] = opts.headers[k]; });
+    var useFormData = hasFileInput(form);
+
+    var fetchOptions = { method: method };
+    if (useFormData) {
+      var fd = new FormData();
+      Object.keys(payload).forEach(function (key) {
+        var el = form.querySelector('[name="' + key + '"]');
+        if (el && el.type === 'file' && el.files && el.files.length) {
+          fd.append(key, el.files[0]);
+        } else {
+          fd.append(key, payload[key] == null ? '' : payload[key]);
+        }
+      });
+      fetchOptions.body = fd;
+    } else {
+      var headers = { 'Content-Type': 'application/json' };
+      if (opts.headers) {
+        Object.keys(opts.headers).forEach(function (k) { headers[k] = opts.headers[k]; });
+      }
+      fetchOptions.headers = headers;
+      fetchOptions.body = JSON.stringify(payload);
     }
 
-    return fetch(targetUrl, {
-      method: method,
-      headers: headers,
-      body: JSON.stringify(payload)
-    }).then(function (response) {
+    return fetch(targetUrl, fetchOptions).then(function (response) {
       if (!response.ok) {
         var status = response.status;
         return response.text().then(function (body) {

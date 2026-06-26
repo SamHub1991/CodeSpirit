@@ -378,6 +378,185 @@ tr:last-child td {
   border-bottom: none;
 }
 
+/* ---- Classless HTML defaults ---- */
+ul:not([class]), ol:not([class]) {
+  padding-left: 1.5rem;
+  margin-block: 0.75rem;
+  color: var(--cs-text-muted);
+}
+
+ul:not([class]) li, ol:not([class]) li {
+  margin-block: 0.3rem;
+}
+
+blockquote:not([class]) {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem 0.75rem 1.25rem;
+  border-left: 4px solid var(--cs-primary);
+  background: var(--cs-surface);
+  border-radius: 0 var(--cs-radius) var(--cs-radius) 0;
+  color: var(--cs-text-muted);
+  font-style: italic;
+}
+
+code:not([class]), kbd:not([class]) {
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+  background: rgba(109, 93, 252, 0.1);
+  color: var(--cs-primary-dark);
+  font-size: 0.875em;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+pre:not([class]) {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: var(--cs-radius);
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  overflow-x: auto;
+  line-height: 1.5;
+}
+
+pre:not([class]) code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+}
+
+hr:not([class]) {
+  margin: 1.5rem 0;
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cs-border), transparent);
+}
+
+fieldset:not([class]) {
+  margin: 1rem 0;
+  padding: 1.25rem;
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius-lg);
+  background: var(--cs-surface);
+}
+
+legend:not([class]) {
+  padding: 0 0.5rem;
+  font-weight: 700;
+  color: var(--cs-text);
+  font-size: 0.9rem;
+}
+
+figure:not([class]) {
+  margin: 1rem 0;
+  text-align: center;
+}
+
+figcaption:not([class]) {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--cs-text-muted);
+}
+
+img:not([class]) {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--cs-radius);
+}
+
+details:not([class]) {
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--cs-border);
+  border-radius: var(--cs-radius);
+  background: var(--cs-surface);
+}
+
+summary:not([class]) {
+  font-weight: 700;
+  color: var(--cs-text);
+  cursor: pointer;
+  padding: 0.25rem 0;
+}
+
+summary:not([class]):hover {
+  color: var(--cs-primary-dark);
+}
+
+nav:not([class]) {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+}
+
+nav:not([class]) a {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+aside:not([class]) {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: var(--cs-radius);
+  background: var(--cs-surface);
+  border: 1px solid var(--cs-border-soft);
+}
+
+header:not([class]) {
+  margin-bottom: 1.5rem;
+}
+
+footer:not([class]) {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cs-border);
+  color: var(--cs-text-muted);
+  font-size: 0.85rem;
+}
+
+small:not([class]) {
+  font-size: 0.85em;
+  color: var(--cs-text-soft);
+}
+
+strong:not([class]), em:not([class]) {
+  color: var(--cs-text);
+}
+
+address:not([class]) {
+  font-style: normal;
+  color: var(--cs-text-muted);
+  margin: 0.5rem 0;
+}
+
+progress:not([class]), meter:not([class]) {
+  width: 100%;
+  height: 0.6rem;
+  border-radius: 999px;
+  border: none;
+  background: var(--cs-border-soft);
+  color: var(--cs-primary);
+  overflow: hidden;
+}
+
+progress:not([class])::-webkit-progress-bar {
+  background: var(--cs-border-soft);
+  border-radius: 999px;
+}
+
+progress:not([class])::-webkit-progress-value {
+  background: linear-gradient(90deg, var(--cs-primary), var(--cs-accent));
+  border-radius: 999px;
+}
+
+progress:not([class])::-moz-progress-bar {
+  background: linear-gradient(90deg, var(--cs-primary), var(--cs-accent));
+  border-radius: 999px;
+}
+
 /* ---- Utility ---- */
 .text-center { text-align: center; }
 .text-muted { color: var(--cs-text-muted); }
@@ -450,6 +629,83 @@ tr:last-child td {
 .cs-card,
 .cs-panel {
   padding: 1rem;
+}
+
+.cs-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cs-dashboard-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cs-dashboard-hero h1,
+.cs-dashboard-hero p {
+  margin: 0;
+}
+
+.cs-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.cs-metric span,
+.cs-activity-row time {
+  color: var(--cs-text-muted);
+  font-size: 0.85rem;
+}
+
+.cs-metric strong {
+  color: var(--cs-text);
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  line-height: 1;
+}
+
+.cs-metric small {
+  color: var(--cs-text-soft);
+}
+
+.cs-activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cs-activity-feed h2 {
+  margin: 0;
+}
+
+.cs-activity-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: center;
+  padding-block: 0.35rem;
+  border-bottom: 1px solid var(--cs-border-soft);
+}
+
+.cs-activity-row:last-child {
+  border-bottom: 0;
+}
+
+.cs-quick-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.cs-quick-link h3,
+.cs-quick-link p {
+  margin: 0;
+}
+
+.cs-quick-link p {
+  color: var(--cs-text-muted);
+  margin-top: 0.4rem;
 }
 
 .cs-glass {
@@ -1192,6 +1448,113 @@ tr:last-child td {
     radial-gradient(circle at 12% 0%, rgba(37, 99, 235, 0.14), transparent 24rem),
     radial-gradient(circle at 90% 8%, rgba(20, 184, 166, 0.12), transparent 24rem),
     linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
+}
+
+.cs-scene-supply-chain {
+  --cs-primary: #0891b2;
+  --cs-primary-dark: #0e7490;
+  --cs-accent: #eab308;
+  --cs-bg: #ecfeff;
+  --cs-surface: rgba(255, 255, 255, 0.88);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(8, 145, 178, 0.14), transparent 24rem),
+    radial-gradient(circle at 88% 10%, rgba(234, 179, 8, 0.12), transparent 24rem),
+    linear-gradient(180deg, #f8ffff 0%, #ecfeff 100%);
+}
+
+.cs-scene-supply-chain th {
+  background: rgba(8, 145, 178, 0.08);
+  color: #0e7490;
+}
+
+.cs-scene-supply-chain table tbody tr:hover {
+  background: rgba(8, 145, 178, 0.05);
+}
+
+.cs-scene-research {
+  --cs-primary: #7c3aed;
+  --cs-primary-dark: #6d28d9;
+  --cs-accent: #06b6d4;
+  --cs-bg: #f5f3ff;
+  --cs-surface: rgba(255, 255, 255, 0.88);
+  background:
+    radial-gradient(circle at 14% 0%, rgba(124, 58, 237, 0.14), transparent 24rem),
+    radial-gradient(circle at 90% 6%, rgba(6, 182, 212, 0.12), transparent 24rem),
+    linear-gradient(180deg, #fbfaff 0%, #f5f3ff 100%);
+}
+
+.cs-scene-research h1,
+.cs-scene-research h2,
+.cs-scene-research .cs-title {
+  letter-spacing: -0.035em;
+}
+
+.cs-scene-security {
+  --cs-primary: #dc2626;
+  --cs-primary-dark: #b91c1c;
+  --cs-accent: #6366f1;
+  --cs-bg: #fef2f2;
+  --cs-surface: rgba(255, 255, 255, 0.88);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(220, 38, 38, 0.13), transparent 24rem),
+    radial-gradient(circle at 88% 8%, rgba(99, 102, 241, 0.12), transparent 24rem),
+    linear-gradient(180deg, #fff5f5 0%, #fef2f2 100%);
+}
+
+.cs-scene-security .cs-card,
+.cs-scene-security .cs-panel,
+.cs-scene-security .card,
+.cs-scene-security form:not([class]) {
+  border-left: 4px solid rgba(220, 38, 38, 0.35);
+}
+
+.cs-scene-retail {
+  --cs-primary: #f97316;
+  --cs-primary-dark: #ea580c;
+  --cs-accent: #ec4899;
+  --cs-bg: #fff7ed;
+  --cs-surface: rgba(255, 255, 255, 0.90);
+  background:
+    radial-gradient(circle at 14% 0%, rgba(249, 115, 22, 0.16), transparent 24rem),
+    radial-gradient(circle at 88% 6%, rgba(236, 72, 153, 0.12), transparent 24rem),
+    linear-gradient(180deg, #fffaf5 0%, #fff7ed 100%);
+}
+
+.cs-scene-insurance {
+  --cs-primary: #1e40af;
+  --cs-primary-dark: #1e3a8a;
+  --cs-accent: #059669;
+  --cs-bg: #eff6ff;
+  --cs-surface: rgba(255, 255, 255, 0.88);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(30, 64, 175, 0.14), transparent 24rem),
+    radial-gradient(circle at 90% 8%, rgba(5, 150, 105, 0.11), transparent 24rem),
+    linear-gradient(180deg, #f8fbff 0%, #eff6ff 100%);
+}
+
+.cs-scene-insurance .cs-card,
+.cs-scene-insurance .cs-panel,
+.cs-scene-insurance .card {
+  border-top: 3px solid rgba(30, 64, 175, 0.30);
+}
+
+.cs-scene-ngo {
+  --cs-primary: #be185d;
+  --cs-primary-dark: #9d174d;
+  --cs-accent: #f59e0b;
+  --cs-bg: #fdf2f8;
+  --cs-surface: rgba(255, 255, 255, 0.88);
+  background:
+    radial-gradient(circle at 14% 0%, rgba(190, 24, 93, 0.14), transparent 24rem),
+    radial-gradient(circle at 88% 8%, rgba(245, 158, 11, 0.11), transparent 24rem),
+    linear-gradient(180deg, #fff5fa 0%, #fdf2f8 100%);
+}
+
+.cs-scene-ngo h1,
+.cs-scene-ngo h2,
+.cs-scene-ngo .cs-title {
+  font-family: Georgia, 'Times New Roman', serif;
+  letter-spacing: -0.02em;
 }
 
 [data-cs-scene-confidence='low']::before {

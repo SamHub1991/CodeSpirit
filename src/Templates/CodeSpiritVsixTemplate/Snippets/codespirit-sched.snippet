@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>CodeSpirit Scheduled Task</Title>
+      <Shortcut>cssched</Shortcut>
+      <Description>CodeSpirit [Scheduled], [Every], [OnStartup] scheduled task attributes</Description>
+      <Author>CodeSpirit</Author>
+      <SnippetTypes>
+        <SnippetType>Expansion</SnippetType>
+      </SnippetTypes>
+    </Header>
+    <Snippet>
+      <Declarations>
+        <Literal>
+          <ID>ServiceName</ID>
+          <ToolTip>Service class name</ToolTip>
+          <Default>MyScheduledTask</Default>
+        </Literal>
+      </Declarations>
+      <Code Language="csharp"><![CDATA[[Service]
+public class $ServiceName$
+{
+    [Autowired]
+    private ILogger<$ServiceName$> _logger = null!;
+
+    [OnStartup]
+    public async Task InitializeAsync()
+    {
+        _logger.LogInformation("{Service} initialized", nameof($ServiceName$));
+        $end$
+    }
+
+    [Every(60)]
+    public async Task RunEveryMinuteAsync()
+    {
+        _logger.LogInformation("{Service} tick at {Time}", nameof($ServiceName$), DateTime.UtcNow);
+    }
+
+    [Scheduled("0 3 * * *")]
+    public async Task DailyCleanupAsync()
+    {
+        _logger.LogInformation("{Service} daily cleanup started", nameof($ServiceName$));
+    }
+}]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

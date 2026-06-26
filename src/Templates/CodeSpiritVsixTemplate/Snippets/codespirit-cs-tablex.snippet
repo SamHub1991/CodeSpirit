@@ -2,9 +2,9 @@
 <CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
   <CodeSnippet Format="1.0.0">
     <Header>
-      <Title>cs:Table with Columns</Title>
-      <Shortcut>cstable</Shortcut>
-      <Description>CodeSpirit cs:Table with shorthand Columns attribute (Property:Header[:Format])</Description>
+      <Title>cs:Table with cs:Column</Title>
+      <Shortcut>cstablex</Shortcut>
+      <Description>cs:Table with explicit cs:Column child elements for custom cell content</Description>
       <Author>CodeSpirit</Author>
       <SnippetTypes>
         <SnippetType>Expansion</SnippetType>
@@ -15,10 +15,15 @@
         <Literal>
           <ID>Items</ID>
           <ToolTip>Binding source collection</ToolTip>
-          <Default>Items</Default>
+          <Default>Books</Default>
         </Literal>
       </Declarations>
-      <Code Language="html"><![CDATA[<cs:Table Items="{Binding $$Items$}" Columns="$columns$" />$end$]]></Code>
+      <Code Language="html"><![CDATA[<cs:Table Items="{Binding $$Items$}">
+  <cs:Column Header="$header1$">{Binding $field1$}</cs:Column>
+  <cs:Column Header="$header2$">{Binding $field2$}</cs:Column>
+  <cs:Column Header="$header3$">{Binding $field3$}</cs:Column>
+  $end$
+</cs:Table>]]></Code>
     </Snippet>
   </CodeSnippet>
 </CodeSnippets>

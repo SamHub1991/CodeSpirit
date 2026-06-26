@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>CodeSpirit Repository</Title>
+      <Shortcut>csrepo</Shortcut>
+      <Description>CodeSpirit [Repository] class with common CRUD pattern</Description>
+      <Author>CodeSpirit</Author>
+      <SnippetTypes>
+        <SnippetType>Expansion</SnippetType>
+      </SnippetTypes>
+    </Header>
+    <Snippet>
+      <Declarations>
+        <Literal>
+          <ID>RepoName</ID>
+          <ToolTip>Repository class name</ToolTip>
+          <Default>MyRepository</Default>
+        </Literal>
+        <Literal>
+          <ID>Entity</ID>
+          <ToolTip>Entity type</ToolTip>
+          <Default>MyEntity</Default>
+        </Literal>
+      </Declarations>
+      <Code Language="csharp"><![CDATA[[Repository]
+public class $RepoName$
+{
+    [Autowired]
+    private ILogger<$RepoName$> _logger = null!;
+
+    private readonly List<$Entity$> _items = [];
+
+    public IReadOnlyList<$Entity$> GetAll() => _items.AsReadOnly();
+
+    public $Entity$? GetById(string id) => _items.FirstOrDefault(x => x.Id == id);
+
+    public void Add($Entity$ item) { _items.Add(item); }
+
+    public void Update($Entity$ item)
+    {
+        var existing = GetById(item.Id);
+        if (existing is null) return;
+        _items[_items.IndexOf(existing)] = item;
+    }
+
+    public bool Remove(string id)
+    {
+        var item = GetById(id);
+        return item is not null && _items.Remove(item);
+    }
+    $end$
+}]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

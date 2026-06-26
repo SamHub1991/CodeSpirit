@@ -165,6 +165,66 @@
         ['ticket', 5], ['tickets', 5], ['helpdesk', 6], ['agent', 4], ['sla', 5],
         ['incident', 5], ['request', 3], ['priority', 4], ['queue', 4]
       ]
+    },
+    {
+      name: 'supply-chain',
+      threshold: 7,
+      keywords: [
+        ['供应链', 8], ['采购', 7], ['供应商', 7], ['仓储', 6], ['supply chain', 7],
+        ['supply-chain', 7], ['procurement', 5], ['vendor', 5], ['vendors', 5],
+        ['supplier', 5], ['suppliers', 5], ['sourcing', 4], ['purchase order', 4],
+        ['shipment', 4], ['logistics', 4], ['inventory', 4]
+      ]
+    },
+    {
+      name: 'research',
+      threshold: 7,
+      keywords: [
+        ['科研', 8], ['研究', 7], ['实验室', 7], ['实验', 6], ['research', 7],
+        ['lab', 5], ['laboratory', 5], ['experiment', 5], ['experiments', 5],
+        ['study', 4], ['studies', 4], ['publication', 4], ['paper', 4],
+        ['trial', 4], ['protocol', 3], ['sample', 3]
+      ]
+    },
+    {
+      name: 'security',
+      threshold: 7,
+      keywords: [
+        ['安全', 8], ['防护', 7], ['漏洞', 7], ['审计', 6], ['security', 7],
+        ['audit', 5], ['vulnerability', 5], ['vulnerabilities', 5], ['threat', 5],
+        ['intrusion', 4], ['firewall', 4], ['compliance', 4], ['permission', 4],
+        ['encryption', 4], ['incident', 4]
+      ]
+    },
+    {
+      name: 'retail',
+      threshold: 7,
+      keywords: [
+        ['零售', 8], ['门店', 7], ['收银', 6], ['促销', 6], ['retail', 7],
+        ['store', 5], ['stores', 5], ['pos', 5], ['checkout', 5],
+        ['customer', 4], ['membership', 4], ['loyalty', 4], ['promotion', 4],
+        ['discount', 4], ['shelf', 3]
+      ]
+    },
+    {
+      name: 'insurance',
+      threshold: 7,
+      keywords: [
+        ['保险', 8], ['保单', 7], ['理赔', 7], ['投保', 6], ['insurance', 7],
+        ['policy', 5], ['policies', 5], ['claim', 5], ['claims', 5],
+        ['premium', 5], ['underwriting', 5], ['coverage', 4], ['beneficiary', 4],
+        ['deductible', 3]
+      ]
+    },
+    {
+      name: 'ngo',
+      threshold: 7,
+      keywords: [
+        ['公益', 8], ['慈善', 7], ['捐赠', 7], ['志愿者', 6], ['ngo', 7],
+        ['nonprofit', 6], ['charity', 5], ['donation', 5], ['donations', 5],
+        ['grant', 5], ['grants', 5], ['volunteer', 5], ['fundraiser', 4],
+        ['community', 3], ['outreach', 3]
+      ]
     }
   ];
 
@@ -387,13 +447,22 @@
     reserved: 'warning', pending: 'warning', waiting: 'warning', processing: 'warning',
     review: 'warning', attention: 'warning', hold: 'warning', flagged: 'warning',
     borrowed: 'info', archived: 'info', inactive: 'info', draft: 'info',
-    scheduled: 'info', noted: 'info', seen: 'info'
+    scheduled: 'info', noted: 'info', seen: 'info',
+    逾期: 'danger', 失败: 'danger', 错误: 'danger', 取消: 'danger', 已取消: 'danger',
+    封禁: 'danger', 拒绝: 'danger', 过期: 'danger', 停用: 'danger', 挂起: 'danger',
+    可用: 'success', 成功: 'success', 完成: 'success', 已完成: 'success', 通过: 'success',
+    已批准: 'success', 已验证: 'success', 就绪: 'success', 正常: 'success',
+    预约: 'warning', 待处理: 'warning', 等待: 'warning', 处理中: 'warning',
+    审核: 'warning', 注意: 'warning', 暂停: 'warning', 标记: 'warning',
+    已借出: 'info', 借出: 'info', 归档: 'info', 已归档: 'info', 停用_zh: 'info',
+    草稿: 'info', 计划: 'info', 已读: 'info', 已阅: 'info', 未激活: 'info'
   };
 
   analyzers.status = function (elements, root) {
     elements.forEach(function (el) {
-      var val = getTextValue(el).toLowerCase().replace(/[^a-z]/g, '');
-      var tone = STATUS_MAP[val] || 'default';
+      var raw = getTextValue(el).trim();
+      var val = raw.toLowerCase().replace(/[^a-z]/g, '');
+      var tone = STATUS_MAP[val] || STATUS_MAP[raw] || 'default';
       applyIntentTone(el, tone);
     });
   };

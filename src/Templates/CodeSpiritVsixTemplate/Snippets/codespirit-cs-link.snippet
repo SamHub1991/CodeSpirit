@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>cs:Link Secure Link</Title>
+      <Shortcut>cslink</Shortcut>
+      <Description>cs:Link tag for secure hyperlink with navigation URL</Description>
+      <Author>CodeSpirit</Author>
+      <SnippetTypes>
+        <SnippetType>Expansion</SnippetType>
+      </SnippetTypes>
+    </Header>
+    <Snippet>
+      <Declarations>
+        <Literal>
+          <ID>Url</ID>
+          <ToolTip>Binding URL</ToolTip>
+          <Default>Url</Default>
+        </Literal>
+        <Literal>
+          <ID>Text</ID>
+          <ToolTip>Link display text</ToolTip>
+          <Default>Learn more</Default>
+        </Literal>
+      </Declarations>
+      <Code Language="html"><![CDATA[<cs:Link NavigateTo="{Binding $$Url$}">$Text$</cs:Link>$end$]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

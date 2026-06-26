@@ -56,6 +56,14 @@ public class PageRenderer
     private static readonly Regex TabRegex = TagBlock("Tab");
     private static readonly Regex ModalRegex = TagBlock("Modal");
     private static readonly Regex PagerRegex = SelfClosing("Pager");
+    private static readonly Regex GridRegex = TagBlock("Grid");
+    private static readonly Regex CardRegex = TagBlock("Card");
+    private static readonly Regex StackRegex = TagBlock("Stack");
+    private static readonly Regex CrudRegex = SelfClosing("Crud");
+    private static readonly Regex DashboardRegex = TagBlock("Dashboard");
+    private static readonly Regex MetricCardRegex = SelfClosing("MetricCard");
+    private static readonly Regex ActivityFeedRegex = SelfClosing("ActivityFeed");
+    private static readonly Regex QuickLinksRegex = SelfClosing("QuickLinks");
     private static readonly Regex AttributeRegex = new(
         @"(?<name>[A-Za-z][A-Za-z0-9_-]*)=\""(?<value>[^\""]*)\""",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -68,6 +76,7 @@ public class PageRenderer
     private static readonly IReadOnlyList<ScriptAsset> BuiltInScripts =
     [
         new("Runtime", "/js/codespirit.runtime.js"),
+        new("Expression", "/js/codespirit.expression.js"),
         new("JQueryLite", "/js/vendor/jquery-lite.js"),
         new("JQueryBehaviors", "/js/ui/jquery.behaviors.js"),
         new("UiBehaviors", "/js/ui/ui.behaviors.js"),
@@ -242,6 +251,22 @@ public class PageRenderer
 
         html = ShowRegex.Replace(html, match => RenderShow(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
 
+        html = GridRegex.Replace(html, match => RenderGrid(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
+
+        html = CardRegex.Replace(html, match => RenderCard(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
+
+        html = StackRegex.Replace(html, match => RenderStack(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
+
+        html = CrudRegex.Replace(html, match => RenderCrud(match.Groups["attrs"].Value, state));
+
+        html = MetricCardRegex.Replace(html, match => RenderMetricCards(match.Groups["attrs"].Value, state));
+
+        html = ActivityFeedRegex.Replace(html, match => RenderActivityFeed(match.Groups["attrs"].Value, state));
+
+        html = QuickLinksRegex.Replace(html, match => RenderQuickLinks(match.Groups["attrs"].Value, state));
+
+        html = DashboardRegex.Replace(html, match => RenderDashboard(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
+
         html = ScriptsBlockRegex.Replace(html, match => RenderScripts(match.Groups["attrs"].Value, state, match.Groups["content"].Value));
 
         html = ScriptsRegex.Replace(html, match => RenderScripts(match.Groups["attrs"].Value, state));
@@ -308,6 +333,190 @@ public class PageRenderer
         }
 
         return $"<{tag}{dataAttrs}{attrs}>{content}</{tag}>";
+    }
+
+    private static string RenderGrid(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
+    {
+        var columns = RenderBindings(GetAttribute(rawAttributes, "Columns") ?? string.Empty, state);
+        var gap = RenderBindings(GetAttribute(rawAttributes, "Gap") ?? string.Empty, state);
+        var tag = SafeTagName(GetAttribute(rawAttributes, "Tag"));
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-grid" + BuildGridClass(columns), BuildGapStyle(gap), "Columns", "Gap", "BreakAt", "Tag");
+        return $"<{tag}{attrs}>{content}</{tag}>";
+    }
+
+    private static string RenderCard(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
+    {
+        var tag = SafeTagName(GetAttribute(rawAttributes, "Tag"));
+        var tone = RenderBindings(GetAttribute(rawAttributes, "Tone") ?? string.Empty, state);
+        var extraClass = string.IsNullOrWhiteSpace(tone) ? string.Empty : $" cs-card-{SafeClassToken(tone)}";
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-card" + extraClass, string.Empty, "Tone", "Tag");
+        return $"<{tag}{attrs}>{content}</{tag}>";
+    }
+
+    private static string RenderStack(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
+    {
+        var direction = RenderBindings(GetAttribute(rawAttributes, "Direction") ?? string.Empty, state);
+        var align = RenderBindings(GetAttribute(rawAttributes, "Align") ?? string.Empty, state);
+        var gap = RenderBindings(GetAttribute(rawAttributes, "Gap") ?? string.Empty, state);
+        var tag = SafeTagName(GetAttribute(rawAttributes, "Tag"));
+        var extraClass = direction.Equals("Row", StringComparison.OrdinalIgnoreCase) ? " cs-row" : string.Empty;
+        var style = string.Join(' ', new[] { BuildGapStyle(gap), BuildAlignStyle(align) }.Where(item => !string.IsNullOrWhiteSpace(item)));
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-stack" + extraClass, style, "Direction", "Align", "Gap", "Tag");
+        return $"<{tag}{attrs}>{content}</{tag}>";
+    }
+
+    private static string RenderCrud(string rawAttributes, IReadOnlyDictionary<string, object?> state)
+    {
+        var entity = RenderBindings(GetAttribute(rawAttributes, "Entity") ?? "Record", state);
+        var title = RenderBindings(GetAttribute(rawAttributes, "Title") ?? entity, state);
+        var subtitle = RenderBindings(GetAttribute(rawAttributes, "Subtitle") ?? string.Empty, state);
+        var method = SafeFormMethod(GetAttribute(rawAttributes, "Method"));
+        var fields = ParseCrudFields(GetAttribute(rawAttributes, "Fields"));
+        var commands = ParseCrudCommands(GetAttribute(rawAttributes, "Commands"));
+        if (fields.Count == 0 && commands.Count == 0)
+            return string.Empty;
+
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-card cs-crud", string.Empty, "Entity", "Title", "Subtitle", "Fields", "Commands", "Method");
+        var sb = new StringBuilder();
+        sb.Append("<section").Append(attrs).Append('>');
+
+        if (!string.IsNullOrWhiteSpace(title) || !string.IsNullOrWhiteSpace(subtitle))
+        {
+            sb.Append("<header class=\"cs-crud-header\">");
+            if (!string.IsNullOrWhiteSpace(title))
+                sb.Append("<h2>").Append(Html(title)).Append("</h2>");
+            if (!string.IsNullOrWhiteSpace(subtitle))
+                sb.Append("<p>").Append(Html(subtitle)).Append("</p>");
+            sb.Append("</header>");
+        }
+
+        sb.Append("<form method=\"").Append(Html(method)).Append("\" data-cs-vm class=\"cs-stack\">");
+        foreach (var field in fields)
+        {
+            sb.Append(RenderCrudField(field, state));
+        }
+
+        if (commands.Count > 0)
+        {
+            sb.Append("<div class=\"cs-row cs-wrap\">");
+            foreach (var command in commands)
+            {
+                var confirm = string.IsNullOrWhiteSpace(command.Confirm) ? string.Empty : $" data-cs-confirm=\"{Html(command.Confirm)}\"";
+                sb.Append("<button type=\"submit\" data-cs-command=\"")
+                    .Append(Html(command.Name))
+                    .Append("\" class=\"")
+                    .Append(Html(InferButtonClass(command.Name)))
+                    .Append('"')
+                    .Append(confirm)
+                    .Append('>')
+                    .Append(Html(command.Text))
+                    .Append("</button>");
+            }
+            sb.Append("</div>");
+        }
+
+        sb.Append("</form></section>");
+        return sb.ToString();
+    }
+
+    private static string RenderDashboard(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
+    {
+        var title = RenderBindings(GetAttribute(rawAttributes, "Title") ?? string.Empty, state);
+        var subtitle = RenderBindings(GetAttribute(rawAttributes, "Subtitle") ?? string.Empty, state);
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-dashboard", string.Empty, "Title", "Subtitle", "Tag");
+        var tag = SafeTagName(GetAttribute(rawAttributes, "Tag"));
+        var sb = new StringBuilder();
+        sb.Append('<').Append(tag).Append(attrs).Append('>');
+
+        if (!string.IsNullOrWhiteSpace(title) || !string.IsNullOrWhiteSpace(subtitle))
+        {
+            sb.Append("<header class=\"cs-dashboard-hero\">");
+            if (!string.IsNullOrWhiteSpace(title))
+                sb.Append("<h1>").Append(Html(title)).Append("</h1>");
+            if (!string.IsNullOrWhiteSpace(subtitle))
+                sb.Append("<p>").Append(Html(subtitle)).Append("</p>");
+            sb.Append("</header>");
+        }
+
+        sb.Append(content).Append("</").Append(tag).Append('>');
+        return sb.ToString();
+    }
+
+    private static string RenderMetricCards(string rawAttributes, IReadOnlyDictionary<string, object?> state)
+    {
+        var items = GetEnumerableFromBinding(rawAttributes, "Items", state);
+        if (items is null)
+            return string.Empty;
+
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-grid cs-grid-3 cs-metrics", string.Empty, "Items");
+        var sb = new StringBuilder();
+        sb.Append("<section").Append(attrs).Append('>');
+        foreach (var item in items)
+        {
+            var label = FormatValue(GetValue(item, "Label"), null);
+            var value = FormatValue(GetValue(item, "Value"), null);
+            var hint = FormatValue(GetValue(item, "Hint"), null);
+            var tone = FormatValue(GetValue(item, "Tone"), null);
+            var toneClass = string.IsNullOrWhiteSpace(tone) ? string.Empty : " cs-metric-" + SafeClassToken(tone);
+            sb.Append("<article class=\"cs-card cs-metric").Append(toneClass).Append("\">")
+                .Append("<span>").Append(Html(label)).Append("</span>")
+                .Append("<strong data-cs-intent=\"numeric\">").Append(Html(value)).Append("</strong>")
+                .Append("<small>").Append(Html(hint)).Append("</small>")
+                .Append("</article>");
+        }
+        sb.Append("</section>");
+        return sb.ToString();
+    }
+
+    private static string RenderActivityFeed(string rawAttributes, IReadOnlyDictionary<string, object?> state)
+    {
+        var items = GetEnumerableFromBinding(rawAttributes, "Items", state);
+        if (items is null)
+            return string.Empty;
+
+        var title = RenderBindings(GetAttribute(rawAttributes, "Title") ?? "Activity", state);
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-card cs-activity-feed", string.Empty, "Items", "Title");
+        var sb = new StringBuilder();
+        sb.Append("<section").Append(attrs).Append('>');
+        if (!string.IsNullOrWhiteSpace(title))
+            sb.Append("<h2>").Append(Html(title)).Append("</h2>");
+
+        foreach (var item in items)
+        {
+            var time = FormatValue(GetValue(item, "Time"), null);
+            var text = FormatValue(GetValue(item, "Text"), null);
+            var tone = FormatValue(GetValue(item, "Tone"), null);
+            var toneClass = string.IsNullOrWhiteSpace(tone) ? string.Empty : " cs-activity-" + SafeClassToken(tone);
+            sb.Append("<div class=\"cs-activity-row").Append(toneClass).Append("\">")
+                .Append("<time>").Append(Html(time)).Append("</time>")
+                .Append("<span>").Append(Html(text)).Append("</span>")
+                .Append("</div>");
+        }
+        sb.Append("</section>");
+        return sb.ToString();
+    }
+
+    private static string RenderQuickLinks(string rawAttributes, IReadOnlyDictionary<string, object?> state)
+    {
+        var items = GetEnumerableFromBinding(rawAttributes, "Items", state);
+        if (items is null)
+            return string.Empty;
+
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-grid cs-grid-3 cs-quick-links", string.Empty, "Items");
+        var sb = new StringBuilder();
+        sb.Append("<section").Append(attrs).Append('>');
+        foreach (var item in items)
+        {
+            var title = FormatValue(GetValue(item, "Title"), null);
+            var description = FormatValue(GetValue(item, "Description"), null);
+            var url = SafeUrl(FormatValue(GetValue(item, "Url"), null));
+            sb.Append("<a class=\"cs-card cs-quick-link\" href=\"").Append(Html(url)).Append("\">")
+                .Append("<h3>").Append(Html(title)).Append("</h3>")
+                .Append("<p>").Append(Html(description)).Append("</p>")
+                .Append("</a>");
+        }
+        sb.Append("</section>");
+        return sb.ToString();
     }
 
     private static string RenderScripts(string rawAttributes, IReadOnlyDictionary<string, object?> state, string? content = null)
@@ -424,6 +633,71 @@ public class PageRenderer
         return attributes.ToString();
     }
 
+    private static string RenderLayoutAttributes(string rawAttributes, IReadOnlyDictionary<string, object?> state, string className, string style, params string[] excluded)
+    {
+        var originalClass = RenderBindings(GetAttribute(rawAttributes, "class") ?? string.Empty, state);
+        var originalStyle = RenderBindings(GetAttribute(rawAttributes, "style") ?? string.Empty, state);
+        var attrs = RenderHtmlAttributes(rawAttributes, state, excluded.Concat(["class", "style"]).ToArray());
+        var classes = string.Join(' ', new[] { className, originalClass }.Where(item => !string.IsNullOrWhiteSpace(item)));
+        var styles = string.Join(' ', new[] { originalStyle, style }.Where(item => !string.IsNullOrWhiteSpace(item)));
+
+        var output = new StringBuilder(attrs);
+        if (!string.IsNullOrWhiteSpace(classes))
+            output.Append(" class=\"").Append(Html(classes)).Append('"');
+        if (!string.IsNullOrWhiteSpace(styles))
+            output.Append(" style=\"").Append(Html(styles)).Append('"');
+
+        return output.ToString();
+    }
+
+    private static string BuildGridClass(string columns)
+    {
+        if (int.TryParse(columns, out var count) && count is >= 2 and <= 3)
+            return $" cs-grid-{count}";
+
+        return string.Empty;
+    }
+
+    private static string BuildGapStyle(string gap)
+    {
+        if (string.IsNullOrWhiteSpace(gap))
+            return string.Empty;
+
+        var value = gap.Trim().ToLowerInvariant() switch
+        {
+            "xs" => "0.25rem",
+            "sm" => "0.5rem",
+            "md" => "1rem",
+            "lg" => "1.5rem",
+            "xl" => "2rem",
+            _ => gap.Trim()
+        };
+
+        return $"gap: {value};";
+    }
+
+    private static string BuildAlignStyle(string align)
+    {
+        if (string.IsNullOrWhiteSpace(align))
+            return string.Empty;
+
+        var value = align.Trim().ToLowerInvariant() switch
+        {
+            "start" => "flex-start",
+            "center" => "center",
+            "end" => "flex-end",
+            "stretch" => "stretch",
+            _ => align.Trim()
+        };
+
+        return $"align-items: {value};";
+    }
+
+    private static string SafeClassToken(string value)
+    {
+        return Regex.Replace(value.Trim().ToLowerInvariant(), @"[^a-z0-9_-]", "-");
+    }
+
     private static string RenderField(string rawAttributes, IReadOnlyDictionary<string, object?> state)
     {
         var name = GetAttribute(rawAttributes, "Name");
@@ -447,6 +721,53 @@ public class PageRenderer
 
         var placeholderInput = string.IsNullOrWhiteSpace(placeholder) ? string.Empty : $" placeholder=\"{Html(RenderBindings(placeholder, state))}\"";
         return $"<label for=\"{Html(id)}\">{Html(label)}<input id=\"{Html(id)}\" type=\"{Html(type)}\" name=\"{Html(name)}\" value=\"{inputValue}\" data-cs-bind=\"{Html(name)}\"{placeholderInput}{commonAttributes} /></label>";
+    }
+
+    private static string RenderCrudField(CrudField field, IReadOnlyDictionary<string, object?> state)
+    {
+        var value = Html(FormatValue(GetValue(state, field.Name), null));
+        var id = Html(field.Name);
+        var label = Html(field.Label);
+        var name = Html(field.Name);
+
+        if (field.Type.Equals("textarea", StringComparison.OrdinalIgnoreCase) || field.Rows is not null)
+        {
+            var rows = field.Rows is null ? string.Empty : $" rows=\"{Html(field.Rows)}\"";
+            return $"<label for=\"{id}\">{label}<textarea id=\"{id}\" name=\"{name}\" data-cs-bind=\"{name}\"{rows}>{value}</textarea></label>";
+        }
+
+        return $"<label for=\"{id}\">{label}<input id=\"{id}\" type=\"{Html(field.Type)}\" name=\"{name}\" value=\"{value}\" data-cs-bind=\"{name}\" /></label>";
+    }
+
+    private static List<CrudField> ParseCrudFields(string? rawFields)
+    {
+        if (string.IsNullOrWhiteSpace(rawFields))
+            return [];
+
+        return rawFields.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(part => part.Split(':', 4, StringSplitOptions.TrimEntries))
+            .Where(parts => parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
+            .Select(parts => new CrudField(
+                parts[0],
+                parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1]) ? parts[1] : parts[0],
+                parts.Length > 2 && !string.IsNullOrWhiteSpace(parts[2]) ? SafeInputType(parts[2]) : "text",
+                parts.Length > 3 && !string.IsNullOrWhiteSpace(parts[3]) ? parts[3] : null))
+            .ToList();
+    }
+
+    private static List<CrudCommand> ParseCrudCommands(string? rawCommands)
+    {
+        if (string.IsNullOrWhiteSpace(rawCommands))
+            return [];
+
+        return rawCommands.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(part => part.Split(':', 3, StringSplitOptions.TrimEntries))
+            .Where(parts => parts.Length > 0 && !string.IsNullOrWhiteSpace(parts[0]))
+            .Select(parts => new CrudCommand(
+                parts[0],
+                parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1]) ? parts[1] : parts[0],
+                parts.Length > 2 && !string.IsNullOrWhiteSpace(parts[2]) ? parts[2] : null))
+            .ToList();
     }
 
     private static string RenderTable(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
@@ -603,6 +924,20 @@ public class PageRenderer
         return match.Success ? match.Groups["name"].Value : binding;
     }
 
+    private static System.Collections.IEnumerable? GetEnumerableFromBinding(string rawAttributes, string attributeName, IReadOnlyDictionary<string, object?> state)
+    {
+        var binding = GetAttribute(rawAttributes, attributeName);
+        if (string.IsNullOrWhiteSpace(binding))
+            return null;
+
+        var name = ExtractBindingName(binding);
+        if (string.IsNullOrWhiteSpace(name))
+            return null;
+
+        var value = GetValue(state, name);
+        return value is System.Collections.IEnumerable items && value is not string ? items : null;
+    }
+
     private static string? GetAttribute(string rawAttributes, string targetName)
     {
         foreach (Match match in AttributeRegex.Matches(rawAttributes))
@@ -723,6 +1058,12 @@ public class PageRenderer
         return string.Equals(method, "get", StringComparison.OrdinalIgnoreCase) ? "get" : "post";
     }
 
+    private static string SafeInputType(string? type)
+    {
+        var value = (type ?? "text").Trim().ToLowerInvariant();
+        return Regex.IsMatch(value, @"^[a-z][a-z0-9_-]*$") ? value : "text";
+    }
+
     private static bool IsDisabledAsset(string? value)
     {
         return string.Equals(value, "none", StringComparison.OrdinalIgnoreCase)
@@ -779,6 +1120,10 @@ public class PageRenderer
     }
 
     private sealed record TableColumn(string Name, string Header, string? Format, string? Template);
+
+    private sealed record CrudField(string Name, string Label, string Type, string? Rows);
+
+    private sealed record CrudCommand(string Name, string Text, string? Confirm);
 
     private sealed record TabItem(string Key, string Title, bool Selected, string Content);
 

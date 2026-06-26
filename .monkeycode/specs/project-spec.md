@@ -39,7 +39,7 @@ CodeSpirit 是一个面向 .NET 10 的约定式应用框架，提供 Spring Boot
 ### R5 场景识别与意图识别
 
 - WHEN 页面加载，THE 系统 SHALL 通过 `codespirit.intent.js` 读取标题、表头、标签、按钮、命令、placeholder、class、页面标题和路由。
-- THE 系统 SHALL 识别 dashboard、library、admin、commerce、content、analytics、crm、finance、education、healthcare、logistics、developer、hr、manufacturing、hospitality、real-estate、legal、support 场景。
+- THE 系统 SHALL 识别 dashboard、library、admin、commerce、content、analytics、crm、finance、education、healthcare、logistics、developer、hr、manufacturing、hospitality、real-estate、legal、support、supply-chain、research、security、retail、insurance、ngo 场景。
 - WHEN 页面声明 `data-cs-scene`，THE 系统 SHALL 使用显式场景覆盖自动识别结果。
 - WHEN 元素声明 `data-cs-intent`，THE 系统 SHALL 根据 numeric、status、due、trend 等意图应用语义色调。
 - WHEN 场景识别低于阈值但存在候选场景，THE 系统 SHALL 写入低置信度调试属性。
@@ -57,15 +57,38 @@ CodeSpirit 是一个面向 .NET 10 的约定式应用框架，提供 Spring Boot
 - WHEN 新增内置脚本，THE 系统 SHALL 同步 VSIX `.vstemplate` 清单。
 - WHEN 新增 snippet，THE 系统 SHALL 同步 VSIX 项目文件和 README 快捷方式表。
 
+### R8 表达式驱动交互 (P0)
+
+- WHEN 元素声明 `data-cs-show="Expr"`，THE 系统 SHALL 根据微型表达式求值结果显示/隐藏元素。支持比较 (`> < >= <= == !=`)、逻辑 (`&& || !`)、存在判断 (`contains`, `empty`)、三元 (`? :`)。
+- WHEN 元素声明 `data-cs-enable="Expr"`，THE 系统 SHALL 根据表达式求值结果启用/禁用控件。
+- WHEN 元素声明 `data-cs-refresh="Region"`，THE 系统 SHALL 在值变更后自动触发指定 `cs:Region` 的命令刷新。
+- THE 表达式引擎 SHALL 在 `codespirit.runtime.js` 中内置，体积不超过 3KB，无需额外依赖。
+
+### R9 语义化布局标签 (P0)
+
+- THE 系统 SHALL 支持 `<cs:Grid>` 标签，通过 `Columns`、`Gap`、`BreakAt` 属性控制 CSS Grid 布局，内置响应式断点 `sm|md|lg|xl`，小屏自动切换单列。
+- THE 系统 SHALL 支持 `<cs:Card>` 标签，自动应用框架默认圆角、阴影、内边距，替代手动 `.cs-card` class。
+- THE 系统 SHALL 支持 `<cs:Stack>` 标签，通过 `Direction`、`Align`、`Gap` 属性控制 Flexbox 排列。
+- WHEN 页面使用 `<cs:Grid>`、`<cs:Card>`、`<cs:Stack>` 组合，THE 系统 SHALL 无需额外页面 CSS 即呈现完整布局。
+
+### R10 复合组件 (P1)
+
+- THE 系统 SHALL 支持 `<cs:Crud>` 复合组件，通过 `Entity`、`Fields`、`Commands` 属性自动生成完整 CRUD 表单、按钮和表格联动刷新。
+- WHEN `<cs:Dashboard>` 包裹 `<cs:MetricCard>`、`<cs:ActivityFeed>`、`<cs:QuickLinks>`，THE 系统 SHALL 自动应用仪表盘默认布局。
+- WHEN 按钮声明 `data-cs-confirm="消息"`，THE 系统 SHALL 内置确认对话框，无需 jQuery 行为扩展。
+- WHEN 下拉框声明 `data-cs-source="Command"`，THE 系统 SHALL 自动通过命令获取选项数据。
+
 ## 设计边界
 
 | 边界 | 归属 | 约束 |
 |------|------|------|
-| `data-cs-*` | MVVM runtime | 只处理绑定、命令、状态、局部刷新和错误回显 |
+| `data-cs-*` | MVVM runtime | 只处理绑定、命令、状态、局部刷新、错误回显和表达式求值 |
+| `data-cs-show/enable/refresh/confirm/source` | Expression engine | 内置微型表达式引擎，无额外依赖 |
 | `data-ui` | UI behavior layer | 只处理渐进增强、组件行为和第三方控件初始化 |
 | `data-cs-intent` | Intent analyzer | 只处理元素级语义色调 |
 | `data-cs-scene` | Scene analyzer | 只处理页面级场景视觉 |
 | `site.css` | 默认视觉系统 | 提供默认好看的基线，业务 CSS 只补特定布局 |
+| `<cs:Grid/Card/Stack>` | 语义布局层 | 消灭页面级布局 CSS |
 | VSIX template | 新项目生成 | 与示例项目保持功能一致 |
 
 ## 验收清单
@@ -74,10 +97,17 @@ CodeSpirit 是一个面向 .NET 10 的约定式应用框架，提供 Spring Boot
 - ✓ `cs:Toolbar`、`cs:Tabs`、`cs:Modal`、`cs:Pager` 已可用。
 - ✓ `cs:Scripts` 和 `cs:Script` 已支持内置脚本加载、替换和禁用。
 - ✓ 图书 CSV 导入导出已通过 MVVM 命令流实现。
-- ✓ 默认视觉系统已覆盖普通 HTML 和常用 `.cs-*` 组件。
-- ✓ 场景识别已覆盖 18 类通用业务场景。
+- ✓ 默认视觉系统已覆盖普通 HTML 和常用 `.cs-*` 组件，新增 ul、ol、blockquote、code、pre、hr、fieldset、legend、figure、img、details、summary、nav、aside、header、footer、small、progress、meter 等无类名默认样式。
+- ✓ 场景识别已覆盖 24 类通用业务场景（含 supply-chain、research、security、retail、insurance、ngo）。
 - ✓ JS 边界验证脚本覆盖 runtime、UI behavior、intent 和 scene 关键路径。
 - ✓ 示例项目 README、模板 README 和根 README 已同步更新。
+- ✓ VS Code 和 VSIX IntelliSense snippets 已验证与实际代码模式一致。
+- ✓ 表达式引擎 `data-cs-show/enable/refresh` 已内置到前端运行时链路（P0）。
+- ✓ `<cs:Grid>`、`<cs:Card>`、`<cs:Stack>` 布局标签已可用（P0）。
+- [ ] `data-cs-confirm` 和 `data-cs-source` 已内置，替代 jQuery 行为依赖（P1）。
+- ✓ `<cs:Crud>` 复合组件已可用（P1）。
+- ✓ `<cs:Dashboard>` 自动仪表盘布局已可用（P2）。
+- ✓ `data-cs-source` 选项数据源协议已可用（P1）。
 
 ## 验证标准
 

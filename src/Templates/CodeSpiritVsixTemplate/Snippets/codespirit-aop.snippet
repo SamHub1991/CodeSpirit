@@ -2,9 +2,9 @@
 <CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
   <CodeSnippet Format="1.0.0">
     <Header>
-      <Title>CodeSpirit Service</Title>
-      <Shortcut>cssvc</Shortcut>
-      <Description>CodeSpirit Service class with [Service], [Autowired], [Value] and AOP</Description>
+      <Title>CodeSpirit AOP Interceptors</Title>
+      <Shortcut>csaop</Shortcut>
+      <Description>CodeSpirit [Transactional] and [Cacheable] AOP interceptor attributes</Description>
       <Author>CodeSpirit</Author>
       <SnippetTypes>
         <SnippetType>Expansion</SnippetType>
@@ -15,34 +15,26 @@
         <Literal>
           <ID>ServiceName</ID>
           <ToolTip>Service class name</ToolTip>
-          <Default>MyService</Default>
-        </Literal>
-        <Literal>
-          <ID>Lifetime</ID>
-          <ToolTip>Service lifetime</ToolTip>
-          <Default>CodeSpirit.Core.Attributes.ServiceLifetime.Scoped</Default>
+          <Default>MyTransactionalService</Default>
         </Literal>
       </Declarations>
-      <Code Language="csharp"><![CDATA[[Service(Lifetime = $Lifetime$)]
+      <Code Language="csharp"><![CDATA[[Service(Lifetime = ServiceLifetime.Transient)]
 public class $ServiceName$
 {
     [Autowired]
     private ILogger<$ServiceName$> _logger = null!;
 
-    [Value("CodeSpirit:Setting")]
-    public string Setting { get; set; } = string.Empty;
-
     [Transactional]
     public virtual async Task ExecuteWithTransactionAsync()
     {
-        _logger.LogInformation("{Service} executing", nameof($ServiceName$));
+        _logger.LogInformation("Transaction started");
         $end$
     }
 
     [Cacheable(DurationSeconds = 60)]
-    public virtual async Task<string> GetCachedAsync(string key)
+    public virtual async Task<string> GetCachedValueAsync(string key)
     {
-        await Task.Delay(10);
+        await Task.Delay(100);
         return $"value:{key}";
     }
 }]]></Code>

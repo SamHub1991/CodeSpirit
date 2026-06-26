@@ -26,6 +26,8 @@ public static class ValueConverter
             Type t when t == typeof(double) && double.TryParse(stringValue, out var dbl) => dbl,
             Type t when t == typeof(Guid) && Guid.TryParse(stringValue, out var g) => g,
             Type t when t == typeof(DateTime) && DateTime.TryParse(stringValue, out var dt) => dt,
+            Type t when t == typeof(DateOnly) && DateOnly.TryParse(stringValue, out var do_val) => do_val,
+            Type t when t == typeof(TimeOnly) && TimeOnly.TryParse(stringValue, out var to_val) => to_val,
             Type t when t == typeof(TimeSpan) && TimeSpan.TryParse(stringValue, out var ts) => ts,
             Type t when t == typeof(bool) && bool.TryParse(stringValue, out var b) => b,
             Type t when t.IsEnum => Enum.Parse(t, stringValue!, ignoreCase: true),

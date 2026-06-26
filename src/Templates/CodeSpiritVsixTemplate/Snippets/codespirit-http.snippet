@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>CodeSpirit HTTP Endpoint</Title>
+      <Shortcut>cshttp</Shortcut>
+      <Description>CodeSpirit [Endpoint], [HttpGet], [HttpPost] declarative HTTP attributes</Description>
+      <Author>CodeSpirit</Author>
+      <SnippetTypes>
+        <SnippetType>Expansion</SnippetType>
+      </SnippetTypes>
+    </Header>
+    <Snippet>
+      <Declarations>
+        <Literal>
+          <ID>ServiceName</ID>
+          <ToolTip>Service class name</ToolTip>
+          <Default>MyApiService</Default>
+        </Literal>
+      </Declarations>
+      <Code Language="csharp"><![CDATA[[Service]
+[Endpoint("/api/items")]
+public class $ServiceName$
+{
+    [Autowired]
+    private ILogger<$ServiceName$> _logger = null!;
+
+    [HttpGet]
+    public async Task<IResult> GetAllAsync()
+    {
+        $end$
+        return Results.Ok(new { items = Array.Empty<object>() });
+    }
+
+    [HttpGet("{id}")]
+    public async Task<IResult> GetByIdAsync(string id)
+    {
+        return Results.Ok(new { id });
+    }
+
+    [HttpPost]
+    public async Task<IResult> CreateAsync(object body)
+    {
+        return Results.Created($"/api/items/0", body);
+    }
+}]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>
