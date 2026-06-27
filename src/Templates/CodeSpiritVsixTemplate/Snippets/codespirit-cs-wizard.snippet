@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<CodeSnippets xmlns="http://schemas.microsoft.com/VisualStudio/2005/CodeSnippet">
+  <CodeSnippet Format="1.0.0">
+    <Header>
+      <Title>cs:Wizard Interactive Component</Title>
+      <Shortcut>cswizard</Shortcut>
+      <Description>cs:Wizard renders clickable multi-step panels</Description>
+      <Author>CodeSpirit</Author>
+      <SnippetTypes><SnippetType>Expansion</SnippetType></SnippetTypes>
+    </Header>
+    <Snippet>
+      <Code Language="html"><![CDATA[<cs:Wizard ActiveStep="$activeStep$">
+  <cs:Step Key="intro" Title="$introTitle$">$introContent$</cs:Step>
+  <cs:Step Key="details" Title="$detailsTitle$">$detailsContent$</cs:Step>
+</cs:Wizard>$end$]]></Code>
+    </Snippet>
+  </CodeSnippet>
+</CodeSnippets>

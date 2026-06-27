@@ -1,0 +1,212 @@
+{
+  "CodeSpirit data-cs-show": {
+    "scope": "html,aspx",
+    "prefix": "cs-show",
+    "description": "Add data-cs-show expression visibility binding",
+    "body": [
+      "data-cs-show=\"${1:Count > 0}\""
+    ]
+  },
+  "CodeSpirit data-cs-enable": {
+    "scope": "html,aspx",
+    "prefix": "cs-enable",
+    "description": "Add data-cs-enable expression enabled binding",
+    "body": [
+      "data-cs-enable=\"${1:CanEdit}\""
+    ]
+  },
+  "CodeSpirit data-cs-refresh": {
+    "scope": "html,aspx",
+    "prefix": "cs-refresh",
+    "description": "Refresh a named CodeSpirit region when a field changes",
+    "body": [
+      "data-cs-refresh=\"${1:Results}\""
+    ]
+  },
+  "CodeSpirit data-cs-confirm": {
+    "scope": "html,aspx",
+    "prefix": "cs-confirm",
+    "description": "Add built-in confirm behavior to a command button",
+    "body": [
+      "data-cs-confirm=\"${1:Are you sure?}\""
+    ]
+  },
+  "CodeSpirit data-cs-source": {
+    "scope": "html,aspx",
+    "prefix": "cs-source",
+    "description": "Load select options from a CodeSpirit command",
+    "body": [
+      "data-cs-source=\"${1:LoadOptions}\" data-cs-source-field=\"${2:Options}\""
+    ]
+  },
+  "CodeSpirit data-cs-attr": {
+    "scope": "html,aspx",
+    "prefix": "cs-attr",
+    "description": "Bind a state field to an HTML attribute",
+    "body": [
+      "data-cs-attr=\"${1:DetailUrl}:${2:href}\""
+    ]
+  },
+  "CodeSpirit data-cs-class": {
+    "scope": "html,aspx",
+    "prefix": "cs-class",
+    "description": "Toggle a class from a state field",
+    "body": [
+      "data-cs-class=\"${1:IsActive}:${2:active}\""
+    ]
+  },
+  "CodeSpirit data-ui wizard": {
+    "scope": "html,aspx",
+    "prefix": "cs-ui-wizard",
+    "description": "Attach built-in wizard step switching behavior",
+    "body": [
+      "data-ui=\"wizard\""
+    ]
+  },
+  "CodeSpirit data-ui tree": {
+    "scope": "html,aspx",
+    "prefix": "cs-ui-tree",
+    "description": "Attach built-in tree collapse behavior",
+    "body": [
+      "data-ui=\"tree\""
+    ]
+  },
+  "CodeSpirit Chart component": {
+    "scope": "html,aspx",
+    "prefix": "cschart",
+    "description": "Insert a cs:Chart component",
+    "body": [
+      "<cs:Chart Type=\"${1|bar,line,pie,doughnut|}\" Title=\"${2:Trend}\" Data=\"${3:Values}\" Labels=\"${4:Labels}\" Width=\"${5:640}\" Height=\"${6:320}\" />"
+    ]
+  },
+  "CodeSpirit Tree component": {
+    "scope": "html,aspx",
+    "prefix": "cstree",
+    "description": "Insert a collapsible cs:Tree component",
+    "body": [
+      "<cs:Tree Items=\"{Binding ${1:Nodes}}\" ChildrenField=\"${2:Children}\" LabelField=\"${3:Label}\" ValueField=\"${4:Value}\" Collapsed=\"${5|false,true|}\" />"
+    ]
+  },
+  "CodeSpirit Wizard component": {
+    "scope": "html,aspx",
+    "prefix": "cswizard",
+    "description": "Insert a clickable cs:Wizard component",
+    "body": [
+      "<cs:Wizard ActiveStep=\"${1:details}\">",
+      "  <cs:Step Key=\"intro\" Title=\"${2:Intro}\">${3:Intro content}</cs:Step>",
+      "  <cs:Step Key=\"details\" Title=\"${4:Details}\">${5:Details content}</cs:Step>",
+      "</cs:Wizard>"
+    ]
+  },
+  "CodeSpirit contains expression": {
+    "scope": "html,aspx,javascript",
+    "prefix": "csexpr-contains",
+    "description": "Insert a contains expression",
+    "body": [
+      "contains(${1:Name}, '${2:text}')"
+    ]
+  },
+  "CodeSpirit ternary expression": {
+    "scope": "html,aspx,javascript",
+    "prefix": "csexpr-ternary",
+    "description": "Insert a CodeSpirit ternary expression",
+    "body": [
+      "${1:Count > 0} ? '${2:yes}' : '${3:no}'"
+    ]
+  },
+  "CodeSpirit theme tokens": {
+    "scope": "javascript,typescript",
+    "prefix": "cs-theme-tokens",
+    "description": "Read current CodeSpirit theme tokens",
+    "body": [
+      "const tokens = CodeSpirit.theme.exportTokens(${1:document});",
+      "const primary = tokens['--cs-primary'];"
+    ]
+  },
+  "CodeSpirit intent register": {
+    "scope": "javascript,typescript",
+    "prefix": "cs-intent-register",
+    "description": "Register a CodeSpirit intent analyzer",
+    "body": [
+      "CodeSpirit.intent.register('${1:custom}', function (elements, root) {",
+      "  elements.forEach(function (el) {",
+      "    ${2:// apply intent styles}",
+      "  });",
+      "});"
+    ]
+  },
+  "CodeSpirit UI register": {
+    "scope": "javascript,typescript",
+    "prefix": "cs-ui-register",
+    "description": "Register a reusable data-ui behavior",
+    "body": [
+      "CodeSpirit.ui.register('${1:custom-widget}', function (elements, root) {",
+      "  elements.forEach(function (el) {",
+      "    ${2:// initialize widget}",
+      "  });",
+      "  CodeSpirit.ui.ready(elements, '${1:custom-widget}');",
+      "});"
+    ]
+  },
+  "CodeSpirit VM chain": {
+    "scope": "javascript,typescript",
+    "prefix": "cs-vm-chain",
+    "description": "Use CodeSpirit VmChain to set state and invoke a command",
+    "body": [
+      "const vm = CodeSpirit.vm(${1:document});",
+      "vm.set('${2:Name}', ${3:'Value'}).invoke('${4:Save}');"
+    ]
+  },
+  "CodeSpirit scoped query": {
+    "scope": "javascript,typescript",
+    "prefix": "cs-qs",
+    "description": "Query elements with CodeSpirit.qs/qsa helpers",
+    "body": [
+      "const ${1:el} = CodeSpirit.qs('${2:selector}', ${3:document});",
+      "const ${4:items} = CodeSpirit.qsa('${5:selector}', ${3:document});"
+    ]
+  },
+  "CodeSpirit delegated event": {
+    "scope": "javascript,typescript",
+    "prefix": "cs-on",
+    "description": "Attach a delegated event and keep an unsubscribe function",
+    "body": [
+      "const ${1:off} = CodeSpirit.on(${2:document}, '${3:click}', '${4:selector}', function (event, match) {",
+      "  ${5:// handle event}",
+      "});"
+    ]
+  },
+  "CodeSpirit batch update": {
+    "scope": "javascript,typescript",
+    "prefix": "cs-batch",
+    "description": "Batch-update ViewModel fields and refresh UI behaviors",
+    "body": [
+      "CodeSpirit.batch(${1:form}, {",
+      "  ${2:Name}: ${3:'Value'}",
+      "});"
+    ]
+  },
+  "CodeSpirit tree event": {
+    "scope": "javascript,typescript",
+    "prefix": "cs-tree-event",
+    "description": "Listen for tree toggle events",
+    "body": [
+      "${1:document}.addEventListener('codespirit:tree-toggle', function (event) {",
+      "  const value = event.detail.value;",
+      "  const expanded = event.detail.expanded;",
+      "  ${2:// handle toggle}",
+      "});"
+    ]
+  },
+  "CodeSpirit wizard event": {
+    "scope": "javascript,typescript",
+    "prefix": "cs-wizard-event",
+    "description": "Listen for wizard step events",
+    "body": [
+      "${1:document}.addEventListener('codespirit:wizard-step', function (event) {",
+      "  const step = event.detail.step;",
+      "  ${2:// handle step change}",
+      "});"
+    ]
+  }
+}

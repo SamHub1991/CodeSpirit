@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>CodeSpirit JS Tests</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    .js-test-passed, .js-test-failed { display: none; padding: 1rem; border-radius: 6px; margin-top: 1rem; }
+    .js-test-passed { background: #dcfce7; color: #166534; }
+    .js-test-failed { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+  <h1>CodeSpirit JS Tests</h1>
+  <div class="js-test-passed">All JS tests passed.</div>
+  <div class="js-test-failed">Some JS tests failed. Check console for details.</div>
+
+  <script src="/js/codespirit.runtime.js"></script>
+  <script src="/js/codespirit.expression.js"></script>
+  <script src="/js/ui/codespirit.intent.js"></script>
+  <script src="/js/tests/runtime.test.js"></script>
+</body>
+</html>

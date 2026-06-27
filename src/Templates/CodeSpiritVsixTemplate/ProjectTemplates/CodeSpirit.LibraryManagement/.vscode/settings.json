@@ -1,0 +1,8 @@
+{
+  "typescript.preferences.includePackageJsonAutoImports": "off",
+  "files.associations": {
+    "*.aspx": "html",
+    "*.ascx": "html",
+    "*.master": "html"
+  }
+}

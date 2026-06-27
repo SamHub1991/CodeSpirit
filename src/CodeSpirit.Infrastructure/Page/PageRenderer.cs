@@ -46,6 +46,7 @@ public class PageRenderer
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.Singleline);
     private static readonly Regex ScriptsBlockRegex = TagBlock("Scripts");
     private static readonly Regex ScriptsRegex = SelfClosing("Scripts");
+    private static readonly Regex ScriptBlockRegex = TagBlock("Script");
     private static readonly Regex ScriptRegex = SelfClosing("Script");
     private static readonly Regex FieldRegex = SelfClosing("Field");
     private static readonly Regex TableRegex = SelfClosing("Table");
@@ -71,6 +72,9 @@ public class PageRenderer
     private static readonly Regex AttributeRegex = new(
         @"(?<name>[A-Za-z][A-Za-z0-9_-]*)=\""(?<value>[^\""]*)\""",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
+    private static readonly Regex PathIndexRegex = new(
+        @"\[(?<index>\d+)\]",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
     private static readonly Regex BindingRegex = new(
         @"\{Binding\s+(?<name>[^}:]+)(:(?<format>[^}]+))?\}",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -88,6 +92,12 @@ public class PageRenderer
         new("DevPanel", "/js/ui/codespirit.devpanel.js"),
         new("Site", "/js/site.js")
     ];
+
+    private static readonly ConcurrentDictionary<(string Template, string StateJson), string> _renderCache = new();
+    private static readonly ConcurrentDictionary<string, PathSegment[]> _pathCache = new(StringComparer.OrdinalIgnoreCase);
+    private static long _renderCacheHits;
+    private static long _renderCacheMisses;
+    private const int MaxRenderCacheEntries = 512;
 
     public PageRenderer(PageParser parser, ILogger<PageRenderer> logger)
     {
@@ -150,55 +160,24 @@ public class PageRenderer
         return RenderTemplate(html, state);
     }
 
-    private static string BuildFallbackHtml(string title, Dictionary<string, object?> state)
-    {
-        var json = JsonSerializer.Serialize(state, CodeSpiritDefaults.JsonOptions);
-        var propsHtml = BuildPropsHtml(state);
-        var safeTitle = Html(title);
-
-        return $$"""
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{safeTitle}}</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 2rem; background: #f5f5f5; }
-        .cs-vm-data { background: #fff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto; }
-        .cs-prop { border-bottom: 1px solid #eee; padding: 0.5rem 0; }
-        .cs-prop:last-child { border-bottom: none; }
-        .cs-key { font-weight: 600; color: #333; }
-        .cs-val { color: #666; margin-left: 0.5rem; }
-    </style>
-</head>
-<body>
-    <div class="cs-vm-data" id="cs-app">
-        <h1>{{safeTitle}}</h1>
-        {{propsHtml}}
-    </div>
-    <script>
-        window.__CS_VM_STATE__ = {{json}};
-    </script>
-</body>
-</html>
-""";
-    }
-
-    private static string BuildPropsHtml(Dictionary<string, object?> state)
-    {
-        if (state.Count == 0)
-            return "<p><em>No bindable properties.</em></p>";
-
-        var sb = new StringBuilder();
-        foreach (var kvp in state)
-        {
-            sb.AppendLine($"        <div class=\"cs-prop\"><span class=\"cs-key\">{Html(kvp.Key)}:</span><span class=\"cs-val\">{Html(kvp.Value?.ToString() ?? "null")}</span></div>");
-        }
-        return sb.ToString();
-    }
-
     private static string RenderTemplate(string template, IReadOnlyDictionary<string, object?> state)
+    {
+        var cacheKey = (template, JsonSerializer.Serialize(state, CodeSpiritDefaults.JsonOptions));
+        if (_renderCache.TryGetValue(cacheKey, out var cached))
+        {
+            Interlocked.Increment(ref _renderCacheHits);
+            return cached;
+        }
+
+        Interlocked.Increment(ref _renderCacheMisses);
+        var html = RenderTemplateCore(template, state);
+        if (_renderCache.Count >= MaxRenderCacheEntries)
+            _renderCache.Clear();
+        _renderCache.TryAdd(cacheKey, html);
+        return html;
+    }
+
+    private static string RenderTemplateCore(string template, IReadOnlyDictionary<string, object?> state)
     {
         var html = ConditionalRegex.Replace(template, match =>
             IsTruthy(GetValue(state, match.Groups["name"].Value)) ? match.Groups["content"].Value : string.Empty);
@@ -213,7 +192,7 @@ public class PageRenderer
             var sb = new StringBuilder();
             foreach (var item in items)
             {
-                sb.Append(RenderBindings(itemTemplate, item));
+                sb.Append(RenderTemplateCore(itemTemplate, MergeState(state, item)));
             }
             return sb.ToString();
         });
@@ -279,6 +258,8 @@ public class PageRenderer
 
         html = ScriptsBlockRegex.Replace(html, match => RenderScripts(match.Groups["attrs"].Value, state, match.Groups["content"].Value));
 
+        html = ScriptBlockRegex.Replace(html, match => RenderInlineScript(match.Groups["content"].Value));
+
         html = ScriptsRegex.Replace(html, match => RenderScripts(match.Groups["attrs"].Value, state));
 
         html = ScriptRegex.Replace(html, match => RenderScript(match.Groups["attrs"].Value, state));
@@ -293,6 +274,54 @@ public class PageRenderer
         html = RegionRegex.Replace(html, match => RenderRegion(match.Groups["attrs"].Value, match.Groups["content"].Value, state));
 
         return DirectiveRegex.Replace(RenderBindings(html, state), string.Empty);
+    }
+
+    private static string BuildFallbackHtml(string title, Dictionary<string, object?> state)
+    {
+        var json = JsonSerializer.Serialize(state, CodeSpiritDefaults.JsonOptions);
+        var propsHtml = BuildPropsHtml(state);
+        var safeTitle = Html(title);
+
+        return $$"""
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{safeTitle}}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 2rem; background: #f5f5f5; }
+        .cs-vm-data { background: #fff; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 800px; margin: 0 auto; }
+        .cs-prop { border-bottom: 1px solid #eee; padding: 0.5rem 0; }
+        .cs-prop:last-child { border-bottom: none; }
+        .cs-key { font-weight: 600; color: #333; }
+        .cs-val { color: #666; margin-left: 0.5rem; }
+    </style>
+</head>
+<body>
+    <div class="cs-vm-data" id="cs-app">
+        <h1>{{safeTitle}}</h1>
+        {{propsHtml}}
+    </div>
+    <script>
+        window.__CS_VM_STATE__ = {{json}};
+    </script>
+</body>
+</html>
+""";
+    }
+
+    private static string BuildPropsHtml(Dictionary<string, object?> state)
+    {
+        if (state.Count == 0)
+            return "<p><em>No bindable properties.</em></p>";
+
+        var sb = new StringBuilder();
+        foreach (var kvp in state)
+        {
+            sb.AppendLine($"        <div class=\"cs-prop\"><span class=\"cs-key\">{Html(kvp.Key)}:</span><span class=\"cs-val\">{Html(kvp.Value?.ToString() ?? "null")}</span></div>");
+        }
+        return sb.ToString();
     }
 
     private static string RenderRegion(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
@@ -458,15 +487,24 @@ public class PageRenderer
         if (items is null)
             return string.Empty;
 
-        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-grid cs-grid-3 cs-metrics", string.Empty, "Items");
+        var title = RenderBindings(GetAttribute(rawAttributes, "Title") ?? string.Empty, state);
+        var labelField = RenderBindings(GetAttribute(rawAttributes, "LabelField") ?? "Label", state);
+        var valueField = RenderBindings(GetAttribute(rawAttributes, "ValueField") ?? "Value", state);
+        var hintField = RenderBindings(GetAttribute(rawAttributes, "HintField") ?? "Hint", state);
+        var toneField = RenderBindings(GetAttribute(rawAttributes, "ToneField") ?? "Tone", state);
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-grid cs-grid-3 cs-metrics", string.Empty,
+            "Items", "Title", "LabelField", "ValueField", "HintField", "ToneField");
         var sb = new StringBuilder();
         sb.Append("<section").Append(attrs).Append('>');
+        if (!string.IsNullOrWhiteSpace(title))
+            sb.Append("<h2>").Append(Html(title)).Append("</h2>");
+
         foreach (var item in items)
         {
-            var label = FormatValue(GetValue(item, "Label"), null);
-            var value = FormatValue(GetValue(item, "Value"), null);
-            var hint = FormatValue(GetValue(item, "Hint"), null);
-            var tone = FormatValue(GetValue(item, "Tone"), null);
+            var label = FormatValue(GetValue(item, labelField), null);
+            var value = FormatValue(GetValue(item, valueField), null);
+            var hint = FormatValue(GetValue(item, hintField), null);
+            var tone = FormatValue(GetValue(item, toneField), null);
             var toneClass = string.IsNullOrWhiteSpace(tone) ? string.Empty : " cs-metric-" + SafeClassToken(tone);
             sb.Append("<article class=\"cs-card cs-metric").Append(toneClass).Append("\">")
                 .Append("<span>").Append(Html(label)).Append("</span>")
@@ -485,7 +523,11 @@ public class PageRenderer
             return string.Empty;
 
         var title = RenderBindings(GetAttribute(rawAttributes, "Title") ?? "Activity", state);
-        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-card cs-activity-feed", string.Empty, "Items", "Title");
+        var timeField = RenderBindings(GetAttribute(rawAttributes, "TimeField") ?? "Time", state);
+        var textField = RenderBindings(GetAttribute(rawAttributes, "TextField") ?? "Text", state);
+        var toneField = RenderBindings(GetAttribute(rawAttributes, "ToneField") ?? "Tone", state);
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-card cs-activity-feed", string.Empty,
+            "Items", "Title", "TimeField", "TextField", "ToneField");
         var sb = new StringBuilder();
         sb.Append("<section").Append(attrs).Append('>');
         if (!string.IsNullOrWhiteSpace(title))
@@ -493,9 +535,9 @@ public class PageRenderer
 
         foreach (var item in items)
         {
-            var time = FormatValue(GetValue(item, "Time"), null);
-            var text = FormatValue(GetValue(item, "Text"), null);
-            var tone = FormatValue(GetValue(item, "Tone"), null);
+            var time = FormatValue(GetValue(item, timeField), null);
+            var text = FormatValue(GetValue(item, textField), null);
+            var tone = FormatValue(GetValue(item, toneField), null);
             var toneClass = string.IsNullOrWhiteSpace(tone) ? string.Empty : " cs-activity-" + SafeClassToken(tone);
             sb.Append("<div class=\"cs-activity-row").Append(toneClass).Append("\">")
                 .Append("<time>").Append(Html(time)).Append("</time>")
@@ -512,16 +554,24 @@ public class PageRenderer
         if (items is null)
             return string.Empty;
 
-        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-grid cs-grid-3 cs-quick-links", string.Empty, "Items");
+        var title = RenderBindings(GetAttribute(rawAttributes, "Title") ?? string.Empty, state);
+        var titleField = RenderBindings(GetAttribute(rawAttributes, "TitleField") ?? "Title", state);
+        var descriptionField = RenderBindings(GetAttribute(rawAttributes, "DescriptionField") ?? "Description", state);
+        var urlField = RenderBindings(GetAttribute(rawAttributes, "UrlField") ?? "Url", state);
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-grid cs-grid-3 cs-quick-links", string.Empty,
+            "Items", "Title", "TitleField", "DescriptionField", "UrlField");
         var sb = new StringBuilder();
         sb.Append("<section").Append(attrs).Append('>');
+        if (!string.IsNullOrWhiteSpace(title))
+            sb.Append("<h2>").Append(Html(title)).Append("</h2>");
+
         foreach (var item in items)
         {
-            var title = FormatValue(GetValue(item, "Title"), null);
-            var description = FormatValue(GetValue(item, "Description"), null);
-            var url = SafeUrl(FormatValue(GetValue(item, "Url"), null));
+            var linkTitle = FormatValue(GetValue(item, titleField), null);
+            var description = FormatValue(GetValue(item, descriptionField), null);
+            var url = SafeUrl(FormatValue(GetValue(item, urlField), null));
             sb.Append("<a class=\"cs-card cs-quick-link\" href=\"").Append(Html(url)).Append("\">")
-                .Append("<h3>").Append(Html(title)).Append("</h3>")
+                .Append("<h3>").Append(Html(linkTitle)).Append("</h3>")
                 .Append("<p>").Append(Html(description)).Append("</p>")
                 .Append("</a>");
         }
@@ -550,10 +600,10 @@ public class PageRenderer
         sb.Append(" data-cs-chart-height=\"").Append(Html(height)).Append("\"");
 
         if (!string.IsNullOrWhiteSpace(dataBinding))
-            sb.Append(" data-cs-chart-data=\"{Binding ").Append(Html(dataBinding)).Append("}\"");
+            sb.Append(" data-cs-chart-data=\"").Append(Html(dataBinding)).Append("\"");
 
         if (!string.IsNullOrWhiteSpace(labelsBinding))
-            sb.Append(" data-cs-chart-labels=\"{Binding ").Append(Html(labelsBinding)).Append("}\"");
+            sb.Append(" data-cs-chart-labels=\"").Append(Html(labelsBinding)).Append("\"");
 
         sb.Append("></canvas>");
         sb.Append("</section>");
@@ -566,13 +616,16 @@ public class PageRenderer
         if (items is null)
             return string.Empty;
 
-        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-card cs-tree", string.Empty, "Items", "ChildrenField", "LabelField", "ValueField");
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-card cs-tree", string.Empty,
+            "Items", "ChildrenField", "LabelField", "ValueField", "Collapsed", "data-ui");
+        var ui = MergeUiBehavior(GetAttribute(rawAttributes, "data-ui"), "tree", state);
         var childrenField = RenderBindings(GetAttribute(rawAttributes, "ChildrenField") ?? "Children", state);
         var labelField = RenderBindings(GetAttribute(rawAttributes, "LabelField") ?? "Label", state);
         var valueField = RenderBindings(GetAttribute(rawAttributes, "ValueField") ?? "Value", state);
+        var collapsed = IsTruthyAttribute(RenderBindings(GetAttribute(rawAttributes, "Collapsed") ?? string.Empty, state));
 
         var sb = new StringBuilder();
-        sb.Append("<section").Append(attrs).Append('>');
+        sb.Append("<section data-ui=\"").Append(Html(ui)).Append('\"').Append(attrs).Append('>');
         sb.Append("<ul class=\"cs-tree-root\" data-cs-tree");
         sb.Append(" data-cs-tree-children=\"").Append(Html(childrenField)).Append("\"");
         sb.Append(" data-cs-tree-label=\"").Append(Html(labelField)).Append("\"");
@@ -581,14 +634,14 @@ public class PageRenderer
 
         foreach (var item in items)
         {
-            RenderTreeNode(sb, item, childrenField, labelField, valueField, state);
+            RenderTreeNode(sb, item, childrenField, labelField, valueField, collapsed, state);
         }
 
         sb.Append("</ul></section>");
         return sb.ToString();
     }
 
-    private static void RenderTreeNode(StringBuilder sb, object item, string childrenField, string labelField, string valueField, IReadOnlyDictionary<string, object?> state)
+    private static void RenderTreeNode(StringBuilder sb, object item, string childrenField, string labelField, string valueField, bool collapsed, IReadOnlyDictionary<string, object?> state)
     {
         var label = FormatValue(GetValue(item, labelField), null);
         var value = FormatValue(GetValue(item, valueField), null);
@@ -597,15 +650,29 @@ public class PageRenderer
 
         sb.Append("<li class=\"cs-tree-node");
         if (hasChildren) sb.Append(" cs-tree-node-has-children");
+        if (hasChildren && collapsed) sb.Append(" collapsed");
         sb.Append("\" data-cs-tree-value=\"").Append(Html(value)).Append("\">");
-        sb.Append("<span class=\"cs-tree-label\">").Append(Html(label)).Append("</span>");
-
         if (hasChildren)
         {
-            sb.Append("<ul class=\"cs-tree-children\">");
+            sb.Append("<button type=\"button\" class=\"cs-tree-toggle\" data-cs-tree-toggle aria-expanded=\"")
+                .Append(collapsed ? "false" : "true")
+                .Append("\" aria-label=\"").Append(Html(label)).Append("\">")
+                .Append("<span class=\"cs-tree-label\">").Append(Html(label)).Append("</span>")
+                .Append("</button>");
+        }
+        else
+        {
+            sb.Append("<span class=\"cs-tree-label\">").Append(Html(label)).Append("</span>");
+        }
+
+        if (hasChildren && children != null)
+        {
+            sb.Append("<ul class=\"cs-tree-children\"");
+            if (collapsed) sb.Append(" style=\"display:none\"");
+            sb.Append('>');
             foreach (var child in children)
             {
-                RenderTreeNode(sb, child, childrenField, labelField, valueField, state);
+                RenderTreeNode(sb, child, childrenField, labelField, valueField, collapsed, state);
             }
             sb.Append("</ul>");
         }
@@ -616,7 +683,8 @@ public class PageRenderer
     private static string RenderWizard(string rawAttributes, string content, IReadOnlyDictionary<string, object?> state)
     {
         var activeStep = RenderBindings(GetAttribute(rawAttributes, "ActiveStep") ?? "0", state);
-        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-wizard", string.Empty, "ActiveStep");
+        var attrs = RenderLayoutAttributes(rawAttributes, state, "cs-wizard", string.Empty, "ActiveStep", "data-ui");
+        var ui = MergeUiBehavior(GetAttribute(rawAttributes, "data-ui"), "wizard", state);
         var steps = StepRegex.Matches(content)
             .Select((match, index) => new
             {
@@ -628,17 +696,18 @@ public class PageRenderer
             .ToList();
 
         var sb = new StringBuilder();
-        sb.Append("<div class=\"cs-wizard\" data-cs-wizard").Append(attrs).Append('>');
+        sb.Append("<div data-cs-wizard data-ui=\"").Append(Html(ui)).Append('\"').Append(attrs).Append('>');
 
         sb.Append("<div class=\"cs-wizard-steps\">");
         foreach (var step in steps)
         {
             var isActive = string.Equals(activeStep, step.Index.ToString(), StringComparison.OrdinalIgnoreCase) ||
                           string.Equals(activeStep, step.Key, StringComparison.OrdinalIgnoreCase);
-            sb.Append("<div class=\"cs-wizard-step").Append(isActive ? " active" : "").Append("\" data-cs-wizard-step=\"").Append(Html(step.Key)).Append("\">");
+            sb.Append("<button type=\"button\" class=\"cs-wizard-step").Append(isActive ? " active" : "").Append("\" data-cs-wizard-step=\"").Append(Html(step.Key)).Append("\"");
+            sb.Append(" aria-selected=\"").Append(isActive ? "true" : "false").Append("\">");
             sb.Append("<span class=\"cs-wizard-step-number\">").Append(step.Index + 1).Append("</span>");
             sb.Append("<span class=\"cs-wizard-step-title\">").Append(Html(step.Title)).Append("</span>");
-            sb.Append("</div>");
+            sb.Append("</button>");
         }
         sb.Append("</div>");
 
@@ -744,6 +813,12 @@ public class PageRenderer
         return output.ToString();
     }
 
+    private static string RenderInlineScript(string content)
+    {
+        var trimmed = content.Trim();
+        return string.IsNullOrWhiteSpace(trimmed) ? string.Empty : $"<script>{trimmed}</script>";
+    }
+
     private static IEnumerable<string> ParseExtraScripts(string? raw)
     {
         return string.IsNullOrWhiteSpace(raw)
@@ -788,6 +863,19 @@ public class PageRenderer
             output.Append(" style=\"").Append(Html(styles)).Append('"');
 
         return output.ToString();
+    }
+
+    private static string MergeUiBehavior(string? rawUi, string behavior, IReadOnlyDictionary<string, object?> state)
+    {
+        // Preserve user-provided data-ui tokens while ensuring the component's built-in behavior is active.
+        var tokens = RenderBindings(rawUi ?? string.Empty, state)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
+        if (!tokens.Contains(behavior, StringComparer.OrdinalIgnoreCase))
+            tokens.Insert(0, behavior);
+
+        return string.Join(' ', tokens);
     }
 
     private static string BuildGridClass(string columns)
@@ -1104,14 +1192,116 @@ public class PageRenderer
         if (source is null)
             return null;
 
-        if (source is IReadOnlyDictionary<string, object?> dictionary && dictionary.TryGetValue(name.Trim(), out var value))
-            return value;
+        var path = name.Trim();
+        if (path == ".")
+            return source;
+
+        if (source is IReadOnlyDictionary<string, object?> rootDictionary && rootDictionary.TryGetValue(path, out var directValue))
+            return directValue;
+
+        object? current = source;
+        foreach (var segment in _pathCache.GetOrAdd(path, ParsePathSegments))
+        {
+            current = GetSegmentValue(current, segment);
+            if (current is null)
+                return null;
+        }
+
+        return current;
+    }
+
+    private static object? GetSegmentValue(object? source, PathSegment segment)
+    {
+        if (source is null)
+            return null;
+
+        object? current = source;
+
+        if (!string.IsNullOrWhiteSpace(segment.Member))
+        {
+            current = GetMemberValue(current, segment.Member);
+            if (current is null)
+                return null;
+        }
+
+        foreach (var index in segment.Indexes)
+        {
+            current = GetIndexedValue(current, index);
+            if (current is null)
+                return null;
+        }
+
+        return current;
+    }
+
+    private static PathSegment[] ParsePathSegments(string path)
+    {
+        return path.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(raw =>
+            {
+                var nameEnd = raw.IndexOf('[');
+                var member = nameEnd >= 0 ? raw[..nameEnd] : raw;
+                var indexes = PathIndexRegex.Matches(raw)
+                    .Select(match => int.Parse(match.Groups["index"].Value))
+                    .ToArray();
+                return new PathSegment(member, indexes);
+            })
+            .ToArray();
+    }
+
+    private static object? GetMemberValue(object? source, string name)
+    {
+        if (source is null)
+            return null;
+
+        if (source is IReadOnlyDictionary<string, object?> dictionary)
+            return dictionary.TryGetValue(name.Trim(), out var value) ? value : null;
 
         var type = source.GetType();
         var propName = name.Trim();
         var prop = _propCache.GetOrAdd((type, propName), static key =>
-            key.Type.GetProperty(key.Name));
+            key.Type.GetProperty(key.Name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase));
         return prop?.GetValue(source);
+    }
+
+    private static object? GetIndexedValue(object? source, int index)
+    {
+        if (source is null || source is string || index < 0)
+            return null;
+
+        if (source is System.Collections.IList list)
+            return index < list.Count ? list[index] : null;
+
+        if (source is System.Collections.IEnumerable items)
+            return items.Cast<object?>().ElementAtOrDefault(index);
+
+        return null;
+    }
+
+    private static IReadOnlyDictionary<string, object?> MergeState(IReadOnlyDictionary<string, object?> parent, object? item)
+    {
+        var merged = new Dictionary<string, object?>(parent, StringComparer.OrdinalIgnoreCase)
+        {
+            ["."] = item
+        };
+
+        if (item is IReadOnlyDictionary<string, object?> dictionary)
+        {
+            foreach (var pair in dictionary)
+                merged[pair.Key] = pair.Value;
+            return merged;
+        }
+
+        if (item is null)
+            return merged;
+
+        foreach (var prop in item.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.GetIndexParameters().Length == 0)
+                merged[prop.Name] = prop.GetValue(item);
+        }
+
+        return merged;
     }
 
     private static string FormatValue(object? value, string? format)
@@ -1160,7 +1350,14 @@ public class PageRenderer
     private static string SafeTagName(string? tag)
     {
         var value = (tag ?? string.Empty).Trim().ToLowerInvariant();
-        return Regex.IsMatch(value, @"^[a-z][a-z0-9-]*$") ? value : "div";
+        string[] safeTags =
+        [
+            "div", "span", "section", "article", "aside", "main", "header", "footer", "nav",
+            "form", "label", "p", "ul", "ol", "li", "dl", "dt", "dd", "table", "thead", "tbody",
+            "tfoot", "tr", "td", "th", "figure", "figcaption", "details", "summary"
+        ];
+
+        return safeTags.Contains(value, StringComparer.OrdinalIgnoreCase) ? value : "div";
     }
 
     private static bool IsSafeHtmlAttributeName(string name)
@@ -1269,6 +1466,10 @@ public class PageRenderer
 
     private sealed record ScriptAsset(string Name, string Path);
 
+    private sealed record PathSegment(string Member, int[] Indexes);
+
+    public sealed record RenderMetrics(int RenderCacheEntries, int PathCacheEntries, long RenderCacheHits, long RenderCacheMisses);
+
     private static string? ResolvePagePath(HttpContext context, Type viewModelType)
     {
         var name = viewModelType.Name.EndsWith("ViewModel", StringComparison.OrdinalIgnoreCase)
@@ -1337,4 +1538,17 @@ public class PageRenderer
     /// </summary>
     public static string RenderTemplateForTests(string template, IReadOnlyDictionary<string, object?> state)
         => RenderTemplate(template, state);
+
+    /// <summary>
+    /// Clears render cache for testing scenarios.
+    /// </summary>
+    public static void ClearRenderCache()
+    {
+        _renderCache.Clear();
+        Interlocked.Exchange(ref _renderCacheHits, 0);
+        Interlocked.Exchange(ref _renderCacheMisses, 0);
+    }
+
+    public static RenderMetrics GetRenderMetricsForTests()
+        => new(_renderCache.Count, _pathCache.Count, Interlocked.Read(ref _renderCacheHits), Interlocked.Read(ref _renderCacheMisses));
 }

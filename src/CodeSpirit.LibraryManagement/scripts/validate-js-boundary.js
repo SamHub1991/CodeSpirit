@@ -116,6 +116,7 @@ class Element extends EventTarget {
     this.attributes = { ...attributes };
     this.children = [];
     this.style = {};
+    this._textContent = '';
     this.textContent = '';
     this.name = attributes.name || '';
     this.classList = new ClassListMock();
@@ -133,12 +134,29 @@ class Element extends EventTarget {
     return child;
   }
 
+  removeChild(child) {
+    const index = this.children.indexOf(child);
+    if (index >= 0) {
+      this.children.splice(index, 1);
+      child.parentNode = null;
+    }
+    return child;
+  }
+
   createElement(tagName) {
     return new Element(tagName);
   }
 
   get firstElementChild() {
     return this.children[0] || null;
+  }
+
+  get textContent() {
+    return this._textContent;
+  }
+
+  set textContent(value) {
+    this._textContent = value == null ? '' : String(value);
   }
 
   set innerHTML(value) {
@@ -279,15 +297,32 @@ class ClassListMock {
     this._classes = [];
   }
 
+  get length() {
+    return this._classes.length;
+  }
+
+  _syncIndexes() {
+    Object.keys(this).forEach((key) => {
+      if (/^\d+$/.test(key)) delete this[key];
+    });
+    this._classes.forEach((className, index) => {
+      this[index] = className;
+    });
+  }
+
   add(className) {
     if (!this._classes.includes(className)) {
       this._classes.push(className);
+      this._syncIndexes();
     }
   }
 
   remove(className) {
     const idx = this._classes.indexOf(className);
-    if (idx >= 0) this._classes.splice(idx, 1);
+    if (idx >= 0) {
+      this._classes.splice(idx, 1);
+      this._syncIndexes();
+    }
   }
 
   contains(className) {
@@ -316,6 +351,10 @@ class ClassListMock {
   toString() {
     return this._classes.join(' ');
   }
+
+  [Symbol.iterator]() {
+    return this._classes[Symbol.iterator]();
+  }
 }
 
 class Document extends Element {
@@ -323,6 +362,8 @@ class Document extends Element {
     super('#document');
     this.nodeType = 9;
     this.title = '';
+    this.documentElement = this.appendChild(new Element('html'));
+    this.body = this.appendChild(new Element('body'));
   }
 
   matches() {
@@ -351,6 +392,183 @@ function runScript(file, context) {
   vm.runInContext(fs.readFileSync(path.join(templateRoot, file), 'utf8'), context, { filename: file });
 }
 
+function validateSnippetCatalog() {
+  const workspaceRoot = path.resolve(templateRoot, '../..');
+  const snippetFile = path.join(workspaceRoot, '.vscode/codespirit.code-snippets');
+  const snippets = JSON.parse(fs.readFileSync(snippetFile, 'utf8'));
+  const prefixes = new Set(Object.values(snippets).map((snippet) => snippet.prefix));
+  const requiredPrefixes = [
+    'cs-show', 'cs-enable', 'cs-refresh', 'cs-confirm', 'cs-source',
+    'cs-attr', 'cs-class', 'cs-ui-wizard', 'cs-ui-tree', 'cschart',
+    'cstree', 'cswizard', 'csexpr-contains', 'csexpr-ternary',
+    'cs-theme-tokens', 'cs-intent-register', 'cs-ui-register', 'cs-vm-chain',
+    'cs-qs', 'cs-on', 'cs-batch',
+    'cs-tree-event', 'cs-wizard-event'
+  ];
+
+  assert.strictEqual(Object.keys(snippets).length, 23);
+  requiredPrefixes.forEach((prefix) => assert.ok(prefixes.has(prefix), `Missing VS Code snippet: ${prefix}`));
+
+  const templateSnippetFile = path.join(workspaceRoot,
+    'src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement/.vscode/codespirit.code-snippets');
+  const templateSnippets = JSON.parse(fs.readFileSync(templateSnippetFile, 'utf8'));
+  const templatePrefixes = new Set(Object.values(templateSnippets)
+    .filter((snippet) => snippet && typeof snippet === 'object')
+    .map((snippet) => snippet.prefix));
+  ['cschart', 'cstree', 'cswizard', 'cs-tree-event', 'cs-wizard-event', 'cs-qs', 'cs-on', 'cs-batch'].forEach((prefix) => {
+    assert.ok(templatePrefixes.has(prefix), `Missing template VS Code snippet: ${prefix}`);
+  });
+
+  // VSIX snippets are the Visual Studio counterpart of the project-level VS Code catalog.
+  ['chart', 'tree', 'wizard'].forEach((name) => {
+    const file = path.join(workspaceRoot, `src/Templates/CodeSpiritVsixTemplate/Snippets/codespirit-cs-${name}.snippet`);
+    assert.ok(fs.existsSync(file), `Missing VSIX snippet: ${name}`);
+    assert.ok(fs.readFileSync(file, 'utf8').includes(`<Shortcut>cs${name}</Shortcut>`));
+  });
+}
+
+function validateTypeDeclarations() {
+  const workspaceRoot = path.resolve(templateRoot, '../..');
+  const files = [
+    path.join(workspaceRoot, 'src/CodeSpirit.LibraryManagement/wwwroot/js/codespirit.d.ts'),
+    path.join(workspaceRoot, 'src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement/wwwroot/js/codespirit.d.ts')
+  ];
+  const requiredText = [
+    'interface CodespiritTreeToggleEventDetail',
+    'interface CodespiritWizardStepEventDetail',
+    'type CodespiritBuiltInUiBehavior',
+    'qs<T extends Element = Element>',
+    'batch(root: string | HTMLElement',
+    "'codespirit:tree-toggle': CustomEvent<CodespiritTreeToggleEventDetail>",
+    "'codespirit:wizard-step': CustomEvent<CodespiritWizardStepEventDetail>",
+    'on<TEvent extends CodespiritEventType>',
+    'CodespiritFieldRules'
+  ];
+
+  files.forEach((file) => {
+    const content = fs.readFileSync(file, 'utf8');
+    requiredText.forEach((text) => assert.ok(content.includes(text), `Missing d.ts declaration: ${text}`));
+    assert.ok(!content.includes('CorespiritFieldRules'), 'Old field rules typo should not exist');
+  });
+}
+
+function validateDevPanelAssets() {
+  const workspaceRoot = path.resolve(templateRoot, '../..');
+  const jsFiles = [
+    path.join(workspaceRoot, 'src/CodeSpirit.LibraryManagement/wwwroot/js/ui/codespirit.devpanel.js'),
+    path.join(workspaceRoot, 'src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement/wwwroot/js/ui/codespirit.devpanel.js')
+  ];
+  const cssFiles = [
+    path.join(workspaceRoot, 'src/CodeSpirit.LibraryManagement/wwwroot/css/site.css'),
+    path.join(workspaceRoot, 'src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement/wwwroot/css/site.css')
+  ];
+  const requiredJsText = [
+    'cs-dev-filter',
+    'cs-dev-inspect',
+    'data-cs-show',
+    'data-cs-enable',
+    'data-cs-refresh',
+    'data-cs-confirm',
+    'data-cs-source',
+    'data-ui',
+    'undoEdit',
+    'locateElement',
+    'handlePagePick',
+    'handleShortcuts',
+    'cs-dev-diff',
+    'cs-dev-edit-class-attr',
+    'cs-dev-edit-style',
+    'cs-dev-edit-text',
+    'cs-dev-edit-html',
+    'originalSnapshots',
+    'applyPreviewBehaviors',
+    'scheduleLivePreview',
+    'sanitizeHtml',
+    'localStorage'
+  ];
+  const requiredCssText = [
+    '.cs-dev-item.active',
+    '.cs-dev-tag.ui',
+    '#cs-dev-filter',
+    '#cs-dev-diff',
+    '#cs-dev-undo',
+    '#cs-dev-locate',
+    'max-width: 360px',
+    'flex-direction: column'
+  ];
+
+  const mainJs = fs.readFileSync(jsFiles[0], 'utf8');
+  assert.strictEqual(mainJs, fs.readFileSync(jsFiles[1], 'utf8'), 'Template devpanel script must match source');
+  jsFiles.forEach((file) => {
+    const content = fs.readFileSync(file, 'utf8');
+    requiredJsText.forEach((text) => assert.ok(content.includes(text), `Missing devpanel feature: ${text}`));
+  });
+
+  const mainCss = fs.readFileSync(cssFiles[0], 'utf8');
+  assert.strictEqual(mainCss, fs.readFileSync(cssFiles[1], 'utf8'), 'Template site.css must match source');
+  cssFiles.forEach((file) => {
+    const content = fs.readFileSync(file, 'utf8');
+    requiredCssText.forEach((text) => assert.ok(content.includes(text), `Missing devpanel style: ${text}`));
+  });
+}
+
+function validateRuntimeCompatibilityLayer() {
+  const workspaceRoot = path.resolve(templateRoot, '../..');
+  const files = [
+    path.join(workspaceRoot, 'src/CodeSpirit.LibraryManagement/wwwroot/js/codespirit.runtime.js'),
+    path.join(workspaceRoot, 'src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement/wwwroot/js/codespirit.runtime.js')
+  ];
+  const requiredText = [
+    'installCompatibilityLayer',
+    'Array.from = function',
+    'String.prototype.startsWith',
+    'String.prototype.endsWith',
+    'NodeList.prototype.forEach',
+    'elementProto.matches',
+    'elementProto.closest',
+    'window.CustomEvent = function',
+    'Fetch API is not available in this browser.',
+    'rememberSubmitter',
+    'var errors = {}',
+    'changes[name] = value',
+    'function qs(selector, root)',
+    'function batch(root, changes)'
+  ];
+
+  const mainRuntime = fs.readFileSync(files[0], 'utf8');
+  assert.strictEqual(mainRuntime, fs.readFileSync(files[1], 'utf8'), 'Template runtime script must match source');
+  files.forEach((file) => {
+    const content = fs.readFileSync(file, 'utf8');
+    requiredText.forEach((text) => assert.ok(content.includes(text), `Missing runtime compatibility feature: ${text}`));
+  });
+}
+
+function validateTemplateManifest() {
+  const workspaceRoot = path.resolve(templateRoot, '../..');
+  const manifest = fs.readFileSync(path.join(workspaceRoot,
+    'src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement/CodeSpirit.LibraryManagement.vstemplate'), 'utf8');
+  [
+    'codespirit.runtime.js',
+    'codespirit.expression.js',
+    'jquery-lite.js',
+    'jquery.behaviors.js',
+    'ui.behaviors.js',
+    'codespirit.intent.js',
+    'codespirit.devpanel.js'
+  ].forEach((file) => assert.ok(manifest.includes(file), `Missing template manifest item: ${file}`));
+  ['LivePreview.aspx', 'LivePreviewViewModel.cs'].forEach((file) => {
+    assert.ok(manifest.includes(file), `Missing live preview template manifest item: ${file}`);
+  });
+
+  const programFiles = [
+    path.join(workspaceRoot, 'src/CodeSpirit.LibraryManagement/Program.cs'),
+    path.join(workspaceRoot, 'src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement/Program.cs')
+  ];
+  ['data-cs-show', 'data-cs-enable', 'data-cs-refresh', 'data-cs-confirm', 'data-cs-source', 'data-cs-attr', 'data-cs-visible', 'data-cs-hidden', 'data-cs-enabled', 'data-cs-disabled', 'data-ui', 'style'].forEach((attr) => {
+    programFiles.forEach((file) => assert.ok(fs.readFileSync(file, 'utf8').includes(attr), `Missing dev sync attribute ${attr} in ${file}`));
+  });
+}
+
 async function main() {
   const document = new Document();
   const form = document.appendChild(new Element('form', { 'data-cs-vm': '', method: 'post', 'data-cs-vm-id': 'test-vm', name: 'TestVm' }));
@@ -372,15 +590,25 @@ async function main() {
     FormData: FormDataStub,
     Event,
     CustomEvent: Event,
+    console,
+    setTimeout,
+    clearTimeout,
     fetch: async (url, options) => {
       fetchPayload = { url, options: { ...options, body: JSON.parse(options.body) } };
-      return { ok: true, json: async () => ({ state: { City: 'Rome' } }) };
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        text: async () => JSON.stringify({ state: { City: 'Rome' } })
+      };
     }
   });
   context.window.document = document;
+  context.window.FormData = FormDataStub;
 
   runScript('wwwroot/js/codespirit.runtime.js', context);
   runScript('wwwroot/js/codespirit.expression.js', context);
+  context.CodeSpirit = context.window.CodeSpirit;
 
   // ---- Exposed API ----
   assert.strictEqual(typeof context.window.CodeSpirit.vm, 'function');
@@ -432,7 +660,9 @@ async function main() {
     fetchPayload = { url, options: { ...options, body: JSON.parse(options.body) } };
     return {
       ok: true,
-      json: async () => ({ state: { CategoryOptions: [{ Value: 'Sci', Text: 'Science' }, { Value: 'Art', Text: 'Art' }] } })
+      status: 200,
+      headers: { get: () => 'application/json' },
+      text: async () => JSON.stringify({ state: { CategoryOptions: [{ Value: 'Sci', Text: 'Science' }, { Value: 'Art', Text: 'Art' }] } })
     };
   };
   context.window.CodeSpirit.expression.apply(form);
@@ -515,7 +745,9 @@ async function main() {
     fetchPayload = { url, options: { ...options, body: JSON.parse(options.body) } };
     return {
       ok: true,
-      json: async () => ({
+      status: 200,
+      headers: { get: () => 'application/json' },
+      text: async () => JSON.stringify({
         state: { City: 'Rome' },
         regions: { forecast: '<section data-cs-region="forecast"><div data-ui="custom-widget">Fresh Forecast</div></section>' }
       })
@@ -638,7 +870,9 @@ async function main() {
   context.fetch = async (url, options) => {
     return {
       ok: true,
-      json: async () => ({
+      status: 200,
+      headers: { get: () => 'application/json' },
+      text: async () => JSON.stringify({
         errors: { City: 'Server validation failed' }
       })
     };
@@ -700,7 +934,9 @@ async function main() {
   context.fetch = async (url, options) => {
     return {
       ok: true,
-      json: async () => ({
+      status: 200,
+      headers: { get: () => 'application/json' },
+      text: async () => JSON.stringify({
         errors: { City: 'City too short' },
         state: { City: 'Test' }
       })
@@ -810,6 +1046,29 @@ async function main() {
     assert.ok(root.classList.contains(`cs-scene-${expected}`), `${expected} extended scene should be detected`);
   });
 
+  const newScenes = [
+    ['Telecom Network Signal', 'Subscriber SIM Roaming', 'telecom'],
+    ['Energy Power Grid', 'Electricity Solar Wind', 'energy'],
+    ['Transportation Bus Metro', 'Route Schedule Fare', 'transportation'],
+    ['Agriculture Farm Crop', 'Harvest Irrigation Soil', 'agriculture'],
+    ['Media News Broadcast', 'Video Streaming Channel', 'media'],
+    ['Gaming Player Rank', 'Match Score Level', 'gaming'],
+    ['Automotive Vehicle Dealer', 'Maintenance Repair Parts', 'automotive'],
+    ['Pharmaceutical Drug Pharmacy', 'Prescription Dosage Tablet', 'pharmaceutical'],
+    ['Construction Building Project', 'Blueprint Material Concrete', 'construction'],
+    ['Aviation Flight Airport', 'Boarding Gate Terminal', 'aviation'],
+    ['Maritime Shipping Port', 'Container Dock Freight', 'maritime'],
+    ['Government Agency Department', 'Permit License Public', 'government']
+  ];
+  newScenes.forEach(([title, label, expected]) => {
+    document.title = title;
+    const root = document.appendChild(new Element('main'));
+    root.appendChild(new Element('h1')).textContent = title;
+    root.appendChild(new Element('label')).textContent = label;
+    context.window.CodeSpirit.intent.analyze(root);
+    assert.ok(root.classList.contains(`cs-scene-${expected}`), `${expected} new scene should be detected`);
+  });
+
   document.title = 'Candidate';
   const lowConfidenceRoot = document.appendChild(new Element('main'));
   lowConfidenceRoot.appendChild(new Element('h1')).textContent = 'Candidate';
@@ -875,6 +1134,47 @@ async function main() {
   assert.ok(!overviewPanel.classList.contains('active'));
   assert.ok(detailsPanel.classList.contains('active'));
   assert.strictEqual(detailsTab.getAttribute('aria-selected'), 'true');
+
+  // Verify wizard behavior
+  const wizard = form.appendChild(new Element('div', { class: 'cs-wizard', 'data-ui': 'wizard', 'data-cs-wizard': '' }));
+  const firstWizardStep = wizard.appendChild(new Element('button', { class: 'cs-wizard-step active', 'data-cs-wizard-step': 'one', 'aria-selected': 'true' }));
+  const secondWizardStep = wizard.appendChild(new Element('button', { class: 'cs-wizard-step', 'data-cs-wizard-step': 'two', 'aria-selected': 'false' }));
+  const firstWizardPanel = wizard.appendChild(new Element('div', { class: 'cs-wizard-panel active', 'data-cs-wizard-panel': 'one' }));
+  const secondWizardPanel = wizard.appendChild(new Element('div', { class: 'cs-wizard-panel', 'data-cs-wizard-panel': 'two' }));
+  secondWizardPanel.style.display = 'none';
+  let wizardEventStep = null;
+  wizard.addEventListener('codespirit:wizard-step', function (event) {
+    wizardEventStep = event.detail.step;
+  });
+  context.window.CodeSpirit.mount(document);
+  secondWizardStep.dispatchEvent(new Event('click', { bubbles: true }));
+  assert.ok(!firstWizardStep.classList.contains('active'));
+  assert.ok(secondWizardStep.classList.contains('active'));
+  assert.strictEqual(firstWizardStep.getAttribute('aria-selected'), 'false');
+  assert.strictEqual(secondWizardStep.getAttribute('aria-selected'), 'true');
+  assert.strictEqual(firstWizardPanel.style.display, 'none');
+  assert.strictEqual(secondWizardPanel.style.display, '');
+  assert.strictEqual(wizardEventStep, 'two');
+
+  // Verify tree behavior
+  const tree = form.appendChild(new Element('section', { class: 'cs-card cs-tree', 'data-ui': 'tree' }));
+  const treeRoot = tree.appendChild(new Element('ul', { class: 'cs-tree-root', 'data-cs-tree': '' }));
+  const treeNode = treeRoot.appendChild(new Element('li', { class: 'cs-tree-node cs-tree-node-has-children collapsed', 'data-cs-tree-value': 'root' }));
+  const treeToggle = treeNode.appendChild(new Element('button', { class: 'cs-tree-toggle', 'data-cs-tree-toggle': '', 'aria-expanded': 'false' }));
+  treeToggle.appendChild(new Element('span', { class: 'cs-tree-label' })).textContent = 'Root';
+  const treeChildren = treeNode.appendChild(new Element('ul', { class: 'cs-tree-children' }));
+  treeChildren.style.display = 'none';
+  let treeToggleDetail = null;
+  tree.addEventListener('codespirit:tree-toggle', function (event) {
+    treeToggleDetail = event.detail;
+  });
+  context.window.CodeSpirit.mount(document);
+  treeToggle.dispatchEvent(new Event('click', { bubbles: true }));
+  assert.strictEqual(treeToggle.getAttribute('aria-expanded'), 'true');
+  assert.ok(!treeNode.classList.contains('collapsed'));
+  assert.strictEqual(treeChildren.style.display, '');
+  assert.strictEqual(treeToggleDetail.value, 'root');
+  assert.strictEqual(treeToggleDetail.expanded, true);
 
   // Verify modal behavior
   const openModal = form.appendChild(new Element('button', { 'data-modal-target': '#edit-modal' }));
@@ -961,6 +1261,27 @@ async function main() {
   });
   assert.strictEqual(valid, false);
   context.window.CodeSpirit.clearErrors(form);
+
+  token.setAttribute('name', 'Token');
+  token.value = '';
+  chain3.set('City', '');
+  valid = chain3.validate({
+    City: { required: true, message: 'City required' },
+    Token: { required: true, message: 'Token required' }
+  });
+  assert.strictEqual(valid, false);
+  assert.ok(city.classList.contains('cs-invalid'));
+  assert.ok(token.classList.contains('cs-invalid'));
+  context.window.CodeSpirit.clearErrors(form);
+
+  runScript('wwwroot/js/ui/codespirit.intent.js', context);
+  context.CodeSpirit = context.window.CodeSpirit;
+  runScript('wwwroot/js/tests/runtime.test.js', context);
+  validateSnippetCatalog();
+  validateTypeDeclarations();
+  validateDevPanelAssets();
+  validateRuntimeCompatibilityLayer();
+  validateTemplateManifest();
 
   console.log('JS boundary validation passed');
 }

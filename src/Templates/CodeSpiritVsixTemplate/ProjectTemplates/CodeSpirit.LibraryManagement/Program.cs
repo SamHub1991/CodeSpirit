@@ -7,6 +7,13 @@ using System.Text.RegularExpressions;
 [CodeSpiritApplication]
 public class Program
 {
+    private static readonly string[] DevSyncAttributes =
+    [
+        "class", "style", "data-ui", "data-cs-tone", "data-cs-intent", "data-cs-class",
+        "data-cs-show", "data-cs-enable", "data-cs-refresh", "data-cs-confirm", "data-cs-source",
+        "data-cs-attr", "data-cs-visible", "data-cs-hidden", "data-cs-enabled", "data-cs-disabled"
+    ];
+
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
@@ -93,7 +100,7 @@ public class Program
     private static string SyncAttributes(string originalTag, string snippet)
     {
         var snippetAttrs = new Dictionary<string, string>();
-        foreach (var attr in new[] { "data-cs-tone", "data-cs-intent", "data-cs-class" })
+        foreach (var attr in DevSyncAttributes)
         {
             var regex = new Regex($@"{attr}=""([^""]*)""", RegexOptions.IgnoreCase);
             var m = regex.Match(snippet);
@@ -103,7 +110,7 @@ public class Program
             }
         }
 
-        foreach (var attr in new[] { "data-cs-tone", "data-cs-intent", "data-cs-class" })
+        foreach (var attr in DevSyncAttributes)
         {
             if (snippetAttrs.ContainsKey(attr))
                 continue;
@@ -189,7 +196,7 @@ public class Program
                 return exact;
         }
 
-        var searchPattern = $@"<\s*{Regex.Escape(tag)}\b[^>]*\bdata-cs-(tone|intent|class|bind)\b[^>]*>";
+        var searchPattern = $@"<\s*{Regex.Escape(tag)}\b[^>]*\b(data-ui|data-cs-(tone|intent|class|bind|show|enable|refresh|confirm|source|attr|visible|hidden|enabled|disabled))\b[^>]*>";
         var match = Regex.Match(content, searchPattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
         if (match.Success)
             return match;

@@ -68,7 +68,11 @@ Desktop.ini
 $RECYCLE.BIN/
 
 # VS Code
-.vscode/
+/.vscode/*
+!/.vscode/codespirit.code-snippets
+/src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement/.vscode/*
+!/src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement/.vscode/codespirit.code-snippets
+!/src/Templates/CodeSpiritVsixTemplate/ProjectTemplates/CodeSpirit.LibraryManagement/.vscode/settings.json
 
 # macOS
 .DS_Store

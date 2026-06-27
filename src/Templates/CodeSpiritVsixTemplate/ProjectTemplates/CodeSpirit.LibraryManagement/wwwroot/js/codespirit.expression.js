@@ -35,8 +35,18 @@
 
     if (c === "'") {
       var end = p + 1;
-      while (end < s.length && s[end] !== "'") end++;
-      var val = s.substring(p + 1, end);
+      var val = '';
+      while (end < s.length) {
+        if (s[end] === '\\' && end + 1 < s.length) {
+          val += s[end + 1];
+          end += 2;
+          continue;
+        }
+        if (s[end] === "'") break;
+        val += s[end];
+        end++;
+      }
+      if (end >= s.length || s[end] !== "'") throw new Error('unterminated string literal');
       this.pos = end + 1;
       return { type: TOKEN_STR, value: val };
     }
@@ -170,6 +180,10 @@
       this.advance();
       return { type: 'unary', op: '!', operand: this.parseUnary() };
     }
+    if (this.current.type === TOKEN_OP && this.current.value === '-') {
+      this.advance();
+      return { type: 'unary', op: '-', operand: this.parseUnary() };
+    }
     return this.parseAtom();
   };
 
@@ -211,7 +225,7 @@
     var args = [];
     if (this.current.type !== TOKEN_RPAREN) {
       args.push(this.parseTernary());
-      while (this.current.type === TOKEN_OP && this.current.value === ',') {
+      while (this.current.type === TOKEN_COMMA) {
         this.advance();
         args.push(this.parseTernary());
       }
@@ -233,6 +247,7 @@
       case 'unary':
         var val = evaluate(ast.operand, lookup);
         if (ast.op === '!') return !toBool(val);
+        if (ast.op === '-') return -num(val);
         if (ast.op === 'empty') return val == null || val === '' || val === false;
         return val;
 
@@ -278,6 +293,8 @@
 
     switch (name) {
       // String functions
+      case 'contains': return str.indexOf(args[1] != null ? String(args[1]) : '') >= 0;
+      case 'empty': return val == null || val === '' || val === false;
       case 'length': return str.length;
       case 'trim': return str.trim();
       case 'lower': return str.toLowerCase();
@@ -335,6 +352,12 @@
 
   function toBool(val) { return val !== null && val !== undefined && val !== false && val !== 0 && val !== ''; }
   function num(val) { var n = parseFloat(val); return isNaN(n) ? 0 : n; }
+  function selector(name, value) {
+    var escaped = window.CSS && typeof window.CSS.escape === 'function'
+      ? window.CSS.escape(String(value))
+      : String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    return '[' + name + '="' + escaped + '"]';
+  }
 
   function parseExpression(expr) {
     if (!expr) return null;
@@ -357,11 +380,12 @@
   function isExpr(value) {
     if (!value || typeof value !== 'string') return false;
     var trimmed = value.trim();
-    return /[><!=&|?]/.test(trimmed) || /\bcontains\b|\bempty\b/.test(trimmed);
+    if (/[><!=&|?]/.test(trimmed) || /\bcontains\b|\bempty\b/.test(trimmed)) return true;
+    return !!getAst(trimmed) && /\b(length|trim|lower|upper|substring|startsWith|endsWith|indexOf|abs|min|max|round|floor|ceil|now|today|year|month|day|isNull|default|coalesce)\s*\(/.test(trimmed);
   }
 
   function readFieldValue(form, name) {
-    var el = form.querySelector('[name="' + name + '"],[data-cs-bind="' + name + '"]');
+    var el = form.querySelector(selector('name', name) + ',' + selector('data-cs-bind', name));
     if (el && 'value' in el) return el.value;
     if (el) return el.textContent;
     return '';

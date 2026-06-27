@@ -1,0 +1,787 @@
+{
+  "== 核心运行时 API (CodeSpirit.xxx) ==": "",
+  "初始化 ViewModel 链": {
+    "prefix": "cs-vm",
+    "scope": "javascript",
+    "body": ["var vm = CodeSpirit.vm(${1:root || document})$0"],
+    "description": "获取 ViewModel 链式操作对象"
+  },
+  "通知控件值变化": {
+    "prefix": "cs-input",
+    "scope": "javascript",
+    "body": ["CodeSpirit.input(${1:this})$0"],
+    "description": "通知 MVVM 运行时某个控件值已变化"
+  },
+  "应用服务端状态": {
+    "prefix": "cs-apply",
+    "scope": "javascript",
+    "body": [
+      "CodeSpirit.applyState(${1:root}, {",
+      "  ${2:fieldName}: ${3:value}$0",
+      "})"
+    ],
+    "description": "将服务端返回的 state 对象应用到绑定元素"
+  },
+  "替换局部区域": {
+    "prefix": "cs-region",
+    "scope": "javascript",
+    "body": [
+      "CodeSpirit.applyRegions(${1:root}, {",
+      "  ${2:regionName}: '${3:<section>更新后的 HTML</section>'}$0",
+      "})"
+    ],
+    "description": "用服务端返回的 HTML 替换 data-cs-region 区域"
+  },
+  "首次挂载 DOM": {
+    "prefix": "cs-mount",
+    "scope": "javascript",
+    "body": ["CodeSpirit.mount(${1:root || document})$0"],
+    "description": "初次初始化 DOM root 的 MVVM 运行时"
+  },
+  "重新初始化 DOM": {
+    "prefix": "cs-refresh",
+    "scope": "javascript",
+    "body": ["CodeSpirit.refresh(${1:root})$0"],
+    "description": "动态更新后重新初始化 DOM root"
+  },
+  "更新单个字段": {
+    "prefix": "cs-field",
+    "scope": "javascript",
+    "body": ["CodeSpirit.updateField(${1:root}, '${2:fieldName}', ${3:value})$0"],
+    "description": "更新单个绑定字段及其所有条件绑定"
+  },
+  "显示校验错误": {
+    "prefix": "cs-error",
+    "scope": "javascript",
+    "body": [
+      "CodeSpirit.applyErrors(${1:root}, {",
+      "  ${2:fieldName}: '${3:错误信息}'$0",
+      "})"
+    ],
+    "description": "在表单字段上显示校验错误并生成错误摘要"
+  },
+  "清除校验错误": {
+    "prefix": "cs-clear",
+    "scope": "javascript",
+    "body": ["CodeSpirit.clearErrors(${1:root})$0"],
+    "description": "移除所有 cs-invalid、cs-error 和错误摘要"
+  },
+
+  "== VmChain 链式 API ==": "",
+  "设置单个字段值": {
+    "prefix": "vm-set",
+    "scope": "javascript",
+    "body": ["${1:vm}.set('${2:fieldName}', ${3:value})$0"],
+    "description": "设置 ViewModel 表单中单个字段的值"
+  },
+  "批量设置字段值": {
+    "prefix": "vm-batch",
+    "scope": "javascript",
+    "body": [
+      "${1:vm}.set({",
+      "  ${2:field1}: ${3:val1},",
+      "  ${4:field2}: ${5:val2}$0",
+      "})"
+    ],
+    "description": "一次性设置多个字段的值"
+  },
+  "获取字段当前值": {
+    "prefix": "vm-get",
+    "scope": "javascript",
+    "body": ["var ${1:value} = ${2:vm}.get('${3:fieldName}')$0"],
+    "description": "获取 ViewModel 表单中某个字段的当前值"
+  },
+  "读取或设置字段值": {
+    "prefix": "vm-val",
+    "scope": "javascript",
+    "body": ["${1:vm}.val('${2:fieldName}'${3:, ${4:value}})$0"],
+    "description": "1 个参数 = 读取，2 个参数 = 设置（get/set 合体）"
+  },
+  "快照当前表单状态": {
+    "prefix": "vm-state",
+    "scope": "javascript",
+    "body": ["var state = ${1:vm}.state()$0"],
+    "description": "捕获当前表单所有字段的状态快照"
+  },
+  "重置字段到初始值": {
+    "prefix": "vm-reset",
+    "scope": "javascript",
+    "body": ["${1:vm}.reset(${2:['field1', 'field2']})$0"],
+    "description": "重置指定字段（或全部字段）到初始值并清除错误"
+  },
+  "调用服务端命令": {
+    "prefix": "vm-invoke",
+    "scope": "javascript",
+    "body": [
+      "${1:vm}.invoke('${2:Refresh}')",
+      "  .then(function (result) {",
+      "    $0",
+      "  })",
+      "  .catch(function (err) {",
+      "    console.error(err);",
+      "  })"
+    ],
+    "description": "将当前表单状态发送到服务端 [Command] 方法"
+  },
+  "触发表单提交": {
+    "prefix": "vm-submit",
+    "scope": "javascript",
+    "body": ["${1:vm}.submit()$0"],
+    "description": "手动触发表单的 submit 事件"
+  },
+  "客户端表单校验": {
+    "prefix": "vm-validate",
+    "scope": "javascript",
+    "body": [
+      "var valid = ${1:vm}.validate({",
+      "  ${2:Name}: { required: true, minLength: 2, message: '${3:姓名必填}' },",
+      "  ${4:Email}: { required: true, pattern: /^[^@]+@[^@]+$/, message: '${5:邮箱格式错误}' }$0",
+      "})"
+    ],
+    "description": "声明式客户端校验，失败时自动显示错误提示"
+  },
+  "监听字段变化": {
+    "prefix": "vm-observe",
+    "scope": "javascript",
+    "body": [
+      "${1:vm}.observe('${2:Search}', function (value, field) {",
+      "  console.log(field + ' 变为:', value);",
+      "  $0",
+      "})"
+    ],
+    "description": "注册字段变化监听回调"
+  },
+  "监听所有字段": {
+    "prefix": "vm-watch",
+    "scope": "javascript",
+    "body": [
+      "${1:vm}.observe([], function (value, field) {",
+      "  console.log(field, '->', value);",
+      "  $0",
+      "})"
+    ],
+    "description": "监听 ViewModel 上所有字段的变化"
+  },
+  "订阅事件": {
+    "prefix": "vm-on",
+    "scope": "javascript",
+    "body": [
+      "${1:vm}.on('${2|codespirit:updated,codespirit:changed,codespirit:error,codespirit:validation,codespirit:reset,codespirit:input|}', function (event) {",
+      "  $0",
+      "})"
+    ],
+    "description": "订阅 CodeSpirit 自定义事件"
+  },
+  "一次性事件订阅": {
+    "prefix": "vm-once",
+    "scope": "javascript",
+    "body": [
+      "${1:vm}.once('${2|codespirit:updated,codespirit:changed,codespirit:error,codespirit:validation,codespirit:reset,codespirit:input|}', function (event) {",
+      "  $0",
+      "})"
+    ],
+    "description": "订阅事件，触发一次后自动取消订阅"
+  },
+  "取消事件订阅": {
+    "prefix": "vm-off",
+    "scope": "javascript",
+    "body": ["${1:vm}.off('${2|codespirit:updated,codespirit:changed,codespirit:error,codespirit:validation,codespirit:reset,codespirit:input|}', ${3:handler})$0"],
+    "description": "移除之前注册的事件处理器"
+  },
+  "销毁 ViewModel 链": {
+    "prefix": "vm-destroy",
+    "scope": "javascript",
+    "body": ["${1:vm}.destroy()$0"],
+    "description": "清理链上的所有观察者和资源"
+  },
+  "查询作用域内单个元素": {
+    "prefix": "vm-el",
+    "scope": "javascript",
+    "body": ["var ${1:el} = ${2:vm}.el('${3:selector}')$0"],
+    "description": "在 ViewModel 作用域内查找单个 DOM 元素"
+  },
+  "查询作用域内所有元素": {
+    "prefix": "vm-all",
+    "scope": "javascript",
+    "body": ["var ${1:els} = ${2:vm}.all('${3:selector}')$0"],
+    "description": "在 ViewModel 作用域内查找所有匹配的 DOM 元素"
+  },
+  "CodeSpirit 选择器助手": {
+    "prefix": "cs-qs",
+    "scope": "javascript,typescript",
+    "body": [
+      "const ${1:el} = CodeSpirit.qs('${2:selector}', ${3:document});",
+      "const ${4:items} = CodeSpirit.qsa('${5:selector}', ${3:document});"
+    ],
+    "description": "使用 CodeSpirit.qs/qsa 快速查询元素"
+  },
+  "CodeSpirit 事件委托": {
+    "prefix": "cs-on",
+    "scope": "javascript,typescript",
+    "body": [
+      "const ${1:off} = CodeSpirit.on(${2:document}, '${3:click}', '${4:selector}', function (event, match) {",
+      "  ${5:// handle event}",
+      "});"
+    ],
+    "description": "注册事件委托并保留取消订阅函数"
+  },
+  "CodeSpirit 批量更新": {
+    "prefix": "cs-batch",
+    "scope": "javascript,typescript",
+    "body": [
+      "CodeSpirit.batch(${1:form}, {",
+      "  ${2:Name}: ${3:'Value'}",
+      "});"
+    ],
+    "description": "批量更新 ViewModel 字段并刷新 UI 行为"
+  },
+  "完整 ViewModel 生命周期": {
+    "prefix": "vm-full",
+    "scope": "javascript",
+    "body": [
+      "var vm = CodeSpirit.vm(${1:root});",
+      "",
+      "vm.on('codespirit:updated', function () {",
+      "  console.log('状态已更新');",
+      "});",
+      "vm.observe('${2:Search}', function (val) {",
+      "  console.log('搜索词:', val);",
+      "});",
+      "",
+      "vm.set('${2:Search}', '${3:关键词}').invoke('${4:Search}').then(function (r) {",
+      "  $0",
+      "});"
+    ],
+    "description": "完整 VM 用法模板：链式调用 + 监听 + 调用命令"
+  },
+
+  "== jQuery CodeSpirit 模式 ==": "",
+  "jQuery 注册 UI 行为": {
+    "prefix": "$cs-ui",
+    "scope": "javascript",
+    "body": [
+      "(function ($) {",
+      "  'use strict';",
+      "",
+      "  CodeSpirit.ui.register('${1:behaviorName}', function (elements) {",
+      "    elements.each(function () {",
+      "      var $el = $(this);",
+      "      CodeSpirit.ui.ready($el, '${1:behaviorName}');",
+      "      $0",
+      "    });",
+      "  });",
+      "})(window.jQuery || window.$);"
+    ],
+    "description": "用 jQuery 注册 data-ui 行为"
+  },
+  "jQuery 查找待初始化行为": {
+    "prefix": "$cs-pending",
+    "scope": "javascript",
+    "body": [
+      "var $els = $(root).find('[data-ui~=\"${1:name}\"]').not('[data-ui-ready~=\"${1:name}\"]')$0"
+    ],
+    "description": "用 jQuery 查找所有未初始化的 data-ui 元素"
+  },
+  "jQuery 标记行为已就绪": {
+    "prefix": "$cs-ready",
+    "scope": "javascript",
+    "body": ["${1:$elements}.attr('data-ui-ready', function (_, val) { return [val, '${2:name}'].filter(Boolean).join(' '); })$0"],
+    "description": "用 jQuery 标记元素已完成某行为的初始化"
+  },
+  "jQuery 初始化 ViewModel": {
+    "prefix": "$cs-vm",
+    "scope": "javascript",
+    "body": [
+      "$(function () {",
+      "  CodeSpirit.mount(document);",
+      "  var vm = CodeSpirit.vm('#${1:myForm}');",
+      "  $0",
+      "})"
+    ],
+    "description": "jQuery ready + CodeSpirit ViewModel 初始化"
+  },
+  "jQuery 监听 VM 更新": {
+    "prefix": "$cs-updated",
+    "scope": "javascript",
+    "body": [
+      "$(document).on('codespirit:updated', function (event) {",
+      "  var $target = $(event.target);",
+      "  $0",
+      "})"
+    ],
+    "description": "用 jQuery 监听 codespirit:updated 事件"
+  },
+  "jQuery datepicker 通知": {
+    "prefix": "$cs-date",
+    "scope": "javascript",
+    "body": [
+      "$('.${1:datepicker}').on('change', function () {",
+      "  CodeSpirit.input(this);",
+      "  $0",
+      "})"
+    ],
+    "description": "jQuery datepicker 变化时通知 MVVM 运行时"
+  },
+  "jQuery Ajax 命令调用": {
+    "prefix": "$cs-ajax",
+    "scope": "javascript",
+    "body": [
+      "var vm = CodeSpirit.vm(${1:root});",
+      "var state = vm.state();",
+      "state.__command = '${2:Refresh}';",
+      "$.ajax({",
+      "  url: '${3:/api/endpoint}',",
+      "  method: 'POST',",
+      "  contentType: 'application/json',",
+      "  data: JSON.stringify(state),",
+      "  success: function (result) {",
+      "    CodeSpirit.applyState(${1:root}, result.state || result);",
+      "    CodeSpirit.applyRegions(${1:root}, result.regions);",
+      "    $0",
+      "  }",
+      "})"
+    ],
+    "description": "用 jQuery Ajax 发送 ViewModel 状态到服务端"
+  },
+
+  "== UI 行为系统 API ==": "",
+  "注册 UI 行为": {
+    "prefix": "cs-ui-reg",
+    "scope": "javascript",
+    "body": [
+      "CodeSpirit.ui.register('${1:name}', function (elements, root) {",
+      "  elements.forEach(function (el) {",
+      "    CodeSpirit.ui.ready([el], '${1:name}');",
+      "    $0",
+      "  });",
+      "})"
+    ],
+    "description": "注册可复用的 data-ui 行为"
+  },
+  "初始化 UI 行为": {
+    "prefix": "cs-ui-init",
+    "scope": "javascript",
+    "body": ["CodeSpirit.ui.init(${1:root || document})$0"],
+    "description": "初始化 root 下所有待处理的 UI 行为"
+  },
+
+  "== 主题与场景 API ==": "",
+  "导出场景主题变量": {
+    "prefix": "cs-theme",
+    "scope": "javascript",
+    "body": ["var tokens = CodeSpirit.theme.exportTokens(${1:root})$0"],
+    "description": "导出当前场景的 --cs-* CSS 变量名值对"
+  },
+  "简写导出主题": {
+    "prefix": "cs-tokens",
+    "scope": "javascript",
+    "body": ["var tokens = CodeSpirit.theme.tokens(${1:root})$0"],
+    "description": "theme.exportTokens 的简写别名"
+  },
+
+  "== 意图分析 API ==": "",
+  "注册自定义意图": {
+    "prefix": "cs-intent",
+    "scope": "javascript",
+    "body": [
+      "CodeSpirit.intent.register('${1:name}', function (elements, root) {",
+      "  elements.forEach(function (el) {",
+      "    var val = el.textContent;",
+      "    $0",
+      "  });",
+      "})"
+    ],
+    "description": "注册自定义 data-cs-intent 分析器"
+  },
+  "运行意图分析": {
+    "prefix": "cs-analyze",
+    "scope": "javascript",
+    "body": ["CodeSpirit.intent.analyze(${1:root || document})$0"],
+    "description": "对指定 root 执行所有意图和场景分析"
+  },
+
+  "== $cs 快捷别名 ==": "",
+  "$cs 快捷获取 VM": {
+    "prefix": "$v",
+    "scope": "javascript",
+    "body": ["$cs.vm(${1:'#myForm'})$0"],
+    "description": "$cs.vm() — CodeSpirit.vm 的简写"
+  },
+  "$cs 快捷通知输入": {
+    "prefix": "$i",
+    "scope": "javascript",
+    "body": ["$cs.input(${1:this})$0"],
+    "description": "$cs.input() — CodeSpirit.input 的简写"
+  },
+  "$cs 快捷应用状态": {
+    "prefix": "$a",
+    "scope": "javascript",
+    "body": ["$cs.applyState(${1:root}, { ${2:key}: ${3:val} })$0"],
+    "description": "$cs.applyState() — 简写"
+  },
+  "$cs 快捷挂载": {
+    "prefix": "$m",
+    "scope": "javascript",
+    "body": ["$cs.mount(${1:root})$0"],
+    "description": "$cs.mount() — 简写"
+  },
+
+  "== 事件名称快捷输入 ==": "",
+  "codespirit:updated 事件名": {
+    "prefix": "ev-update",
+    "scope": "javascript",
+    "body": ["'codespirit:updated'"],
+    "description": "状态更新完成后触发"
+  },
+  "codespirit:changed 事件名": {
+    "prefix": "ev-change",
+    "scope": "javascript",
+    "body": ["'codespirit:changed'"],
+    "description": "字段值变化时触发"
+  },
+  "codespirit:error 事件名": {
+    "prefix": "ev-error",
+    "scope": "javascript",
+    "body": ["'codespirit:error'"],
+    "description": "请求或校验出错时触发"
+  },
+  "codespirit:validation 事件名": {
+    "prefix": "ev-valid",
+    "scope": "javascript",
+    "body": ["'codespirit:validation'"],
+    "description": "校验完成后触发"
+  },
+  "codespirit:reset 事件名": {
+    "prefix": "ev-reset",
+    "scope": "javascript",
+    "body": ["'codespirit:reset'"],
+    "description": "表单重置后触发"
+  },
+  "codespirit:input 事件名": {
+    "prefix": "ev-input",
+    "scope": "javascript",
+    "body": ["'codespirit:input'"],
+    "description": "CodeSpirit.input() 触发的事件"
+  },
+  "codespirit:modal-closed 事件名": {
+    "prefix": "ev-modal",
+    "scope": "javascript",
+    "body": ["'codespirit:modal-closed'"],
+    "description": "弹窗关闭时触发（点击遮罩/关闭按钮/Esc）"
+  },
+
+  "== ASPX 页面标签 ==": "",
+  "cs:Form 表单": {
+    "prefix": "csform",
+    "scope": "html",
+    "body": [
+      "<cs:Form>",
+      "  <cs:Field Name=\"${1:Name}\" Label=\"${2:名称}\" Placeholder=\"${3:请输入}\" />",
+      "  <cs:Button Command=\"${4:Submit}\">${5:提交}</cs:Button>",
+      "</cs:Form>$0"
+    ],
+    "description": "cs:Form 表单容器 + cs:Field 字段 + cs:Button 按钮"
+  },
+  "cs:Table 内联列名": {
+    "prefix": "cstable",
+    "scope": "html",
+    "body": ["<cs:Table Items=\"{Binding ${1:Items}}\" Columns=\"${2:Id:编号,Name:名称,Status:状态}\" />$0"],
+    "description": "cs:Table 使用 Columns 属性简写列定义"
+  },
+  "cs:Table 显式列定义": {
+    "prefix": "cstablex",
+    "scope": "html",
+    "body": [
+      "<cs:Table Items=\"{Binding ${1:Items}}\">",
+      "  <cs:Column Header=\"${2:编号}\">${3:Id}</cs:Column>",
+      "  <cs:Column Header=\"${4:名称}\">${5:Name}</cs:Column>",
+      "  <cs:Column Header=\"${6:状态}\">${7:Status}</cs:Column>",
+      "</cs:Table>$0"
+    ],
+    "description": "cs:Table 用 cs:Column 子标签显式定义列"
+  },
+  "cs:Region 局部刷新区": {
+    "prefix": "csregion",
+    "scope": "html",
+    "body": ["<cs:Region Name=\"${1:regionName}\"${2: Tag=\"div\"}${3: class=\"${4:}\"}>\n  $0\n</cs:Region>"],
+    "description": "cs:Region 局部刷新区域，命令返回时替换内容"
+  },
+  "cs:Toolbar 工具栏": {
+    "prefix": "cstoolbar",
+    "scope": "html",
+    "body": [
+      "<cs:Toolbar Title=\"${1:标题}\" Subtitle=\"${2:副标题}\">",
+      "  $0",
+      "</cs:Toolbar>"
+    ],
+    "description": "cs:Toolbar 页面工具栏"
+  },
+  "cs:Tabs 标签页": {
+    "prefix": "cstabs",
+    "scope": "html",
+    "body": [
+      "<cs:Tabs Active=\"${1:tab1}\">",
+      "  <cs:Tab Key=\"${2:tab1}\" Title=\"${3:标签一}\">",
+      "    $0",
+      "  </cs:Tab>",
+      "  <cs:Tab Key=\"${4:tab2}\" Title=\"${5:标签二}\">",
+      "  </cs:Tab>",
+      "</cs:Tabs>"
+    ],
+    "description": "cs:Tabs 标签页组件"
+  },
+  "cs:Modal 弹窗": {
+    "prefix": "csmodal",
+    "scope": "html",
+    "body": [
+      "<cs:Modal Id=\"${1:myModal}\" Title=\"${2:弹窗标题}\"${3: Open=\"True\"}>",
+      "  $0",
+      "</cs:Modal>"
+    ],
+    "description": "cs:Modal 模态弹窗"
+  },
+  "cs:Pager 分页": {
+    "prefix": "cspager",
+    "scope": "html",
+    "body": ["<cs:Pager Page=\"{Binding ${1:Page}}\" TotalPages=\"{Binding ${2:TotalPages}}\" Url=\"/${3:items}\" />$0"],
+    "description": "cs:Pager 分页控件"
+  },
+  "cs:Scripts 脚本资源": {
+    "prefix": "csscripts",
+    "scope": "html",
+    "body": [
+      "<cs:Scripts Runtime=\"${1:True}\" DevPanel=\"${2:True}\">",
+      "  <cs:Script Src=\"${3:/js/pages/my-page.js}\" Defer=\"${4:True}\" />",
+      "</cs:Scripts>$0"
+    ],
+    "description": "cs:Scripts 统一加载内置运行时、调试面板和页面脚本"
+  },
+  "cs:Script 页面脚本": {
+    "prefix": "csscript",
+    "scope": "html",
+    "body": ["<cs:Script Src=\"${1:/js/pages/my-page.js}\" Defer=\"${2:True}\" />$0"],
+    "description": "cs:Script 页面级脚本标签"
+  },
+  "cs:Repeater 列表迭代": {
+    "prefix": "csrpt",
+    "scope": "html",
+    "body": [
+      "<cs:Repeater Items=\"{Binding ${1:Items}}\">",
+      "  <ItemTemplate>",
+      "    <article class=\"cs-card\">",
+      "      <h3>{Binding Name}</h3>",
+      "      <p>{Binding Description}</p>",
+      "      $0",
+      "    </article>",
+      "  </ItemTemplate>",
+      "</cs:Repeater>"
+    ],
+    "description": "cs:Repeater 遍历集合生成重复内容"
+  },
+  "cs:Conditional 条件渲染": {
+    "prefix": "cscond",
+    "scope": "html",
+    "body": [
+      "<cs:Conditional Condition=\"{Binding ${1:HasData}}\">",
+      "  $0",
+      "</cs:Conditional>"
+    ],
+    "description": "cs:Conditional 条件渲染内容块"
+  },
+  "cs:Content 内容占位": {
+    "prefix": "cscont",
+    "scope": "html",
+    "body": [
+      "<cs:Content PlaceHolder=\"${1:Head}\">",
+      "  $0",
+      "</cs:Content>"
+    ],
+    "description": "cs:Content 母版页内容占位符"
+  },
+  "cs:Link 安全链接": {
+    "prefix": "cslink",
+    "scope": "html",
+    "body": ["<cs:Link Href=\"{Binding ${1:Url}}\" Text=\"{Binding ${2:Name}}\" />$0"],
+    "description": "cs:Link 安全的超链接包装"
+  },
+
+  "== data-cs-* 绑定属性 ==": "",
+  "data-cs-vm 根标记": {
+    "prefix": "cs-attr-vm",
+    "scope": "html",
+    "body": ["data-cs-vm=\"\"$0"],
+    "description": "标记 ViewModel 表单根元素"
+  },
+  "data-cs-bind 属性绑定": {
+    "prefix": "cs-attr-bind",
+    "scope": "html",
+    "body": ["data-cs-bind=\"${1:PropertyName}\"$0"],
+    "description": "将元素绑定到 ViewModel 属性"
+  },
+  "data-cs-command 命令提交": {
+    "prefix": "cs-attr-cmd",
+    "scope": "html",
+    "body": ["data-cs-command=\"${1:Refresh}\"$0"],
+    "description": "提交时触发对应的 [Command] 方法"
+  },
+  "data-cs-region 区域标记": {
+    "prefix": "cs-attr-region",
+    "scope": "html",
+    "body": ["data-cs-region=\"${1:regionName}\"$0"],
+    "description": "命名区域，命令返回后局部刷新"
+  },
+  "data-cs-intent 语义分析": {
+    "prefix": "cs-attr-intent",
+    "scope": "html",
+    "body": ["data-cs-intent=\"${1|numeric,status,due,trend|}\"$0"],
+    "description": "触发语义色调分析（数字/状态/日期/趋势）"
+  },
+  "data-cs-scene 场景覆盖": {
+    "prefix": "cs-attr-scene",
+    "scope": "html",
+    "body": ["data-cs-scene=\"${1|dashboard,library,admin,commerce,content,analytics,crm,finance,education,healthcare,logistics,developer,hr,manufacturing,hospitality,real-estate,legal,support|}\"$0"],
+    "description": "强制指定页面场景风格"
+  },
+  "data-cs-visible 条件显示": {
+    "prefix": "cs-attr-vis",
+    "scope": "html",
+    "body": ["data-cs-visible=\"${1:PropertyName}:${2:expected}\"$0"],
+    "description": "值匹配时显示元素"
+  },
+  "data-cs-hidden 条件隐藏": {
+    "prefix": "cs-attr-hid",
+    "scope": "html",
+    "body": ["data-cs-hidden=\"${1:PropertyName}:${2:expected}\"$0"],
+    "description": "值匹配时隐藏元素"
+  },
+  "data-cs-class 条件 CSS": {
+    "prefix": "cs-attr-class",
+    "scope": "html",
+    "body": ["data-cs-class=\"${1:PropertyName}:${2:className}:${3:expected}\"$0"],
+    "description": "根据值添加/移除 CSS 类名"
+  },
+  "data-cs-tone 语义色调": {
+    "prefix": "cs-attr-tone",
+    "scope": "html",
+    "body": ["data-cs-tone=\"${1:PropertyName}:${2:prefix}\"$0"],
+    "description": "根据值切换语义色调（如 danger/success/warning）"
+  },
+  "data-cs-attr 动态属性": {
+    "prefix": "cs-attr-attr",
+    "scope": "html",
+    "body": ["data-cs-attr=\"${1:PropertyName}:${2:href}\"$0"],
+    "description": "根据值动态设置 HTML 属性"
+  },
+  "data-cs-enabled 条件启用": {
+    "prefix": "cs-attr-en",
+    "scope": "html",
+    "body": ["data-cs-enabled=\"${1:PropertyName}\"$0"],
+    "description": "值为真时启用元素"
+  },
+  "data-cs-disabled 条件禁用": {
+    "prefix": "cs-attr-dis",
+    "scope": "html",
+    "body": ["data-cs-disabled=\"${1:PropertyName}\"$0"],
+    "description": "值为真时禁用元素"
+  },
+
+  "== data-ui 交互行为 ==": "",
+  "data-ui 行为声明": {
+    "prefix": "cs-attr-ui",
+    "scope": "html",
+    "body": ["data-ui=\"${1|datepicker,clickable-card,confirm-click,auto-submit,tabs,modal,wizard,tree|}\"$0"],
+    "description": "声明 UI 行为（datepicker/clickable-card/confirm/auto-submit/tabs/modal/wizard/tree）"
+  },
+  "data-modal-target 打开弹窗": {
+    "prefix": "cs-attr-modal",
+    "scope": "html",
+    "body": ["data-modal-target=\"#${1:myModal}\"$0"],
+    "description": "点击时打开指定 ID 的 cs:Modal"
+  },
+  "data-modal-close 关闭弹窗": {
+    "prefix": "cs-attr-close",
+    "scope": "html",
+    "body": ["data-modal-close=\"\"$0"],
+    "description": "点击时关闭所在弹窗"
+  },
+
+  "== 页面脚本模板 ==": "",
+  "CodeSpirit 页面脚本模板": {
+    "prefix": "cs-page",
+    "scope": "javascript",
+    "body": [
+      "/// <reference path=\"~/${1:wwwroot}/js/codespirit.d.ts\" />",
+      "(function () {",
+      "  'use strict';",
+      "",
+      "  var root = document.querySelector('[data-cs-vm]');",
+      "  var vm = CodeSpirit.vm(root);",
+      "",
+      "  $0",
+      "})();"
+    ],
+    "description": "CodeSpirit 页面脚本模板，含类型声明引用"
+  },
+  "jQuery 页面脚本模板": {
+    "prefix": "cs-jq-page",
+    "scope": "javascript",
+    "body": [
+      "/// <reference path=\"~/${1:wwwroot}/js/codespirit.d.ts\" />",
+      "(function () {",
+      "  'use strict';",
+      "",
+      "  $(function () {",
+      "    var vm = CodeSpirit.vm('#${2:myForm}');",
+      "    $0",
+      "  });",
+      "})();"
+    ],
+    "description": "jQuery 风格的 CodeSpirit 页面脚本模板"
+  },
+  "cs:Chart 图表组件": {
+    "prefix": "cschart",
+    "scope": "html",
+    "body": ["<cs:Chart Type=\"${1|bar,line,pie,doughnut|}\" Title=\"${2:Trend}\" Data=\"${3:Values}\" Labels=\"${4:Labels}\" Width=\"${5:640}\" Height=\"${6:320}\" />$0"],
+    "description": "插入 cs:Chart 图表容器"
+  },
+  "cs:Tree 可折叠树": {
+    "prefix": "cstree",
+    "scope": "html",
+    "body": ["<cs:Tree Items=\"{Binding ${1:Nodes}}\" ChildrenField=\"${2:Children}\" LabelField=\"${3:Label}\" ValueField=\"${4:Value}\" Collapsed=\"${5|false,true|}\" />$0"],
+    "description": "插入带内置折叠展开行为的 cs:Tree"
+  },
+  "cs:Wizard 分步向导": {
+    "prefix": "cswizard",
+    "scope": "html",
+    "body": [
+      "<cs:Wizard ActiveStep=\"${1:details}\">",
+      "  <cs:Step Key=\"intro\" Title=\"${2:Intro}\">${3:Intro content}</cs:Step>",
+      "  <cs:Step Key=\"details\" Title=\"${4:Details}\">${5:Details content}</cs:Step>",
+      "</cs:Wizard>$0"
+    ],
+    "description": "插入带内置步骤切换行为的 cs:Wizard"
+  },
+  "Tree toggle 事件监听": {
+    "prefix": "cs-tree-event",
+    "scope": "javascript",
+    "body": [
+      "${1:document}.addEventListener('codespirit:tree-toggle', function (event) {",
+      "  var value = event.detail.value;",
+      "  var expanded = event.detail.expanded;",
+      "  $0",
+      "});"
+    ],
+    "description": "监听 cs:Tree 折叠展开事件"
+  },
+  "Wizard step 事件监听": {
+    "prefix": "cs-wizard-event",
+    "scope": "javascript",
+    "body": [
+      "${1:document}.addEventListener('codespirit:wizard-step', function (event) {",
+      "  var step = event.detail.step;",
+      "  $0",
+      "});"
+    ],
+    "description": "监听 cs:Wizard 步骤切换事件"
+  }
+}

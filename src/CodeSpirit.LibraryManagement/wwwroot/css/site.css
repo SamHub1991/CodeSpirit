@@ -1624,6 +1624,7 @@ progress:not([class])::-moz-progress-bar {
   margin-bottom: 2px;
 }
 .cs-dev-item:hover { background: #1e293b; }
+.cs-dev-item.active { background: rgba(56, 189, 248, 0.16); box-shadow: inset 2px 0 0 #38bdf8; }
 .cs-dev-item-label { font-family: monospace; font-size: 12px; margin-bottom: 2px; }
 .cs-dev-tag {
   display: inline-block;
@@ -1636,12 +1637,14 @@ progress:not([class])::-moz-progress-bar {
 .cs-dev-tag.tone { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
 .cs-dev-tag.intent { background: rgba(168, 85, 247, 0.15); color: #c084fc; }
 .cs-dev-tag.cls { background: rgba(34, 197, 94, 0.12); color: #4ade80; }
+.cs-dev-tag.ui { background: rgba(251, 191, 36, 0.14); color: #fbbf24; }
 
 .cs-dev-empty { color: #64748b; font-size: 12px; padding: 8px 0; }
 
 .cs-dev-field { margin-bottom: 8px; }
 .cs-dev-field label { display: block; color: #94a3b8; font-size: 11px; margin-bottom: 2px; }
-.cs-dev-field input {
+.cs-dev-field input,
+.cs-dev-field textarea {
   width: 100%;
   padding: 4px 8px;
   border: 1px solid #334155;
@@ -1651,11 +1654,34 @@ progress:not([class])::-moz-progress-bar {
   font-size: 12px;
   font-family: monospace;
 }
-.cs-dev-field input:focus { outline: none; border-color: #38bdf8; }
+.cs-dev-field textarea { resize: vertical; }
+.cs-dev-field input:focus, .cs-dev-field textarea:focus { outline: none; border-color: #38bdf8; }
 .cs-dev-field code { font-size: 11px; color: #94a3b8; word-break: break-all; }
 .cs-dev-field strong { color: #fbbf24; }
 
-#cs-dev-apply, #cs-dev-export-btn, #cs-dev-copy, #cs-dev-sync {
+#cs-dev-filter,
+#cs-dev-diff {
+  border: 1px solid #334155;
+  border-radius: 4px;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-family: monospace;
+}
+
+#cs-dev-filter {
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
+#cs-dev-filter:focus { outline: none; border-color: #38bdf8; }
+
+#cs-dev-diff {
+  padding: 8px;
+  color: #cbd5e1;
+  white-space: pre-wrap;
+}
+
+#cs-dev-apply, #cs-dev-undo, #cs-dev-locate, #cs-dev-export-btn, #cs-dev-copy, #cs-dev-sync {
   background: #38bdf8;
   color: #0f172a;
   border: 0;
@@ -1665,7 +1691,9 @@ progress:not([class])::-moz-progress-bar {
   font-size: 12px;
   font-weight: 700;
 }
-#cs-dev-apply:hover, #cs-dev-export-btn:hover, #cs-dev-copy:hover, #cs-dev-sync:hover { background: #0ea5e9; }
+#cs-dev-apply:hover, #cs-dev-undo:hover, #cs-dev-locate:hover, #cs-dev-export-btn:hover, #cs-dev-copy:hover, #cs-dev-sync:hover { background: #0ea5e9; }
+#cs-dev-undo, #cs-dev-locate { background: #64748b; color: #f8fafc; }
+#cs-dev-undo:hover, #cs-dev-locate:hover { background: #475569; }
 #cs-dev-sync { background: #a855f7; }
 #cs-dev-sync:hover { background: #9333ea; }
 
@@ -1694,6 +1722,17 @@ progress:not([class])::-moz-progress-bar {
 .cs-dev-footer label { cursor: pointer; display: flex; align-items: center; gap: 4px; }
 
 @media (max-width: 960px) {
+  #cs-dev-panel {
+    width: 100vw;
+    max-width: 360px;
+  }
+
+  .cs-dev-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
   .cs-grid-2,
   .cs-grid-3 {
     grid-template-columns: 1fr;

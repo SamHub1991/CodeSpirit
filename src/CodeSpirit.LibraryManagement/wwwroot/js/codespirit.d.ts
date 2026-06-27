@@ -31,6 +31,15 @@ interface CodespiritModalEventDetail {
   modal: HTMLElement;
 }
 
+interface CodespiritTreeToggleEventDetail {
+  value: string | null;
+  expanded: boolean;
+}
+
+interface CodespiritWizardStepEventDetail {
+  step: string;
+}
+
 // ===================================================================
 // VmChain — fluent ViewModel manipulation API
 // ===================================================================
@@ -38,7 +47,7 @@ interface CodespiritModalEventDetail {
 /**
  * Validation rule for a single form field.
  */
-interface CorespiritFieldRules {
+interface CodespiritFieldRules {
   /** Field is required */
   required?: boolean;
   /** Minimum string length */
@@ -46,7 +55,13 @@ interface CorespiritFieldRules {
   /** Maximum string length */
   maxLength?: number;
   /** Regex pattern to test against */
-  pattern?: RegExp;
+  pattern?: RegExp | string;
+  /** Email address format validation */
+  email?: boolean;
+  /** Minimum numeric value */
+  min?: number;
+  /** Maximum numeric value */
+  max?: number;
   /** Custom validation function. Return true for valid, or a string error message */
   custom?: (value: unknown, field: string) => boolean | string;
   /** Custom error message overriding defaults */
@@ -74,7 +89,22 @@ type CodespiritEventType =
   | 'codespirit:error'
   | 'codespirit:validation'
   | 'codespirit:reset'
-  | 'codespirit:input';
+  | 'codespirit:input'
+  | 'codespirit:modal-closed'
+  | 'codespirit:tree-toggle'
+  | 'codespirit:wizard-step';
+
+interface CodespiritEventDetailMap {
+  'codespirit:updated': CodespiritViewModelResult;
+  'codespirit:changed': CodespiritFieldEventDetail;
+  'codespirit:error': CodespiritErrorEventDetail;
+  'codespirit:validation': { errors: CodespiritErrorEventDetail };
+  'codespirit:reset': Record<string, never>;
+  'codespirit:input': CodespiritFieldEventDetail;
+  'codespirit:modal-closed': CodespiritModalEventDetail;
+  'codespirit:tree-toggle': CodespiritTreeToggleEventDetail;
+  'codespirit:wizard-step': CodespiritWizardStepEventDetail;
+}
 
 /**
  * Options for postViewModel fetch requests.
@@ -108,7 +138,7 @@ interface VmChain {
    * @param name - Field name
    * @returns The field value, or undefined if the field doesn't exist
    */
-  get(name: string): string | undefined;
+  get(name: string): string | string[] | undefined;
 
   /**
    * Get or set a field value. With one argument acts as getter,
@@ -117,7 +147,7 @@ interface VmChain {
    * @param value - Field value (optional — if provided, sets the value)
    * @returns Field value (getter) or this (setter)
    */
-  val(name: string): string | undefined;
+  val(name: string): string | string[] | undefined;
   val(name: string, value: unknown): this;
 
   /**
@@ -166,10 +196,11 @@ interface VmChain {
    * @example
    * var valid = CodeSpirit.vm(root).validate({
    *   Name: { required: true, minLength: 2, message: 'Name is required' },
-   *   Email: { required: true, pattern: /^[^@]+@[^@]+$/, message: 'Invalid email' }
+   *   Email: { required: true, email: true, message: 'Invalid email' },
+   *   Age: { min: 18, max: 65 }
    * });
    */
-  validate(rules: Record<string, CorespiritFieldRules>): boolean;
+  validate(rules: Record<string, CodespiritFieldRules>): boolean;
 
   /**
    * Observe changes to one or more fields. The callback fires whenever
@@ -197,6 +228,7 @@ interface VmChain {
    *   console.log('Updated:', e.detail);
    * });
    */
+  on<TEvent extends CodespiritEventType>(event: TEvent, handler: CodespiritEventHandler<CodespiritEventDetailMap[TEvent]>): this;
   on(event: string, handler: CodespiritEventHandler): this;
 
   /**
@@ -205,6 +237,7 @@ interface VmChain {
    * @param handler - The original handler function reference
    * @returns this for chaining
    */
+  off<TEvent extends CodespiritEventType>(event: TEvent, handler: CodespiritEventHandler<CodespiritEventDetailMap[TEvent]>): this;
   off(event: string, handler: CodespiritEventHandler): this;
 
   /**
@@ -213,6 +246,7 @@ interface VmChain {
    * @param handler - Event handler function
    * @returns this for chaining
    */
+  once<TEvent extends CodespiritEventType>(event: TEvent, handler: CodespiritEventHandler<CodespiritEventDetailMap[TEvent]>): this;
   once(event: string, handler: CodespiritEventHandler): this;
 
   /**
@@ -253,6 +287,16 @@ interface VmChain {
  */
 type CodespiritUiInitializer = (elements: HTMLElement[], root?: HTMLElement | Document) => void;
 
+type CodespiritBuiltInUiBehavior =
+  | 'datepicker'
+  | 'clickable-card'
+  | 'confirm-click'
+  | 'auto-submit'
+  | 'tabs'
+  | 'modal'
+  | 'wizard'
+  | 'tree';
+
 /**
  * UI behavior system API.
  */
@@ -272,7 +316,7 @@ interface CodespiritUI {
    *   });
    * });
    */
-  register(name: string, initializer: CodespiritUiInitializer): void;
+  register(name: CodespiritBuiltInUiBehavior | string, initializer: CodespiritUiInitializer): void;
 
   /**
    * Initialize all pending UI behaviors on a DOM root.
@@ -287,7 +331,7 @@ interface CodespiritUI {
    * @param elements - Array of elements to mark
    * @param name - Behavior name
    */
-  ready(elements: HTMLElement[], name: string): void;
+  ready(elements: HTMLElement[], name: CodespiritBuiltInUiBehavior | string): void;
 }
 
 // ===================================================================
@@ -446,6 +490,35 @@ interface CodeSpiritNamespace {
    */
   input(element: HTMLElement, name?: string, value?: unknown): void;
 
+  /** Query one element with optional scope. */
+  qs<T extends Element = Element>(selector: string, root?: ParentNode): T | null;
+
+  /** Query all elements with optional scope and return a real array. */
+  qsa<T extends Element = Element>(selector: string, root?: ParentNode): T[];
+
+  /** Bind a direct or delegated event and return an unsubscribe function. */
+  on(root: Element | Document, event: string, handler: EventListener): () => void;
+  on(root: Element | Document, event: string, selector: string, handler: (event: Event, match: Element) => void): () => void;
+
+  /** Create a debounced function for search and live preview inputs. */
+  debounce<T extends (...args: any[]) => void>(fn: T, delay?: number): T;
+
+  /** Create a throttled function for scroll and resize handlers. */
+  throttle<T extends (...args: any[]) => void>(fn: T, delay?: number): T;
+
+  /** Run callback when DOM is ready. */
+  ready(callback: () => void): void;
+
+  /** Read current ViewModel form state. */
+  state(root?: string | HTMLElement): Record<string, unknown>;
+
+  /** Set one field using the nearest ViewModel form. */
+  set(name: string, value: unknown): VmChain;
+  set(root: string | HTMLElement, name: string, value: unknown): VmChain;
+
+  /** Batch-update fields and refresh UI behaviors. */
+  batch(root: string | HTMLElement, changes: Record<string, unknown>): VmChain;
+
   /**
    * First-time initialization of the MVVM runtime on a DOM root.
    * Triggers UI behavior initialization for all data-ui elements.
@@ -535,6 +608,8 @@ declare global {
     'codespirit:reset': CustomEvent<Record<string, never>>;
     'codespirit:input': CustomEvent<CodespiritFieldEventDetail>;
     'codespirit:modal-closed': CustomEvent<CodespiritModalEventDetail>;
+    'codespirit:tree-toggle': CustomEvent<CodespiritTreeToggleEventDetail>;
+    'codespirit:wizard-step': CustomEvent<CodespiritWizardStepEventDetail>;
   }
 }
 

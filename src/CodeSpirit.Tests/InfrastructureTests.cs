@@ -237,6 +237,17 @@ public class ShowTagTests
     }
 
     [Fact]
+    public void Show_UnsafeTagAttribute_FallsBackToDiv()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Show Visible=\"{Binding Ready}\" Tag=\"script\">Label</cs:Show>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("<div", html);
+        Assert.DoesNotContain("<script", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Show_DefaultTag_IsDiv()
     {
         var html = PageRenderer.RenderTemplateForTests(
@@ -343,6 +354,91 @@ public class PageRendererTagTests
         Assert.Contains("value=\"clean\"", html);
         Assert.Contains("data-cs-bind=\"Query\"", html);
         Assert.Contains("data-cs-command=\"Search\"", html);
+    }
+
+    [Fact]
+    public void Binding_NestedDictionaryPath_RendersValue()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<p>{Binding User.Profile.Name}</p>",
+            new Dictionary<string, object?>
+            {
+                ["User"] = new Dictionary<string, object?>
+                {
+                    ["Profile"] = new Dictionary<string, object?> { ["Name"] = "Ada" }
+                }
+            });
+
+        Assert.Contains("<p>Ada</p>", html);
+    }
+
+    [Fact]
+    public void Binding_ListIndexPath_RendersValue()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<p>{Binding Books[1].Title}</p>",
+            new Dictionary<string, object?>
+            {
+                ["Books"] = new[]
+                {
+                    new { Title = "First" },
+                    new { Title = "Second" }
+                }
+            });
+
+        Assert.Contains("<p>Second</p>", html);
+    }
+
+    [Fact]
+    public void Repeater_RendersNestedComponentsWithItemState()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Repeater Items=\"{Binding Books}\"><cs:Card Tone=\"{Binding Tone}\"><span>{Binding Title}</span></cs:Card></cs:Repeater>",
+            new Dictionary<string, object?>
+            {
+                ["Books"] = new[]
+                {
+                    new Dictionary<string, object?> { ["Title"] = "Domain Design", ["Tone"] = "success" }
+                }
+            });
+
+        Assert.Contains("cs-card cs-card-success", html);
+        Assert.Contains("<span>Domain Design</span>", html);
+        Assert.DoesNotContain("<cs:Card", html);
+    }
+
+    [Fact]
+    public void RenderTemplate_RepeatedSameState_TracksCacheHit()
+    {
+        PageRenderer.ClearRenderCache();
+        var state = new Dictionary<string, object?> { ["Title"] = "Fast" };
+
+        PageRenderer.RenderTemplateForTests("<p>{Binding Title}</p>", state);
+        PageRenderer.RenderTemplateForTests("<p>{Binding Title}</p>", state);
+
+        var metrics = PageRenderer.GetRenderMetricsForTests();
+        Assert.True(metrics.RenderCacheEntries >= 1);
+        Assert.True(metrics.RenderCacheHits >= 1);
+        Assert.True(metrics.RenderCacheMisses >= 1);
+    }
+
+    [Fact]
+    public void Binding_RepeatedNestedPath_UsesPathCache()
+    {
+        PageRenderer.ClearRenderCache();
+
+        PageRenderer.RenderTemplateForTests(
+            "<p>{Binding User.Profile.Name}</p>",
+            new Dictionary<string, object?>
+            {
+                ["User"] = new Dictionary<string, object?>
+                {
+                    ["Profile"] = new Dictionary<string, object?> { ["Name"] = "Ada" }
+                }
+            });
+
+        var metrics = PageRenderer.GetRenderMetricsForTests();
+        Assert.True(metrics.PathCacheEntries >= 1);
     }
 
     [Fact]
@@ -561,6 +657,30 @@ public class PageRendererTagTests
     }
 
     [Fact]
+    public void DashboardComponents_SupportCustomFieldMappings()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Dashboard><cs:MetricCard Items=\"{Binding Metrics}\" Title=\"KPIs\" LabelField=\"Name\" ValueField=\"Count\" HintField=\"Caption\" ToneField=\"Status\" /><cs:ActivityFeed Items=\"{Binding Events}\" TimeField=\"When\" TextField=\"Message\" ToneField=\"Level\" /><cs:QuickLinks Items=\"{Binding Links}\" Title=\"Actions\" TitleField=\"Name\" DescriptionField=\"Caption\" UrlField=\"Href\" /></cs:Dashboard>",
+            new Dictionary<string, object?>
+            {
+                ["Metrics"] = new[] { new { Name = "Loans", Count = 18, Caption = "Today", Status = "Success" } },
+                ["Events"] = new[] { new { When = "10:30", Message = "Reader checked in", Level = "Info" } },
+                ["Links"] = new[] { new { Name = "Unsafe", Caption = "Blocked", Href = "javascript:alert(1)" } }
+            });
+
+        Assert.Contains("<h2>KPIs</h2>", html);
+        Assert.Contains("<span>Loans</span>", html);
+        Assert.Contains("<strong data-cs-intent=\"numeric\">18</strong>", html);
+        Assert.Contains("cs-metric-success", html);
+        Assert.Contains("<time>10:30</time>", html);
+        Assert.Contains("Reader checked in", html);
+        Assert.Contains("cs-activity-info", html);
+        Assert.Contains("<h2>Actions</h2>", html);
+        Assert.Contains("<h3>Unsafe</h3>", html);
+        Assert.Contains("href=\"#\"", html);
+    }
+
+    [Fact]
     public void Toolbar_RendersTitleSubtitleAndActions()
     {
         var html = PageRenderer.RenderTemplateForTests(
@@ -610,6 +730,353 @@ public class PageRendererTagTests
         Assert.Contains("href=\"/admin?page=1\"", html);
         Assert.Contains("href=\"/admin?page=3\"", html);
         Assert.Contains("class=\"cs-pager-link active\" href=\"/admin?page=2\" aria-current=\"page\"", html);
+    }
+
+    [Fact]
+    public void Chart_RendersCanvasWithDataBindings()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Chart Type=\"bar\" Width=\"600\" Height=\"400\" Data=\"Values\" Labels=\"Labels\" Title=\"Sales\" />",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("class=\"cs-card cs-chart\"", html);
+        Assert.Contains("<h3>Sales</h3>", html);
+        Assert.Contains("data-cs-chart=\"bar\"", html);
+        Assert.Contains("data-cs-chart-width=\"600\"", html);
+        Assert.Contains("data-cs-chart-height=\"400\"", html);
+        Assert.Contains("data-cs-chart-data=\"Values\"", html);
+        Assert.Contains("data-cs-chart-labels=\"Labels\"", html);
+    }
+
+    [Fact]
+    public void Tree_RendersHierarchicalNodes()
+    {
+        var items = new[]
+        {
+            new { Label = "Root", Value = "1", Children = new[] { new { Label = "Child", Value = "1-1" } } }
+        };
+
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Tree Items=\"{Binding Nodes}\" ChildrenField=\"Children\" LabelField=\"Label\" ValueField=\"Value\" />",
+            new Dictionary<string, object?> { ["Nodes"] = items });
+
+        Assert.Contains("class=\"cs-card cs-tree\"", html);
+        Assert.Contains("cs-tree-root", html);
+        Assert.Contains("data-cs-tree-children=\"Children\"", html);
+        Assert.Contains("data-cs-tree-label=\"Label\"", html);
+        Assert.Contains("data-cs-tree-value=\"Value\"", html);
+        Assert.Contains(">Root<", html);
+        Assert.Contains("cs-tree-node-has-children", html);
+    }
+
+    [Fact]
+    public void Wizard_RendersStepsAndActivePanel()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Wizard ActiveStep=\"step-2\"><cs:Step Key=\"step-1\" Title=\"First\">One</cs:Step><cs:Step Key=\"step-2\" Title=\"Second\">Two</cs:Step></cs:Wizard>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("class=\"cs-wizard\"", html);
+        Assert.Contains("cs-wizard-step active", html);
+        Assert.Contains(">Second<", html);
+        Assert.Contains("cs-wizard-panel active", html);
+        Assert.Contains(">Two<", html);
+    }
+
+    [Fact]
+    public void Show_PreservesOriginalContentWhenVisibleBindingIsEmpty()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Show>content</cs:Show>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains(">content<", html);
+    }
+
+    [Fact]
+    public void Show_DropsUnsafeEventAttributesAndSrcdoc()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Show Visible=\"{Binding Ready}\" onclick=\"alert(1)\" srcdoc=\"<p>x</p>\">Body</cs:Show>",
+            new Dictionary<string, object?>());
+
+        Assert.DoesNotContain("onclick", html, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("srcdoc", html, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Region_KeepsCustomAttributesAndSafeTag()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Region Name=\"orders\" Tag=\"section\" class=\"panel\" data-id=\"42\">Body</cs:Region>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("<section data-cs-region=\"orders\" class=\"panel\" data-id=\"42\">Body</section>", html);
+    }
+
+    [Fact]
+    public void Scripts_DropsUnsafeExtraScriptUrlsAndPreservesOrder()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Scripts Extra=\"javascript:alert(1),/js/safe.js\" />",
+            new Dictionary<string, object?>());
+
+        Assert.DoesNotContain("javascript:", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("/js/safe.js", html);
+        Assert.True(html.IndexOf("/js/site.js", StringComparison.Ordinal) < html.IndexOf("/js/safe.js", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Chart_WithDefaultValues_RendersDefaults()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Chart />",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("data-cs-chart=\"bar\"", html);
+        Assert.Contains("data-cs-chart-width=\"400\"", html);
+        Assert.Contains("data-cs-chart-height=\"300\"", html);
+        Assert.DoesNotContain("<h3>", html);
+    }
+
+    [Fact]
+    public void Chart_WithoutDataAndLabels_OmitsDataAttributes()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Chart Type=\"line\" Width=\"800\" Height=\"200\" Title=\"Trend\" />",
+            new Dictionary<string, object?>());
+
+        Assert.DoesNotContain("data-cs-chart-data", html);
+        Assert.DoesNotContain("data-cs-chart-labels", html);
+        Assert.Contains("data-cs-chart=\"line\"", html);
+    }
+
+    [Fact]
+    public void Tree_EmptyItems_ReturnsEmpty()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Tree Items=\"{Binding Nodes}\" />",
+            new Dictionary<string, object?> { ["Nodes"] = Array.Empty<object>() });
+
+        Assert.Contains("cs-tree-root", html);
+        Assert.DoesNotContain("cs-tree-node", html);
+    }
+
+    [Fact]
+    public void Tree_SingleNode_NoChildren()
+    {
+        var items = new[] { new { Label = "Only", Value = "1" } };
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Tree Items=\"{Binding Nodes}\" LabelField=\"Label\" ValueField=\"Value\" />",
+            new Dictionary<string, object?> { ["Nodes"] = items });
+
+        Assert.Contains("data-ui=\"tree\"", html);
+        Assert.Contains("cs-tree-node", html);
+        Assert.DoesNotContain("cs-tree-node-has-children", html);
+        Assert.DoesNotContain("data-cs-tree-toggle", html);
+    }
+
+    [Fact]
+    public void Tree_CollapsedWithChildren_RendersToggleAndHiddenChildren()
+    {
+        var items = new[] {
+            new { Label = "Root", Value = "root", Children = new[] { new { Label = "Child", Value = "child" } } }
+        };
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Tree Items=\"{Binding Nodes}\" ChildrenField=\"Children\" LabelField=\"Label\" ValueField=\"Value\" Collapsed=\"true\" data-ui=\"custom\" />",
+            new Dictionary<string, object?> { ["Nodes"] = items });
+
+        Assert.Contains("data-ui=\"tree custom\"", html);
+        Assert.Contains("class=\"cs-tree-node cs-tree-node-has-children collapsed\"", html);
+        Assert.Contains("data-cs-tree-toggle aria-expanded=\"false\"", html);
+        Assert.Contains("<ul class=\"cs-tree-children\" style=\"display:none\">", html);
+    }
+
+    [Fact]
+    public void Tree_DeepNesting_RendersRecursively()
+    {
+        var items = new[] {
+            new { Label = "L1", Value = "1", Children = new[] {
+                new { Label = "L2", Value = "1-1", Children = new[] {
+                    new { Label = "L3", Value = "1-1-1" }
+                }}
+            }}
+        };
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Tree Items=\"{Binding Nodes}\" ChildrenField=\"Children\" LabelField=\"Label\" ValueField=\"Value\" />",
+            new Dictionary<string, object?> { ["Nodes"] = items });
+
+        Assert.Contains(">L1<", html);
+        Assert.Contains(">L2<", html);
+        Assert.Contains(">L3<", html);
+    }
+
+    [Fact]
+    public void Wizard_SingleStep_RendersOneStep()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Wizard ActiveStep=\"step-1\"><cs:Step Key=\"step-1\" Title=\"Only Step\">Content</cs:Step></cs:Wizard>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("data-ui=\"wizard\"", html);
+        Assert.Contains("<button type=\"button\" class=\"cs-wizard-step active\"", html);
+        Assert.Contains("aria-selected=\"true\"", html);
+        Assert.Contains("cs-wizard-panel", html);
+        Assert.DoesNotContain("cs-wizard-step cs-wizard-step", html);
+    }
+
+    [Fact]
+    public void Wizard_MultipleSteps_RendersClickableInactiveSteps()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Wizard ActiveStep=\"details\"><cs:Step Key=\"intro\" Title=\"Intro\">One</cs:Step><cs:Step Key=\"details\" Title=\"Details\">Two</cs:Step></cs:Wizard>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("data-cs-wizard-step=\"intro\" aria-selected=\"false\"", html);
+        Assert.Contains("data-cs-wizard-step=\"details\" aria-selected=\"true\"", html);
+        Assert.Contains("data-cs-wizard-panel=\"intro\" style=\"display:none\"", html);
+        Assert.Contains("data-cs-wizard-panel=\"details\"", html);
+    }
+
+    [Fact]
+    public void Wizard_NoSteps_RendersEmptyDiv()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Wizard ActiveStep=\"0\"></cs:Wizard>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("class=\"cs-wizard\"", html);
+        Assert.DoesNotContain("cs-wizard-step ", html);
+    }
+
+    [Fact]
+    public void Repeater_EmptyArray_ReturnsEmptyString()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Repeater Items=\"{Binding Items}\"><li>{Binding Name}</li></cs:Repeater>",
+            new Dictionary<string, object?> { ["Items"] = Array.Empty<object>() });
+
+        Assert.Equal(string.Empty, html);
+    }
+
+    [Fact]
+    public void Repeater_NullBinding_ReturnsEmpty()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Repeater Items=\"{Binding Missing}\"><li>{Binding Name}</li></cs:Repeater>",
+            new Dictionary<string, object?>());
+
+        Assert.Equal(string.Empty, html);
+    }
+
+    [Fact]
+    public void Repeater_WithEnumeration_RendersItems()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Repeater Items=\"{Binding People}\"><li>{Binding Name}:{Binding Role}</li></cs:Repeater>",
+            new Dictionary<string, object?>
+            {
+                ["People"] = new[] { new { Name = "Alice", Role = "Admin" }, new { Name = "Bob", Role = "User" } }
+            });
+
+        Assert.Contains("<li>Alice:Admin</li>", html);
+        Assert.Contains("<li>Bob:User</li>", html);
+    }
+
+    [Fact]
+    public void Conditional_WhenBindingIsFalse_HidesContent()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Conditional Visible=\"{Binding Show}\"><p>Hidden</p></cs:Conditional>",
+            new Dictionary<string, object?> { ["Show"] = false });
+
+        Assert.Equal(string.Empty, html);
+    }
+
+    [Fact]
+    public void Conditional_WhenBindingIsTrue_ShowsContent()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Conditional Visible=\"{Binding Show}\"><p>Visible</p></cs:Conditional>",
+            new Dictionary<string, object?> { ["Show"] = true });
+
+        Assert.Contains("<p>Visible</p>", html);
+    }
+
+    [Fact]
+    public void Conditional_WhenBindingIsFalsy_Zero_ReturnsEmpty()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Conditional Visible=\"{Binding Show}\"><p>Zero</p></cs:Conditional>",
+            new Dictionary<string, object?> { ["Show"] = 0 });
+
+        Assert.Equal(string.Empty, html);
+    }
+
+    [Fact]
+    public void Conditional_WhenBindingIsTruthy_NonZero_RendersContent()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Conditional Visible=\"{Binding Show}\"><p>One</p></cs:Conditional>",
+            new Dictionary<string, object?> { ["Show"] = 1 });
+
+        Assert.Contains("<p>One</p>", html);
+    }
+
+    [Fact]
+    public void Pager_SinglePage_ShowsOnlyOne()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Pager Page=\"1\" TotalPages=\"1\" Url=\"/list?page={page}\" />",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("aria-current=\"page\"", html);
+        Assert.DoesNotContain("href=\"/list?page=0\"", html);
+    }
+
+    [Fact]
+    public void Pager_UsesInferredPageUrl()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Pager Page=\"3\" TotalPages=\"5\" />",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("class=\"cs-pager\"", html);
+        Assert.Contains("cs-pager-link", html);
+        Assert.Contains("active", html);
+    }
+
+    [Fact]
+    public void Script_RendersInlineWhenNoSrc()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Script>console.log('test');</cs:Script>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("console.log('test')", html);
+        Assert.Contains("<script", html);
+    }
+
+    [Fact]
+    public void Grid_CustomColumnsClass_IncludesGridClass()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Grid Columns=\"3\">Three columns</cs:Grid>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("cs-grid-3", html);
+        Assert.Contains("Three columns</div>", html);
+    }
+
+    [Fact]
+    public void Stack_VerticalByDefault_Renders()
+    {
+        var html = PageRenderer.RenderTemplateForTests(
+            "<cs:Stack>Stacked content</cs:Stack>",
+            new Dictionary<string, object?>());
+
+        Assert.Contains("cs-stack", html);
+        Assert.Contains("Stacked content</div>", html);
     }
 
     private sealed record TableRow(string Name, string Status, decimal FineBalance);

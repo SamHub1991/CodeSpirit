@@ -106,6 +106,8 @@ public class CustomerViewModel : ViewModel
 <cs:Table Items="{Binding Customers}" Columns="Id:Id,Name:Name,Status:Status" />
 ```
 
+ASPX 渲染支持嵌套绑定路径和列表索引，例如 `{Binding User.Profile.Name}`、`{Binding Books[0].Title}`。`<cs:Repeater>` 内可以继续使用 `<cs:Card>`、`<cs:Show>` 等 CodeSpirit 组件，子模板会使用当前 item 状态渲染。
+
 ## 内置前端边界
 
 | 边界 | 所属层 | 规则 |
@@ -127,6 +129,13 @@ public class CustomerViewModel : ViewModel
 | `CodeSpirit.mount(root)` | 初次初始化 DOM root |
 | `CodeSpirit.refresh(root)` | 动态更新后重新初始化 DOM root |
 | `CodeSpirit.ui.register(name, initializer)` | 注册可复用 `data-ui` 行为 |
+| `CodeSpirit.qs(selector, root)` / `CodeSpirit.qsa(selector, root)` | 查询作用域内单个或多个元素 |
+| `CodeSpirit.on(root, eventName, selector, handler)` | 注册事件委托并返回取消订阅函数 |
+| `CodeSpirit.debounce(fn, wait)` / `CodeSpirit.throttle(fn, wait)` | 防抖和节流高频前端交互 |
+| `CodeSpirit.ready(callback)` | DOM 就绪后执行回调 |
+| `CodeSpirit.state(root)` / `CodeSpirit.set(root, name, value)` / `CodeSpirit.batch(root, changes)` | 读取、写入和批量更新 ViewModel 状态 |
+
+`VmChain.get()` 和 `VmChain.state()` 会正确处理 checkbox、radio 和 multiple select；`VmChain.validate()` 支持 `required`、`minLength`、`maxLength`、`pattern`、`email`、`min`、`max` 和 `custom`。
 
 ## 表达式引擎
 
@@ -139,6 +148,9 @@ public class CustomerViewModel : ViewModel
 | `data-cs-refresh="Region"` | 值变更后自动触发 `cs:Region` 命令刷新 |
 | `data-cs-confirm="消息"` | 内置确认对话框，无需 jQuery 行为扩展 |
 | `data-cs-source="Command"` | 自动通过命令获取选项数据 |
+| `data-cs-attr="Field:attr"` | 将字段值同步到安全 HTML 属性 |
+| `data-cs-visible` / `data-cs-hidden` | 根据字段值显示或隐藏元素 |
+| `data-cs-enabled` / `data-cs-disabled` | 根据字段值启用或禁用控件 |
 
 支持运算符：`> < >= <= == != && \|\| ! contains empty ? :`
 
@@ -293,7 +305,9 @@ dotnet build src/CodeSpirit.slnx
 
 ### VS Code 支持
 
-在项目根目录的 `.vscode/codespirit.code-snippets` 中提供 JavaScript 和 HTML 的 VS Code snippets，覆盖运行时 API、VmChain、jQuery CodeSpirit、UI 行为、主题、意图、$cs 快捷、事件名、ASPX 标签、data-cs-* 属性、data-ui 属性和页面模板。
+在项目根目录的 `.vscode/codespirit.code-snippets` 中提供 23 个 JavaScript 和 HTML 的 VS Code snippets，覆盖运行时 API、VmChain、UI 行为、主题、意图、事件名、ASPX 标签、data-cs-* 属性、data-ui 属性、表达式片段、作用域查询、事件委托和批量状态更新。`wwwroot/js/codespirit.d.ts` 提供 TypeScript IntelliSense，包含快捷 runtime API 以及 `codespirit:tree-toggle`、`codespirit:wizard-step` 事件 detail 类型。
+
+Dev Panel 在 `?dev=1` 下支持编辑常用 `data-cs-*`、`data-ui`、`class`、`style`、文本和 HTML。`Ctrl/Cmd + Shift + C` 切换页面拾取，`Ctrl/Cmd + S` 将当前预览同步回 ASPX 文件。
 
 ## 运行要求
 

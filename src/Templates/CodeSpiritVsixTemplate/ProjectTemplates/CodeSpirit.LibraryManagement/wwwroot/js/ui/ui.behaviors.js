@@ -160,6 +160,89 @@
     });
   });
 
+  register('wizard', function (elements) {
+    elements.forEach(function (wizard) {
+      markReady([wizard], 'wizard');
+
+      function activate(key) {
+        var steps = Array.from(wizard.querySelectorAll('[data-cs-wizard-step]'));
+        var panels = Array.from(wizard.querySelectorAll('[data-cs-wizard-panel]'));
+        steps.forEach(function (step) {
+          var selected = step.getAttribute('data-cs-wizard-step') === key;
+          step.classList.toggle('active', selected);
+          step.setAttribute('aria-selected', selected ? 'true' : 'false');
+        });
+        panels.forEach(function (panel) {
+          var selected = panel.getAttribute('data-cs-wizard-panel') === key;
+          panel.classList.toggle('active', selected);
+          if (selected) {
+            panel.style.display = '';
+          } else {
+            panel.style.display = 'none';
+          }
+        });
+      }
+
+      wizard.addEventListener('click', function (event) {
+        var step = event.target.closest('[data-cs-wizard-step]');
+        if (!step || !wizard.contains(step)) {
+          return;
+        }
+
+        var key = step.getAttribute('data-cs-wizard-step');
+        if (!key) {
+          return;
+        }
+
+        event.preventDefault();
+        activate(key);
+        // Consumers can persist current step or trigger analytics without custom click wiring.
+        wizard.dispatchEvent(new CustomEvent('codespirit:wizard-step', { bubbles: true, detail: { step: key } }));
+      });
+    });
+  });
+
+  register('tree', function (elements) {
+    elements.forEach(function (tree) {
+      markReady([tree], 'tree');
+
+      function getChildren(node) {
+        // Only toggle direct child groups so nested tree levels keep their own state.
+        return Array.from(node.children || []).filter(function (child) {
+          return child.classList && child.classList.contains('cs-tree-children');
+        })[0] || null;
+      }
+
+      tree.addEventListener('click', function (event) {
+        var toggle = event.target.closest('[data-cs-tree-toggle]');
+        if (!toggle || !tree.contains(toggle)) {
+          return;
+        }
+
+        var node = toggle.closest('.cs-tree-node');
+        if (!node) {
+          return;
+        }
+
+        var children = getChildren(node);
+        if (!children) {
+          return;
+        }
+
+        event.preventDefault();
+        var expanded = toggle.getAttribute('aria-expanded') !== 'true';
+        toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        node.classList.toggle('collapsed', !expanded);
+        children.style.display = expanded ? '' : 'none';
+        // Event detail mirrors the rendered node value for lightweight application hooks.
+        tree.dispatchEvent(new CustomEvent('codespirit:tree-toggle', {
+          bubbles: true,
+          detail: { value: node.getAttribute('data-cs-tree-value'), expanded: expanded }
+        }));
+      });
+    });
+  });
+
   register('modal', function (elements) {
     elements.forEach(function (modal) {
       markReady([modal], 'modal');

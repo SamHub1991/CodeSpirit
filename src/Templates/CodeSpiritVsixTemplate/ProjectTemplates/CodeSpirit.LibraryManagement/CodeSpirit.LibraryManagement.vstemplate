@@ -30,6 +30,7 @@
         <ProjectItem ReplaceParameters="true" TargetFileName="Admin.aspx">Admin.aspx</ProjectItem>
         <ProjectItem ReplaceParameters="true" TargetFileName="Weather.aspx">Weather.aspx</ProjectItem>
         <ProjectItem ReplaceParameters="true" TargetFileName="About.aspx">About.aspx</ProjectItem>
+        <ProjectItem ReplaceParameters="true" TargetFileName="LivePreview.aspx">LivePreview.aspx</ProjectItem>
         <ProjectItem ReplaceParameters="true" TargetFileName="Site.master">Site.master</ProjectItem>
       </Folder>
 
@@ -42,6 +43,9 @@
         </Folder>
         <Folder Name="Home" TargetFolderName="Home">
           <ProjectItem ReplaceParameters="true" TargetFileName="HomeViewModel.cs">HomeViewModel.cs</ProjectItem>
+        </Folder>
+        <Folder Name="LivePreview" TargetFolderName="LivePreview">
+          <ProjectItem ReplaceParameters="true" TargetFileName="LivePreviewViewModel.cs">LivePreviewViewModel.cs</ProjectItem>
         </Folder>
         <Folder Name="Library" TargetFolderName="Library">
           <Folder Name="Models" TargetFolderName="Models">
@@ -92,6 +96,9 @@
             <ProjectItem ReplaceParameters="false" TargetFileName="ui.behaviors.js">ui.behaviors.js</ProjectItem>
             <ProjectItem ReplaceParameters="false" TargetFileName="codespirit.intent.js">codespirit.intent.js</ProjectItem>
             <ProjectItem ReplaceParameters="false" TargetFileName="codespirit.devpanel.js">codespirit.devpanel.js</ProjectItem>
+          </Folder>
+          <Folder Name="vendor" TargetFolderName="vendor">
+            <ProjectItem ReplaceParameters="false" TargetFileName="jquery-lite.js">jquery-lite.js</ProjectItem>
           </Folder>
           <Folder Name="pages" TargetFolderName="pages">
             <ProjectItem ReplaceParameters="false" TargetFileName="home.js">home.js</ProjectItem>

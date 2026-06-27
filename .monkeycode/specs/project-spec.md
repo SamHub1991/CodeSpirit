@@ -29,6 +29,7 @@ CodeSpirit 是一个面向 .NET 10 的约定式应用框架，提供 Spring Boot
 - THE 系统 SHALL 支持 `cs:Form`、`cs:Button`、`cs:Field`、`cs:Table`、`cs:Column` 和 `cs:Region`，减少 MVVM 样板代码。
 - THE 系统 SHALL 支持 `cs:Toolbar`、`cs:Tabs`、`cs:Modal`、`cs:Pager`，提供常见后台和企业应用组件。
 - THE 系统 SHALL 支持 `cs:Scripts` 和 `cs:Script`，统一加载、替换或禁用内置前端资源。
+- THE 前端运行时 SHALL 提供 `qs/qsa/on/debounce/throttle/ready/state/set/batch` 快捷 API，减少页面脚本样板代码。
 
 ### R4 默认视觉系统
 
@@ -74,7 +75,13 @@ CodeSpirit 是一个面向 .NET 10 的约定式应用框架，提供 Spring Boot
 ### R10 复合组件 (P1)
 
 - THE 系统 SHALL 支持 `<cs:Crud>` 复合组件，通过 `Entity`、`Fields`、`Commands` 属性自动生成完整 CRUD 表单、按钮和表格联动刷新。
+- THE 系统 SHALL 支持 `<cs:Chart>` 组件，通过 `Type`、`Width`、`Height`、`Data`、`Labels`、`Title` 属性生成 canvas 图表容器。
+- THE 系统 SHALL 支持 `<cs:Tree>` 组件，通过 `Items`、`ChildrenField`、`LabelField`、`ValueField` 属性渲染递归树形结构。
+- WHEN `<cs:Tree>` 节点存在子节点，THE 系统 SHALL 内置折叠展开行为，并触发 `codespirit:tree-toggle` 事件。
+- THE 系统 SHALL 支持 `<cs:Wizard>` 组件，通过 `<cs:Step>` 子元素创建多步向导，`ActiveStep` 控制当前激活步骤。
+- WHEN 用户点击 `<cs:Wizard>` 的步骤标题，THE 系统 SHALL 内置切换当前步骤和面板，并触发 `codespirit:wizard-step` 事件。
 - WHEN `<cs:Dashboard>` 包裹 `<cs:MetricCard>`、`<cs:ActivityFeed>`、`<cs:QuickLinks>`，THE 系统 SHALL 自动应用仪表盘默认布局。
+- THE 仪表盘子组件 SHALL 支持字段映射属性，使开发者可以复用现有数据模型字段而无需额外投影。
 - WHEN 按钮声明 `data-cs-confirm="消息"`，THE 系统 SHALL 内置确认对话框，无需 jQuery 行为扩展。
 - WHEN 下拉框声明 `data-cs-source="Command"`，THE 系统 SHALL 自动通过命令获取选项数据。
 
@@ -88,7 +95,8 @@ CodeSpirit 是一个面向 .NET 10 的约定式应用框架，提供 Spring Boot
 | `data-cs-intent` | Intent analyzer | 只处理元素级语义色调 |
 | `data-cs-scene` | Scene analyzer | 只处理页面级场景视觉 |
 | `site.css` | 默认视觉系统 | 提供默认好看的基线，业务 CSS 只补特定布局 |
-| `<cs:Grid/Card/Stack>` | 语义布局层 | 消灭页面级布局 CSS |
+| `<cs:Grid/Card/Stack/Chart/Tree/Wizard>` | 语义布局与复合组件层 | 属性驱动，消灭手写 JS/CSS |
+| PageRenderer cache | 渲染性能 | `_renderCache` 基于 (template, stateJson) 键缓存并限制容量，`ClearRenderCache()` 和测试指标供回归验证使用 |
 | VSIX template | 新项目生成 | 与示例项目保持功能一致 |
 
 ## 验收清单
@@ -101,13 +109,18 @@ CodeSpirit 是一个面向 .NET 10 的约定式应用框架，提供 Spring Boot
 - ✓ 场景识别已覆盖 24 类通用业务场景（含 supply-chain、research、security、retail、insurance、ngo）。
 - ✓ JS 边界验证脚本覆盖 runtime、UI behavior、intent 和 scene 关键路径。
 - ✓ 示例项目 README、模板 README 和根 README 已同步更新。
-- ✓ VS Code 和 VSIX IntelliSense snippets 已验证与实际代码模式一致。
+- ✓ VS Code 23 个前端 IntelliSense snippets、VSIX snippets 和 `codespirit.d.ts` 类型声明已验证与实际代码模式一致。
 - ✓ 表达式引擎 `data-cs-show/enable/refresh` 已内置到前端运行时链路（P0）。
 - ✓ `<cs:Grid>`、`<cs:Card>`、`<cs:Stack>` 布局标签已可用（P0）。
 - [✓] `data-cs-confirm` 和 `data-cs-source` 已内置，替代 jQuery 行为依赖（P1）。
 - ✓ `<cs:Crud>` 复合组件已可用（P1）。
-- ✓ `<cs:Dashboard>` 自动仪表盘布局已可用（P2）。
+- ✓ `<cs:Dashboard>` 自动仪表盘布局和子组件字段映射已可用（P2）。
+- ✓ `<cs:Chart>` 图表容器组件已可用（P1）。
+- ✓ `<cs:Tree>` 递归树形组件和内置折叠展开已可用（P1）。
+- ✓ `<cs:Wizard>` 多步向导组件和内置步骤切换已可用（P1）。
 - ✓ `data-cs-source` 选项数据源协议已可用（P1）。
+- ✓ 渲染缓存、路径缓存和指标机制已实现，115 个 C# 测试 + JS 边界验证全通过。
+- ✓ JS 测试套件已扩展至 58 个表达式、VM 链、意图分析、主题 token、运行时快捷 API 全覆盖用例。
 
 ## 验证标准
 

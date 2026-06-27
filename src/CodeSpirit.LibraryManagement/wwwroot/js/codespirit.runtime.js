@@ -1,7 +1,62 @@
 (function () {
   'use strict';
 
+  installCompatibilityLayer();
+
   var NULL_VALUE = '';
+
+  function installCompatibilityLayer() {
+    if (!Array.from) {
+      Array.from = function (value) {
+        return Array.prototype.slice.call(value || []);
+      };
+    }
+
+    if (!String.prototype.startsWith) {
+      String.prototype.startsWith = function (search, position) {
+        var start = position || 0;
+        return this.substr(start, String(search).length) === String(search);
+      };
+    }
+
+    if (!String.prototype.endsWith) {
+      String.prototype.endsWith = function (search, length) {
+        var source = String(this);
+        var end = length == null ? source.length : length;
+        return source.substring(end - String(search).length, end) === String(search);
+      };
+    }
+
+    if (window.NodeList && !window.NodeList.prototype.forEach) {
+      window.NodeList.prototype.forEach = Array.prototype.forEach;
+    }
+
+    var elementProto = window.Element && window.Element.prototype;
+    if (elementProto && !elementProto.matches) {
+      elementProto.matches = elementProto.msMatchesSelector || elementProto.webkitMatchesSelector;
+    }
+
+    if (elementProto && !elementProto.closest) {
+      elementProto.closest = function (selector) {
+        var el = this;
+        while (el && el.nodeType === 1) {
+          if (el.matches && el.matches(selector)) return el;
+          el = el.parentElement || el.parentNode;
+        }
+        return null;
+      };
+    }
+
+    if (typeof window.CustomEvent !== 'function') {
+      window.CustomEvent = function (event, params) {
+        var options = params || { bubbles: false, cancelable: false, detail: null };
+        var customEvent = document.createEvent('CustomEvent');
+        customEvent.initCustomEvent(event, Boolean(options.bubbles), Boolean(options.cancelable), options.detail);
+        return customEvent;
+      };
+      window.CustomEvent.prototype = window.Event && window.Event.prototype;
+    }
+  }
 
   function selector(name, value) {
     var escaped = window.CSS && typeof window.CSS.escape === 'function'
@@ -16,11 +71,40 @@
 
   function serializeForm(form) {
     var data = {};
-    var formData = new FormData(form);
-    formData.forEach(function (value, key) {
-      data[key] = value;
+    if (window.FormData && FormData.prototype && typeof FormData.prototype.forEach === 'function') {
+      var formData = new FormData(form);
+      formData.forEach(function (value, key) {
+        appendFormValue(data, key, value);
+      });
+      return data;
+    }
+
+    Array.from(form.elements || []).forEach(function (el) {
+      if (!el.name || el.disabled || el.type === 'file') return;
+      if (el.type === 'checkbox' || el.type === 'radio') {
+        if (!el.checked) return;
+        appendFormValue(data, el.name, el.value || 'on');
+        return;
+      }
+      if (el.tagName === 'SELECT' && el.multiple) {
+        data[el.name] = Array.from(el.options).filter(function (option) { return option.selected; }).map(function (option) { return option.value; });
+        return;
+      }
+      appendFormValue(data, el.name, el.value);
     });
     return data;
+  }
+
+  function appendFormValue(data, key, value) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      if (!Array.isArray(data[key])) {
+        data[key] = [data[key]];
+      }
+      data[key].push(value);
+      return;
+    }
+
+    data[key] = value;
   }
 
   function hasFileInput(form) {
@@ -37,7 +121,7 @@
     if (useFormData) {
       var fd = new FormData();
       Object.keys(payload).forEach(function (key) {
-        var el = form.querySelector('[name="' + key + '"]');
+        var el = form.querySelector(selector('name', key));
         if (el && el.type === 'file' && el.files && el.files.length) {
           fd.append(key, el.files[0]);
         } else {
@@ -54,6 +138,10 @@
       fetchOptions.body = JSON.stringify(payload);
     }
 
+    if (typeof fetch !== 'function') {
+      return Promise.reject(new Error('Fetch API is not available in this browser.'));
+    }
+
     return fetch(targetUrl, fetchOptions).then(function (response) {
       if (!response.ok) {
         var status = response.status;
@@ -64,7 +152,17 @@
           throw err;
         });
       }
-      return response.json();
+      if (response.status === 204) {
+        return {};
+      }
+      return response.text().then(function (body) {
+        if (!body || !body.trim()) return {};
+        var contentType = response.headers && response.headers.get ? response.headers.get('content-type') || '' : '';
+        if (contentType.indexOf('application/json') >= 0 || /^[\[{]/.test(body.trim())) {
+          return JSON.parse(body);
+        }
+        return { body: body };
+      });
     });
   }
 
@@ -82,8 +180,8 @@
     }
 
     root.querySelectorAll(selector('name', name) + ', ' + selector('data-cs-bind', name)).forEach(function (element) {
-      if ('value' in element) {
-        element.value = value == null ? NULL_VALUE : value;
+      if ('value' in element || element.tagName === 'SELECT') {
+        writeElementValue(element, value);
       } else {
         element.textContent = value == null ? NULL_VALUE : value;
       }
@@ -94,6 +192,29 @@
     applyCssClass(root, name, value);
     applyTone(root, name, value);
     applyEnabled(root, name, value);
+  }
+
+  function writeElementValue(element, value) {
+    if (element.type === 'checkbox') {
+      var checkboxValue = element.value || 'on';
+      element.checked = Array.isArray(value) ? value.map(String).indexOf(String(checkboxValue)) >= 0 : value === true || String(value) === String(checkboxValue);
+      return;
+    }
+
+    if (element.type === 'radio') {
+      element.checked = String(value) === String(element.value);
+      return;
+    }
+
+    if (element.tagName === 'SELECT' && element.multiple) {
+      var values = Array.isArray(value) ? value.map(String) : [String(value == null ? NULL_VALUE : value)];
+      Array.from(element.options || []).forEach(function (option) {
+        option.selected = values.indexOf(String(option.value)) >= 0;
+      });
+      return;
+    }
+
+    element.value = value == null ? NULL_VALUE : value;
   }
 
   function queryAttr(root, attr, boundName) {
@@ -176,12 +297,25 @@
       var expr = el.getAttribute('data-cs-attr');
       var colonPos = expr.indexOf(':');
       var attrName = colonPos >= 0 ? expr.substring(colonPos + 1).trim() : name.toLowerCase();
+      if (!isSafeDynamicAttribute(attrName, value)) {
+        return;
+      }
       if (value == null || value === NULL_VALUE) {
         el.removeAttribute(attrName);
       } else {
         el.setAttribute(attrName, String(value));
       }
     });
+  }
+
+  function isSafeDynamicAttribute(name, value) {
+    if (!name || /^on/i.test(name) || String(name).toLowerCase() === 'srcdoc') {
+      return false;
+    }
+    if (/^(href|src|action|formaction)$/i.test(name) && /^\s*javascript:/i.test(String(value || ''))) {
+      return false;
+    }
+    return true;
   }
 
   function applyEnabled(root, name, value) {
@@ -376,7 +510,7 @@
 
     event.preventDefault();
     var payload = serializeForm(form);
-    var submitter = event.submitter;
+    var submitter = event.submitter || (lastSubmitter && lastSubmitter.form === form ? lastSubmitter : null);
     setLoading(form, true, submitter);
     clearErrors(form);
     var command = readCommand(submitter);
@@ -403,17 +537,37 @@
     });
   }
 
+  var lastSubmitter = null;
+
+  function rememberSubmitter(event) {
+    var target = event.target;
+    var submitter = target && target.closest ? target.closest('button[type="submit"], input[type="submit"]') : null;
+    if (submitter && submitter.form) {
+      lastSubmitter = submitter;
+    }
+  }
+
   function handleInput(event) {
     var detail = event.detail || {};
     var target = event.target;
     var root = getViewModelRoot(target);
     var name = detail.name || target.name || target.getAttribute('data-cs-bind');
-    var value = detail.value != null ? detail.value : target.value;
+    var value = detail.value != null ? detail.value : readInputEventValue(target);
 
     updateField(root, name, value);
     if (root && name) {
       emit(root, 'codespirit:changed', { name: name, value: value });
     }
+  }
+
+  function readInputEventValue(target) {
+    if (target && target.type === 'checkbox') {
+      return target.checked ? (target.value || 'on') : NULL_VALUE;
+    }
+    if (target && target.type === 'radio') {
+      return target.checked ? target.value : NULL_VALUE;
+    }
+    return target ? target.value : NULL_VALUE;
   }
 
   function input(element, name, value) {
@@ -428,6 +582,85 @@
         value: arguments.length > 2 ? value : element.value
       }
     }));
+  }
+
+  function qs(selector, root) {
+    return (root || document).querySelector(selector);
+  }
+
+  function qsa(selector, root) {
+    return Array.from((root || document).querySelectorAll(selector));
+  }
+
+  function on(root, event, selectorOrHandler, handler) {
+    if (!root) root = document;
+    var delegated = typeof selectorOrHandler === 'string';
+    var callback = delegated ? handler : selectorOrHandler;
+    if (typeof callback !== 'function') return function () {};
+
+    var listener = delegated ? function (eventObject) {
+      var match = eventObject.target && eventObject.target.closest ? eventObject.target.closest(selectorOrHandler) : null;
+      if (match && root.contains(match)) {
+        callback.call(match, eventObject, match);
+      }
+    } : callback;
+
+    root.addEventListener(event, listener);
+    return function () { root.removeEventListener(event, listener); };
+  }
+
+  function debounce(fn, delay) {
+    var timer = null;
+    return function () {
+      var args = arguments;
+      var self = this;
+      clearTimeout(timer);
+      timer = setTimeout(function () { fn.apply(self, args); }, delay || 0);
+    };
+  }
+
+  function throttle(fn, delay) {
+    var last = 0;
+    var timer = null;
+    return function () {
+      var now = Date.now();
+      var args = arguments;
+      var self = this;
+      var wait = (delay || 0) - (now - last);
+      if (wait <= 0) {
+        last = now;
+        fn.apply(self, args);
+        return;
+      }
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        last = Date.now();
+        fn.apply(self, args);
+      }, wait);
+    };
+  }
+
+  function ready(callback) {
+    if (document.readyState && document.readyState !== 'loading') {
+      callback();
+      return;
+    }
+    document.addEventListener('DOMContentLoaded', callback, { once: true });
+  }
+
+  function state(root) {
+    return vm(root || document).state();
+  }
+
+  function set(root, name, value) {
+    return arguments.length === 2 ? vm(document).set(root, name) : vm(root).set(name, value);
+  }
+
+  function batch(root, changes) {
+    var chain = vm(root || document);
+    chain.set(changes || {});
+    refresh(chain._root);
+    return chain;
   }
 
   var _observers = {};
@@ -464,28 +697,46 @@
       this._checkDestroyed();
       if (arguments.length === 1 && typeof name === 'object') {
         var self = this;
-        var changes = {};
         Object.keys(name).forEach(function (k) {
           self.set(k, name[k]);
-          changes[k] = name[k];
         });
-        notifyObservers(this._form, changes);
         return this;
       }
       updateField(this._form, name, value);
-      var el = this._form.querySelector('[name="' + name + '"]');
+      var el = this._form.querySelector(selector('name', name));
       if (el) {
-        el.value = value == null ? NULL_VALUE : String(value);
+        writeElementValue(el, value);
         input(el, name, value);
       }
-      notifyObservers(this._form, { [name]: value });
+      var changes = {};
+      changes[name] = value;
+      notifyObservers(this._form, changes);
       return this;
     },
 
     get: function (name) {
       this._checkDestroyed();
-      var el = this._form.querySelector('[name="' + name + '"]');
-      return el ? el.value : undefined;
+      var fields = Array.from(this._form.querySelectorAll(selector('name', name)));
+      if (!fields.length) {
+        var bound = this._form.querySelector(selector('data-cs-bind', name));
+        return bound ? bound.textContent : undefined;
+      }
+
+      if (fields[0].type === 'checkbox') {
+        var checked = fields.filter(function (el) { return el.checked; }).map(function (el) { return el.value || 'on'; });
+        return fields.length === 1 ? (checked[0] || NULL_VALUE) : checked;
+      }
+
+      if (fields[0].type === 'radio') {
+        var selected = fields.filter(function (el) { return el.checked; })[0];
+        return selected ? selected.value : NULL_VALUE;
+      }
+
+      if (fields[0].tagName === 'SELECT' && fields[0].multiple) {
+        return Array.from(fields[0].options || []).filter(function (option) { return option.selected; }).map(function (option) { return option.value; });
+      }
+
+      return fields[0].value;
     },
 
     val: function (name, value) {
@@ -504,7 +755,7 @@
       if (names) {
         var changes = {};
         names.forEach(function (n) {
-          var orig = self._original[n] || NULL_VALUE;
+          var orig = Object.prototype.hasOwnProperty.call(self._original, n) ? self._original[n] : NULL_VALUE;
           self.set(n, orig);
           changes[n] = orig;
         });
@@ -551,7 +802,11 @@
 
     submit: function () {
       this._checkDestroyed();
-      this._form.requestSubmit();
+      if (typeof this._form.requestSubmit === 'function') {
+        this._form.requestSubmit();
+      } else {
+        this._form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+      }
       return this;
     },
 
@@ -564,6 +819,7 @@
 
       var self = this;
       var valid = true;
+      var errors = {};
       Object.keys(rules).forEach(function (field) {
         var fieldRules = rules[field];
         var value = self.get(field);
@@ -572,25 +828,46 @@
         }
 
         if (fieldRules.required && (value == null || String(value).trim() === NULL_VALUE)) {
-          applyErrors(self._form, { [field]: fieldRules.message || (field + ' is required') });
+          errors[field] = fieldRules.message || (field + ' is required');
           valid = false;
           return;
         }
 
         if (fieldRules.minLength != null && String(value || '').length < fieldRules.minLength) {
-          applyErrors(self._form, { [field]: fieldRules.message || (field + ' must be at least ' + fieldRules.minLength + ' characters') });
+          errors[field] = fieldRules.message || (field + ' must be at least ' + fieldRules.minLength + ' characters');
           valid = false;
           return;
         }
 
         if (fieldRules.maxLength != null && String(value || '').length > fieldRules.maxLength) {
-          applyErrors(self._form, { [field]: fieldRules.message || (field + ' must be at most ' + fieldRules.maxLength + ' characters') });
+          errors[field] = fieldRules.message || (field + ' must be at most ' + fieldRules.maxLength + ' characters');
           valid = false;
           return;
         }
 
-        if (fieldRules.pattern && !fieldRules.pattern.test(String(value || ''))) {
-          applyErrors(self._form, { [field]: fieldRules.message || (field + ' is invalid') });
+        if (fieldRules.pattern) {
+          var pattern = typeof fieldRules.pattern === 'string' ? new RegExp(fieldRules.pattern) : fieldRules.pattern;
+          if (!pattern.test(String(value || ''))) {
+            errors[field] = fieldRules.message || (field + ' is invalid');
+            valid = false;
+            return;
+          }
+        }
+
+        if (fieldRules.email && !/^\S+@\S+\.\S+$/.test(String(value || ''))) {
+          errors[field] = fieldRules.message || (field + ' is invalid');
+          valid = false;
+          return;
+        }
+
+        if (fieldRules.min != null && parseFloat(value) < fieldRules.min) {
+          errors[field] = fieldRules.message || (field + ' must be at least ' + fieldRules.min);
+          valid = false;
+          return;
+        }
+
+        if (fieldRules.max != null && parseFloat(value) > fieldRules.max) {
+          errors[field] = fieldRules.message || (field + ' must be at most ' + fieldRules.max);
           valid = false;
           return;
         }
@@ -598,14 +875,14 @@
         if (fieldRules.custom && typeof fieldRules.custom === 'function') {
           var customResult = fieldRules.custom(value, field);
           if (customResult !== true) {
-            applyErrors(self._form, { [field]: typeof customResult === 'string' ? customResult : (field + ' is invalid') });
+            errors[field] = typeof customResult === 'string' ? customResult : (field + ' is invalid');
             valid = false;
           }
         }
       });
 
       if (!valid) {
-        emit(this._form, 'codespirit:validation', { errors: {} });
+        applyErrors(this._form, errors);
       }
 
       return valid;
@@ -690,6 +967,7 @@
     return new VmChain(root);
   }
 
+  document.addEventListener('click', rememberSubmitter, true);
   document.addEventListener('submit', handleSubmit);
   document.addEventListener('input', handleInput);
   document.addEventListener('codespirit:input', handleInput);
@@ -700,6 +978,15 @@
   window.CodeSpirit.applyErrors = applyErrors;
   window.CodeSpirit.clearErrors = clearErrors;
   window.CodeSpirit.input = input;
+  window.CodeSpirit.qs = qs;
+  window.CodeSpirit.qsa = qsa;
+  window.CodeSpirit.on = on;
+  window.CodeSpirit.debounce = debounce;
+  window.CodeSpirit.throttle = throttle;
+  window.CodeSpirit.ready = ready;
+  window.CodeSpirit.state = state;
+  window.CodeSpirit.set = set;
+  window.CodeSpirit.batch = batch;
   window.CodeSpirit.mount = mount;
   window.CodeSpirit.refresh = refresh;
   window.CodeSpirit.updateField = updateField;

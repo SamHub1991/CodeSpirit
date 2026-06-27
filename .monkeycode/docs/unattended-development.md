@@ -133,15 +133,15 @@ curl -s --max-time 10 "https://<preview-host>/.well-known/mcai-preview-connect-s
 
 ## 本轮执行记录
 
-- Date: 2026-06-25
+- Date: 2026-06-27
 - .NET SDK: `10.0.301`
-- Node.js: `v22.22.0`
-- JS 验证: `node src/CodeSpirit.LibraryManagement/scripts/validate-js-boundary.js` 通过。
-- 测试验证: `dotnet test src/CodeSpirit.slnx` 通过，77 个测试通过。
+- JS 验证: `node src/CodeSpirit.LibraryManagement/scripts/validate-js-boundary.js` 通过，58 个测试通过。
+- 测试验证: `dotnet test src/CodeSpirit.slnx --no-build` 通过，115 个测试通过。
 - 构建验证: `dotnet build src/CodeSpirit.slnx` 通过，存在 2 个 `IsPackable` warning。
-- 预览服务: 复用后台终端 `term_1782262302057_9`，端口 `8000`。
+- 预览服务: 复用后台终端 `term_1782518571126_12`，端口 `8000`。
 - 预览地址: `https://8000-e190832bdf5b7286.monkeycode-ai.online`。
-- 预览检查: 首页、`/css/site.css` 和预览连接状态检查通过。
+- 预览入口: `/live-preview?dev=1` 支持 Dev Panel 实时编辑演示。
+- 预览检查: 预览连接状态检查通过。
 
 ## VSIX 模板执行记录
 
@@ -167,7 +167,7 @@ curl -s --max-time 10 "https://<preview-host>/.well-known/mcai-preview-connect-s
 
 ## 勾选项复核记录
 
-- Date: 2026-06-25
-- 复核范围: `.monkeycode/docs/unattended-development.md` 中 72 个 `✓`，`.monkeycode/specs/project-spec.md` 中 13 个 `✓`。
-- 代码支撑: 已核对页面标签渲染、CSV 导入导出、默认样式、18 类场景、低置信度调试、主题 token、VSIX snippets 和 README 同步。
-- 验证补强: `validate-js-boundary.js` 已覆盖 18 类场景识别。
+- Date: 2026-06-27
+- 复核范围: `.monkeycode/docs/unattended-development.md`、`.monkeycode/specs/project-spec.md`、根 README 和模板 README。
+- 代码支撑: 已核对页面标签渲染、CSV 导入导出、默认样式、24 类场景、低置信度调试、主题 token、Dev Panel、LivePreview、VS Code snippets、VSIX snippets 和 README 同步。
+- 验证补强: `validate-js-boundary.js` 已覆盖 23 个 VS Code snippets、runtime 快捷 API、Dev Panel 资产、类型声明和模板清单。
